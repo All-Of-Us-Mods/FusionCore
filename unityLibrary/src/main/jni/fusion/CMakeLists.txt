@@ -15,6 +15,7 @@ add_library(fusion SHARED
         src/fusion_config.cpp
         src/exports.cpp
         src/logger.cpp
+        src/hooking/il2cpp.cpp
         src/hooking/safehook.cpp
         src/utilities/asm.cpp
 )

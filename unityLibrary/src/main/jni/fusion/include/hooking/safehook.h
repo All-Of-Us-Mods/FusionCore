@@ -10,30 +10,6 @@
 // It should allocate executable memory and return a pointer to it.
 using allocate_func = void *(*)(void *target, size_t size);
 
-// The size of the trampoline code, which is architecture-dependent.
-// See asm.cpp for details on the trampoline implementation (emit_absolute_jump).
-#if defined(__aarch64__)
-static constexpr size_t trampoline_size = 16;
-#elif defined(__arm__)
-static constexpr size_t trampoline_size = 8;
-#endif
-
-// The size of a memory page on the target system, which is needed for memory protection operations.
-static const size_t page_size = sysconf(_SC_PAGESIZE);
-
-// the bridge function used to handle ARM64 return buffers when hooking,
-// we will hook from target -> bridge instead of target -> hook.
-// the hook address gets placed in the literal pool of the trampoline.
-static void *bridge_function = nullptr;
-
-// the handle of libil2cpp.so
-static void *library_handle = nullptr;
-// the base address of libil2cpp.so
-static void *library_base = nullptr;
-
-// a function used to allocate code trampolines.
-static allocate_func allocator = nullptr;
-
 // Initializes the SafeHook system with the given library handle, base address, and allocator function.
 // if allocator_func is null, safehook will try to use dobby b branches directly.
 bool safehook_initialize(void *lib_handle, void *lib_base, allocate_func allocator_func);
