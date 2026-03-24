@@ -29,6 +29,8 @@ public class NativeLibraryManager {
         Pine.hook(findLibraryMethod, new MethodHook() {
             @Override
             public void beforeCall(Pine.CallFrame callFrame) {
+                Log.i(TAG, "findLibrary called for " + callFrame.args[0]);
+
                 for (String libName : FusionLibraries) {
                     if (Objects.equals(libName, callFrame.args[0])) {
                         callFrame.setResult(config.appLibraryDirectory + "/lib" + libName + ".so");
