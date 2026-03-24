@@ -13,6 +13,7 @@ repositories {
 dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
+    implementation("top.canyie.pine:core:0.3.0")
 }
 
 android {

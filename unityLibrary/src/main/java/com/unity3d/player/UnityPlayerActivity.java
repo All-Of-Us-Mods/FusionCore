@@ -12,6 +12,7 @@ import android.view.Window;
 import dev.allofus.fusioncore.ActivityBridge;
 import dev.allofus.fusioncore.CustomContextWrapper;
 import dev.allofus.fusioncore.FusionConfig;
+import dev.allofus.fusioncore.NativeLibraryManager;
 
 public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecycleEvents
 {
@@ -19,10 +20,16 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         System.loadLibrary("fusion");
     }
 
-    public final String TARGET_GAME = "com.innersloth.spacemafia";
+    //public final String TARGET_GAME = "com.innersloth.spacemafia";
+    public final String TARGET_GAME = "com.abstractsoft.hybridanimals";
 
     protected UnityPlayer mUnityPlayer; // don't change the name of this variable; referenced from native code
     public Context m_context;
+
+    private static final String[] FusionLibraries = new String[]{
+            // "unity",
+            "main",
+    };
 
     protected String updateUnityCommandLineArguments(String cmdLine)
     {
@@ -46,8 +53,6 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
             m_context = gameContext;
 
-            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, myContext, this);
-
             FusionConfig config = new FusionConfig(
                     gameContext.getApplicationInfo().nativeLibraryDir,
                     myContext.getApplicationInfo().nativeLibraryDir
@@ -55,9 +60,15 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 
             ActivityBridge.loadFusion(config);
 
+            // Setup native library hooks
+            // NativeLibraryManager.setupLibraryHooks(config);
+
+            // Create custom context to redirect stuff
+            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, myContext, this);
+
             mUnityPlayer = new UnityPlayer(wrappedContext, this);
             UnityPlayer.currentActivity = this;
-            UnityPlayer.currentContext = wrappedContext;
+            //UnityPlayer.currentContext = wrappedContext;
             setContentView(mUnityPlayer);
             mUnityPlayer.requestFocus();
 

@@ -6,6 +6,7 @@
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
   <queries>
     <package android:name="com.innersloth.spacemafia" />
+    <package android:name="com.abstractsoft.hybridanimals" />
   </queries>
   <application android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true">
     <meta-data android:name="unity.splash-mode" android:value="0" />
