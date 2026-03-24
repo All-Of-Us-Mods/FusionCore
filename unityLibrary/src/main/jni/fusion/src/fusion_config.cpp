@@ -2,8 +2,10 @@
 #include <fusion_config.h>
 #include <utilities/java.h>
 
-FusionConfig::FusionConfig(JNIEnv *env, jobject jFusionConfig)
+FusionConfig parseFusionConfig(JNIEnv *env, jobject jFusionConfig)
 {
+    FusionConfig config;
+
     jclass configClass = env->GetObjectClass(jFusionConfig);
 
     jstring gameLibsJString = (jstring) env->GetObjectField(jFusionConfig,
@@ -15,6 +17,14 @@ FusionConfig::FusionConfig(JNIEnv *env, jobject jFusionConfig)
                                                                            "appLibraryDirectory",
                                                                            "Ljava/lang/String;"));
 
-    GET_JAVA_STRING(gameLibsJString, gameLibraryDirectory)
-    GET_JAVA_STRING(appLibsJString, appLibraryDirectory)
+    jboolean useOriginalLibUnityJBoolean = env->GetBooleanField(jFusionConfig,
+                                                            env->GetFieldID(configClass,
+                                                                            "useOriginalLibUnity",
+                                                                            "Z"));
+
+    config.useOriginalLibUnity = useOriginalLibUnityJBoolean == JNI_TRUE;
+    GET_JAVA_STRING(gameLibsJString, config.gameLibraryDirectory)
+    GET_JAVA_STRING(appLibsJString, config.appLibraryDirectory)
+
+    return config;
 }

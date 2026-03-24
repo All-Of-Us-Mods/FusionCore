@@ -2,7 +2,7 @@
 #ifndef FUSIONCORE_SAFEHOOK_H
 #define FUSIONCORE_SAFEHOOK_H
 
-#include <unistd.h>
+#include <cstdint>
 
 // The original SafeHook was in C++, but we are using C for simplicity.
 
@@ -12,7 +12,7 @@ using allocate_func = void *(*)(void *target, size_t size);
 
 // Initializes the SafeHook system with the given library handle, base address, and allocator function.
 // if allocator_func is null, safehook will try to use dobby b branches directly.
-bool safehook_initialize(void *lib_handle, void *lib_base, allocate_func allocator_func);
+bool safehook_initialize(void *lib_handle, uintptr_t lib_base, allocate_func allocator_func);
 
 // Sets up the bridge helper, which is a small piece of code used to hook functions using X8 return buffer.
 // if the bridge is not setup, safehook will fail to patch any functions using the X8 return buffer.

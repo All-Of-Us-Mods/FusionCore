@@ -1,12 +1,17 @@
 // Copyright (c) 2026 XtraCube
-#include <android/log.h>
 #include <jni.h>
 #include <filesystem>
-
+#include <logger.h>
 #include <libmain.h>
 #include <fusion_config.h>
+#include <hooking/il2cpp.h>
+#include <hooking/safehook.h>
+
+#define TAG "FusionCore"
 
 namespace fs = std::filesystem;
+
+
 
 extern "C" JNIEXPORT void JNICALL loadFusion(
         JNIEnv *env,
@@ -14,21 +19,50 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
         jobject nativeConfig
 )
 {
-    __android_log_print(ANDROID_LOG_INFO, "Fusion", "loadFusion called");
+    log(LogLevel::INFO, TAG, "Loading FusionCore...");
 
-    FusionConfig config(env, nativeConfig);
+    FusionConfig config = parseFusionConfig(env, nativeConfig);
 
-    fs::path gameLibsPath(config.getGameLibraryDirectory());
-    fs::path appLibsPath(config.getAppLibraryDirectory());
+    fs::path gameLibsPath(config.gameLibraryDirectory);
+    fs::path appLibsPath(config.appLibraryDirectory);
 
-    fs::path libil2cpp = gameLibsPath / "libil2cpp.so";
-    fs::path libunity = gameLibsPath / "libunity.so";
+    fs::path libIl2Cpp = gameLibsPath / "libil2cpp.so";
 
-    set_override_il2cpp_path(libil2cpp.c_str());
-    set_override_unity_path(libunity.c_str());
+    fs::path libUnity;
+    if (config.useOriginalLibUnity)
+    {
+        libUnity = gameLibsPath / "libunity.so";
+    } else
+    {
+        libUnity = appLibsPath / "libunity.so";
+    }
 
-    __android_log_print(ANDROID_LOG_INFO, "Fusion", "Game library directory: %s", config.getGameLibraryDirectory().c_str());
-    __android_log_print(ANDROID_LOG_INFO, "Fusion", "App library directory: %s", config.getAppLibraryDirectory().c_str());
+    // set our custom libmain override paths
+    set_override_il2cpp_path(libIl2Cpp.c_str());
+    set_override_unity_path(libUnity.c_str());
+
+    // initialize il2cpp
+    if (!il2cpp_initialize(libIl2Cpp.c_str()))
+    {
+        log_format(LogLevel::ERROR, TAG, "Failed to initialize il2cpp with path: {}",
+                   libIl2Cpp.c_str());
+        return;
+    }
+
+    // initialize safehook
+    if (!safehook_initialize(il2cpp_get_handle(), il2cpp_get_library_base(), nullptr))
+    {
+        log(LogLevel::ERROR, TAG, "Failed to initialize SafeHook");
+        return;
+    }
+
+    log_format(LogLevel::INFO, TAG, "Game library directory: {}",
+               config.gameLibraryDirectory.c_str());
+
+    log_format(LogLevel::INFO, TAG, "App library directory: {}",
+               config.appLibraryDirectory.c_str());
+
+    log(LogLevel::INFO, TAG, "FusionCore loaded successfully!");
 }
 
 JNIEXPORT jint JNICALL

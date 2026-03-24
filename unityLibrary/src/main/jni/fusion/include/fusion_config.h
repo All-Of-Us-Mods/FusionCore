@@ -4,21 +4,12 @@
 #include <string>
 #include <jni.h>
 
-class FusionConfig {
-private:
+struct FusionConfig {
     std::string gameLibraryDirectory;
     std::string appLibraryDirectory;
-
-public:
-    FusionConfig(JNIEnv *env, jobject jFusionConfig);
-
-    [[nodiscard]] const std::string &getGameLibraryDirectory() const {
-        return const_cast<std::string&>(gameLibraryDirectory);
-    }
-
-    [[nodiscard]] const std::string &getAppLibraryDirectory() const {
-        return const_cast<std::string&>(appLibraryDirectory);
-    }
+    bool useOriginalLibUnity;
 };
+
+FusionConfig parseFusionConfig(JNIEnv *env, jobject jFusionConfig);
 
 #endif //FUSION_FUSION_CONFIG_H

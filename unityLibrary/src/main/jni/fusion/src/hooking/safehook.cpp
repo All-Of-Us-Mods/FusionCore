@@ -5,6 +5,7 @@
 #include <logger.h>
 #include <dlfcn.h>
 #include <sys/mman.h>
+#include <bits/sysconf.h>
 
 #define TAG "SafeHook"
 
@@ -26,13 +27,14 @@ static void *bridge_function = nullptr;
 
 // the handle of libil2cpp.so
 static void *library_handle = nullptr;
+
 // the base address of libil2cpp.so
-static void *library_base = nullptr;
+static uintptr_t library_base = 0;
 
 // a function used to allocate code trampolines.
 static allocate_func allocator = nullptr;
 
-bool safehook_initialize(void *lib_handle, void *lib_base, allocate_func allocator_func)
+bool safehook_initialize(void *lib_handle, uintptr_t lib_base, allocate_func allocator_func)
 {
     if (!lib_handle)
     {

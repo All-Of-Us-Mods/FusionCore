@@ -8,6 +8,7 @@
 #define TAG "FusionIL2CPP"
 
 static void *handle = nullptr;
+static uintptr_t library_base = 0;
 
 static void *p_il2cpp_init;
 static void *p_il2cpp_runtime_invoke;
@@ -59,6 +60,41 @@ bool il2cpp_initialize(const char *library_path)
     return true;
 }
 
+void *il2cpp_get_handle()
+{
+    if (!handle)
+    {
+        log(LogLevel::ERROR, TAG, "il2cpp is not initialized!");
+        return nullptr;
+    }
+
+    return handle;
+}
+
+uintptr_t il2cpp_get_library_base()
+{
+    if (!handle)
+    {
+        log(LogLevel::ERROR, TAG, "il2cpp is not initialized!");
+        return 0;
+    }
+
+    if (library_base != 0)
+    {
+        return library_base;
+    }
+
+    Dl_info info;
+    if (dladdr(p_il2cpp_init, &info) == 0)
+    {
+        log(LogLevel::ERROR, TAG, "Failed to get library base!");
+        return 0;
+    }
+
+    library_base = reinterpret_cast<uintptr_t>(info.dli_fbase);
+    return library_base;
+}
+
 const char *il2cpp_method_get_name(void *method)
 {
     if (!fun_il2cpp_method_get_name)
@@ -97,7 +133,7 @@ void *il2cpp_runtime_invoke(void *method, void *obj, void **params, void **exc)
 }
 
 // installs a hook on il2cpp_init
-void install_init_hook(il2cpp_init_t hook)
+void il2cpp_install_init_hook(il2cpp_init_t hook)
 {
     if (!p_il2cpp_init)
     {
@@ -128,10 +164,62 @@ void install_init_hook(il2cpp_init_t hook)
 }
 
 // destroy the il2cpp_init hook if it exists
-void destroy_init_hook();
+void il2cpp_destroy_init_hook()
+{
+    if (!init_hook)
+    {
+        log(LogLevel::ERROR, TAG, "il2cpp_init hook is not installed!");
+        return;
+    }
+
+    DobbyDestroy(p_il2cpp_init);
+    init_hook = nullptr;
+
+    log(LogLevel::INFO, TAG, "Successfully destroyed il2cpp_init hook");
+}
 
 // installs a hook on il2cpp_runtime_invoke
-void install_runtime_invoke_hook(il2cpp_runtime_invoke_t hook);
+void il2cpp_install_runtime_invoke_hook(il2cpp_runtime_invoke_t hook)
+{
+    if (!p_il2cpp_runtime_invoke)
+    {
+        log(LogLevel::ERROR, TAG, "il2cpp_runtime_invoke is not initialized!");
+        return;
+    }
+
+    if (!hook)
+    {
+        log(LogLevel::ERROR, TAG, "Hook function is null!");
+        return;
+    }
+
+    runtime_invoke_hook = hook;
+
+    int result = DobbyHook(
+            p_il2cpp_runtime_invoke,
+            (dobby_dummy_func_t)runtime_invoke_hook,
+            (dobby_dummy_func_t *)&fun_il2cpp_runtime_invoke);
+
+    if (result != 0)
+    {
+        log_format(LogLevel::ERROR, TAG, "Failed to hook il2cpp_runtime_invoke: {:d}", result);
+        return;
+    }
+
+    log(LogLevel::INFO, TAG, "Successfully hooked il2cpp_runtime_invoke");
+}
 
 // destroy the runtime_invoke hook if it exists
-void destroy_runtime_invoke_hook();
+void il2cpp_destroy_runtime_invoke_hook()
+{
+    if (!runtime_invoke_hook)
+    {
+        log(LogLevel::ERROR, TAG, "il2cpp_runtime_invoke hook is not installed!");
+        return;
+    }
+
+    DobbyDestroy(p_il2cpp_runtime_invoke);
+    runtime_invoke_hook = nullptr;
+
+    log(LogLevel::INFO, TAG, "Successfully destroyed il2cpp_runtime_invoke hook");
+}
