@@ -82,9 +82,12 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
             m_context = gameContext;
 
+            boolean useOriginalLibUnity = getIntent().getBooleanExtra("og_libunity", true);
+
             FusionConfig config = new FusionConfig(
                     gameContext.getApplicationInfo().nativeLibraryDir,
-                    myContext.getApplicationInfo().nativeLibraryDir
+                    myContext.getApplicationInfo().nativeLibraryDir,
+                    useOriginalLibUnity
             );
 
             ActivityBridge.loadFusion(config);

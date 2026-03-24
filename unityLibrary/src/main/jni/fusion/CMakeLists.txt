@@ -13,6 +13,9 @@ set(SOURCE_FILES src/fusion.cpp)
 add_library(fusion SHARED
         src/fusion.cpp
         src/fusion_config.cpp
+        src/exports.cpp
+        src/logger.cpp
+        src/hooking/safehook.cpp
         src/utilities/asm.cpp
 )
 
