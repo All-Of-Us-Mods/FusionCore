@@ -2,6 +2,8 @@
 #include <android/log.h>
 #include <jni.h>
 
+#include <libmain.h>
+
 extern "C" JNIEXPORT void JNICALL loadFusion(
         JNIEnv *env,
         jclass thisObject,
@@ -9,6 +11,9 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
 )
 {
     __android_log_print(ANDROID_LOG_INFO, "Fusion", "loadFusion called");
+
+
+
 }
 
 JNIEXPORT jint JNICALL

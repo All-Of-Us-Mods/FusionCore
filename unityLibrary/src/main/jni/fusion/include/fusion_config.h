@@ -1,0 +1,5 @@
+// Copyright (c) 2026 XtraCube
+#ifndef FUSION_FUSION_CONFIG_H
+#define FUSION_FUSION_CONFIG_H
+
+#endif //FUSION_FUSION_CONFIG_H
