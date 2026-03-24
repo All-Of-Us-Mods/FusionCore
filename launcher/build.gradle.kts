@@ -7,6 +7,14 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
 }
 
+repositories {
+    google()
+    mavenCentral()
+    gradlePluginPortal()
+    maven("${rootProject.projectDir}/local-repo")
+    maven("https://jitpack.io")
+}
+
 android {
     namespace = "dev.allofus.fusioncore"
     compileSdk = 36

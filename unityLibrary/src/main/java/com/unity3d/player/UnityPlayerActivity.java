@@ -1,19 +1,25 @@
 package com.unity3d.player;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.graphics.PixelFormat;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
-import android.view.View;
 import android.view.Window;
-import android.view.WindowManager;
-import android.os.Process;
+
+import dev.allofus.fusioncore.ActivityBridge;
+import dev.allofus.fusioncore.FusionConfig;
 
 public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecycleEvents
 {
+    static {
+        System.loadLibrary("fusion");
+    }
+
+    public final String TARGET_GAME = "com.innersloth.spacemafia";
+
     protected UnityPlayer mUnityPlayer; // don't change the name of this variable; referenced from native code
 
     protected String updateUnityCommandLineArguments(String cmdLine)
@@ -29,6 +35,24 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 
         String cmdLine = updateUnityCommandLineArguments(getIntent().getStringExtra("unity"));
         getIntent().putExtra("unity", cmdLine);
+
+        // ---------- FUSION CORE -------------
+
+        try {
+            Context myContext = this;
+            Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
+
+            FusionConfig config = new FusionConfig(
+                    gameContext.getApplicationInfo().nativeLibraryDir,
+                    myContext.getApplicationInfo().nativeLibraryDir
+            );
+
+            ActivityBridge.loadFusion(config);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // ------------------------------------
 
         mUnityPlayer = new UnityPlayer(this, this);
         setContentView(mUnityPlayer);

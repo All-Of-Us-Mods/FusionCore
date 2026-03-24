@@ -4,6 +4,9 @@
   <uses-feature android:name="android.hardware.vulkan.version" android:required="false" />
   <uses-feature android:name="android.software.home_screen" android:required="true" />
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+  <queries>
+    <package android:name="com.innersloth.spacemafia" />
+  </queries>
   <application android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true">
     <meta-data android:name="unity.splash-mode" android:value="0" />
     <meta-data android:name="unity.splash-enable" android:value="True" />

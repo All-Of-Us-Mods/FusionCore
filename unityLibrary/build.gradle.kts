@@ -2,6 +2,14 @@ plugins {
     id("com.android.library")
 }
 
+repositories {
+    google()
+    mavenCentral()
+    gradlePluginPortal()
+    maven("${rootProject.projectDir}/local-repo")
+    maven("https://jitpack.io")
+}
+
 dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
