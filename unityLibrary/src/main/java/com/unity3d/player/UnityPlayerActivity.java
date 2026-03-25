@@ -28,12 +28,9 @@ import dev.allofus.fusioncore.NativeLibraryManager;
 
 public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecycleEvents
 {
-    static {
-        System.loadLibrary("fusion");
-    }
 
-    //public final String TARGET_GAME = "com.innersloth.spacemafia";
-    public final String TARGET_GAME = "com.abstractsoft.hybridanimals";
+    public final String TARGET_GAME = "com.innersloth.spacemafia";
+    //public final String TARGET_GAME = "com.abstractsoft.hybridanimals";
 
     protected UnityPlayer mUnityPlayer; // don't change the name of this variable; referenced from native code
     public Context m_context;
@@ -55,57 +52,57 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         // ---------- FUSION CORE -------------
 
         try {
-            Context myContext = this;
             Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
             m_context = gameContext;
 
-            boolean useOriginalLibUnity = getIntent().getBooleanExtra("og_libunity", true);
+            boolean useOriginalLibUnity = getIntent().getBooleanExtra("og_libunity", false);
 
             String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
-            String appLibDir = myContext.getApplicationInfo().nativeLibraryDir;
+            String appLibDir = getApplicationInfo().nativeLibraryDir;
 
-            File appDataDir = myContext.getExternalFilesDir(null);
+            File appDataDir = getExternalFilesDir(null);
             if (appDataDir == null) {
-                appDataDir = myContext.getFilesDir();
+                appDataDir = getFilesDir();
             }
 
             File bepInExDir = new File(appDataDir, "BepInEx");
             File dotnetDir = new File(appDataDir, "dotnet");
 
-            extractZipFromAssets(myContext, "BepInEx-arm64.zip", bepInExDir);
-            extractZipFromAssets(myContext, "dotnet-arm64.zip", dotnetDir);
-
-            System.loadLibrary("System.Native");
-            System.loadLibrary("System.Globalization.Native");
-            System.loadLibrary("System.IO.Compression.Native");
-            System.loadLibrary("System.Security.Cryptography.Native.Android");
-            System.loadLibrary("clrjit");
-            System.loadLibrary("mscordbi");
-            System.loadLibrary("mscordaccore");
-            System.loadLibrary("coreclr");
+            extractZipFromAssets(this, "BepInEx-arm64.zip", bepInExDir);
+            extractZipFromAssets(this, "dotnet-arm64.zip", dotnetDir);
 
             FusionConfig config = new FusionConfig(
                     gameLibDir,
                     appLibDir,
                     appDataDir.getAbsolutePath(),
-                    myContext.getFilesDir().getAbsolutePath(),
+                    getFilesDir().getAbsolutePath(),
                     bepInExDir.getAbsolutePath(),
                     dotnetDir.getAbsolutePath(),
                     useOriginalLibUnity
             );
 
-            ActivityBridge.loadFusion(config);
-
             // Setup native library hooks
-            NativeLibraryManager.mapLibrary("il2cpp", config.appInternalDataDirectory + "/libil2cpp.so");
+            for (File file : new File(gameLibDir).listFiles())
+            {
+                String extractedName = file.getName().substring(3).replace(".so", "");
+                NativeLibraryManager.addGameLibrary(extractedName);
+            }
+
+            NativeLibraryManager.addFusionLibrary("main");
+            NativeLibraryManager.addFusionLibrary("unity");
+            NativeLibraryManager.addDataLibrary("il2cpp");
             NativeLibraryManager.setupLibraryHooks(config);
 
+            loadNativeLibraries();
+
+            ActivityBridge.loadFusion(config);
+
             // Create custom context to redirect stuff
-            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, myContext, this);
+            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, this, this);
 
             mUnityPlayer = new UnityPlayer(wrappedContext, this);
             UnityPlayer.currentActivity = this;
-            //UnityPlayer.currentContext = wrappedContext;
+            UnityPlayer.currentContext = wrappedContext;
             setContentView(mUnityPlayer);
             mUnityPlayer.requestFocus();
             applyImmersiveMode();
@@ -113,6 +110,19 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void loadNativeLibraries()
+    {
+        System.loadLibrary("System.Native");
+        System.loadLibrary("System.Globalization.Native");
+        System.loadLibrary("System.IO.Compression.Native");
+        System.loadLibrary("System.Security.Cryptography.Native.Android");
+        System.loadLibrary("clrjit");
+        System.loadLibrary("mscordbi");
+        System.loadLibrary("mscordaccore");
+        System.loadLibrary("coreclr");
+        System.loadLibrary("fusion");
     }
 
     private static void extractZipFromAssets(Context context, String assetName, File outputFolder)

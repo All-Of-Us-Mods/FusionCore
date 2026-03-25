@@ -3,6 +3,7 @@ package dev.allofus.fusioncore;
 import android.util.Log;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
 
@@ -13,11 +14,25 @@ import top.canyie.pine.callback.MethodHook;
 public class NativeLibraryManager {
     private static final String TAG = "NativeLibraryManager";
 
-    private static final HashMap<String, String> LibraryMap
-            = new HashMap<>();
+    private static final ArrayList<String> GameLibraries = new ArrayList<>();
 
-    public static void mapLibrary(String name, String path) {
-        LibraryMap.put(name, path);
+    private static final ArrayList<String> FusionLibraries = new ArrayList<>();
+
+    private static final ArrayList<String> DataLibraries = new ArrayList<>();
+
+    public static void addGameLibrary(String gameLibName)
+    {
+        GameLibraries.add(gameLibName);
+    }
+
+    public static void addFusionLibrary(String fusionLibName)
+    {
+        FusionLibraries.add(fusionLibName);
+    }
+
+    public static void addDataLibrary(String dataLibName)
+    {
+        DataLibraries.add(dataLibName);
     }
 
     public static void setupLibraryHooks(FusionConfig config) {
@@ -33,14 +48,27 @@ public class NativeLibraryManager {
             public void beforeCall(Pine.CallFrame callFrame) {
                 var libName = callFrame.args[0].toString();
 
-                Log.i(TAG, "findLibrary called for " + libName);
+                Log.i(TAG, "beforeFindLibrary " + libName);
 
-                String override = LibraryMap.get(libName);
-                if (override != null) {
-                    Log.i(TAG, "override to " + override);
-                    callFrame.setResult(override);
-                } else {
-                    callFrame.setResult(config.gameLibraryDirectory + "/lib" + callFrame.args[0] + ".so");
+                for (String dataLib : DataLibraries) {
+                    if (Objects.equals(libName, dataLib)) {
+                        callFrame.setResult(config.appInternalDataDirectory + "/lib" + libName + ".so");
+                        return;
+                    }
+                }
+
+                for (String fusionLib : FusionLibraries) {
+                    if (Objects.equals(libName, fusionLib)) {
+                        callFrame.setResult(config.appLibraryDirectory + "/lib" + libName + ".so");
+                        return;
+                    }
+                }
+
+                for (String gameLib : GameLibraries) {
+                    if (Objects.equals(libName, gameLib)) {
+                        callFrame.setResult(config.gameLibraryDirectory + "/lib" + libName + ".so");
+                        return;
+                    }
                 }
             }
 
