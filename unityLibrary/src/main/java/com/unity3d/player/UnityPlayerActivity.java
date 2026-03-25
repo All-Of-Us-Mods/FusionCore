@@ -13,6 +13,14 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
 import dev.allofus.fusioncore.ActivityBridge;
 import dev.allofus.fusioncore.CustomContextWrapper;
 import dev.allofus.fusioncore.FusionConfig;
@@ -35,6 +43,128 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         return cmdLine;
     }
 
+    // Setup activity layout
+    @Override protected void onCreate(Bundle savedInstanceState)
+    {
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        super.onCreate(savedInstanceState);
+
+        String cmdLine = updateUnityCommandLineArguments(getIntent().getStringExtra("unity"));
+        getIntent().putExtra("unity", cmdLine);
+
+        // ---------- FUSION CORE -------------
+
+        try {
+            Context myContext = this;
+            Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
+            m_context = gameContext;
+
+            boolean useOriginalLibUnity = getIntent().getBooleanExtra("og_libunity", true);
+
+            String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
+            String appLibDir = myContext.getApplicationInfo().nativeLibraryDir;
+
+            File gameDataDir = gameContext.getExternalFilesDir(null);
+            if (gameDataDir == null) {
+                gameDataDir = gameContext.getFilesDir();
+            }
+
+            File appDataDir = myContext.getExternalFilesDir(null);
+            if (appDataDir == null) {
+                appDataDir = myContext.getFilesDir();
+            }
+
+            File bepInExDir = new File(appDataDir, "BepInEx");
+            File dotnetDir = new File(appDataDir, "dotnet");
+
+            extractZipFromAssets(myContext, "BepInEx-arm64.zip", bepInExDir);
+            extractZipFromAssets(myContext, "dotnet-arm64.zip", dotnetDir);
+
+            FusionConfig config = new FusionConfig(
+                    gameLibDir,
+                    appLibDir,
+                    gameDataDir.getAbsolutePath(),
+                    appDataDir.getAbsolutePath(),
+                    bepInExDir.getAbsolutePath(),
+                    dotnetDir.getAbsolutePath(),
+                    useOriginalLibUnity
+            );
+
+            ActivityBridge.loadFusion(config);
+
+            // Setup native library hooks
+            NativeLibraryManager.setupLibraryHooks(config);
+
+            // Create custom context to redirect stuff
+            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, myContext, this);
+
+            mUnityPlayer = new UnityPlayer(wrappedContext, this);
+            UnityPlayer.currentActivity = this;
+            //UnityPlayer.currentContext = wrappedContext;
+            setContentView(mUnityPlayer);
+            mUnityPlayer.requestFocus();
+            applyImmersiveMode();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void extractZipFromAssets(Context context, String assetName, File outputFolder)
+    {
+        try {
+            if (!outputFolder.exists() && !outputFolder.mkdirs()) {
+                throw new IOException("Failed to create output directory: " + outputFolder.getAbsolutePath());
+            }
+
+            String outputRoot = outputFolder.getCanonicalPath() + File.separator;
+            byte[] buffer = new byte[8192];
+
+            try (InputStream is = context.getAssets().open(assetName);
+                 ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
+                ZipEntry ze;
+                while ((ze = zis.getNextEntry()) != null) {
+                    String entryName = ze.getName();
+                    if (entryName == null || entryName.isEmpty()) {
+                        zis.closeEntry();
+                        continue;
+                    }
+
+                    File target = new File(outputFolder, entryName);
+                    String targetPath = target.getCanonicalPath();
+
+                    // Prevent path traversal from malformed zip entries.
+                    if (!targetPath.startsWith(outputRoot)) {
+                        throw new IOException("Blocked zip entry outside output folder: " + entryName);
+                    }
+
+                    if (ze.isDirectory()) {
+                        if (!target.exists() && !target.mkdirs()) {
+                            throw new IOException("Failed to create directory: " + targetPath);
+                        }
+                    } else {
+                        File parent = target.getParentFile();
+                        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+                            throw new IOException("Failed to create parent directory: " + parent.getAbsolutePath());
+                        }
+
+                        try (FileOutputStream fos = new FileOutputStream(target)) {
+                            int count;
+                            while ((count = zis.read(buffer)) != -1) {
+                                fos.write(buffer, 0, count);
+                            }
+                        }
+                    }
+
+                    zis.closeEntry();
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Apply immersive mode to hide system bars and provide a full-screen experience.
     private void applyImmersiveMode()
     {
         Window window = getWindow();
@@ -62,51 +192,6 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
                     | View.SYSTEM_UI_FLAG_FULLSCREEN
                     | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
             decorView.setSystemUiVisibility(flags);
-        }
-    }
-
-    // Setup activity layout
-    @Override protected void onCreate(Bundle savedInstanceState)
-    {
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        super.onCreate(savedInstanceState);
-
-        String cmdLine = updateUnityCommandLineArguments(getIntent().getStringExtra("unity"));
-        getIntent().putExtra("unity", cmdLine);
-
-        // ---------- FUSION CORE -------------
-
-        try {
-
-            Context myContext = this;
-            Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
-            m_context = gameContext;
-
-            boolean useOriginalLibUnity = getIntent().getBooleanExtra("og_libunity", true);
-
-            FusionConfig config = new FusionConfig(
-                    gameContext.getApplicationInfo().nativeLibraryDir,
-                    myContext.getApplicationInfo().nativeLibraryDir,
-                    useOriginalLibUnity
-            );
-
-            ActivityBridge.loadFusion(config);
-
-            // Setup native library hooks
-            NativeLibraryManager.setupLibraryHooks(config);
-
-            // Create custom context to redirect stuff
-            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, myContext, this);
-
-            mUnityPlayer = new UnityPlayer(wrappedContext, this);
-            UnityPlayer.currentActivity = this;
-            //UnityPlayer.currentContext = wrappedContext;
-            setContentView(mUnityPlayer);
-            mUnityPlayer.requestFocus();
-            applyImmersiveMode();
-
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 

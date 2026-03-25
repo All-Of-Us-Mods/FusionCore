@@ -11,7 +11,8 @@ struct FusionConfig {
     std::string appLibraryDirectory;
     std::string gameDataDirectory;
     std::string appDataDirectory;
-    std::string bepinexPath;
+    std::string bepInExDirectory;
+    std::string dotnetDirectory;
 };
 
 FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig);

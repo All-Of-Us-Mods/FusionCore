@@ -8,6 +8,7 @@ public class FusionConfig {
             String gameDataDir,
             String appDataDir,
             String bepInExDir,
+            String dotnetDir,
             boolean useOriginalLibUnity
     ) {
         this.gameLibraryDirectory = gameLibDir;
@@ -15,6 +16,7 @@ public class FusionConfig {
         this.gameDataDirectory = gameDataDir;
         this.appDataDirectory = appDataDir;
         this.bepInExDirectory = bepInExDir;
+        this.dotnetDirectory = dotnetDir;
         this.useOriginalLibUnity = useOriginalLibUnity;
     }
 
@@ -32,6 +34,9 @@ public class FusionConfig {
 
     /// The directory where BepInEx should be installed.
     public String bepInExDirectory;
+
+    /// The directory where the .NET runtime should be installed.
+    public String dotnetDirectory;
 
     /// Whether to use the original libunity.so from the game or the one provided by Fusion.
     public boolean useOriginalLibUnity;

@@ -6,6 +6,7 @@
 #include <fusion_config.h>
 #include <hooking/il2cpp.h>
 #include <hooking/safehook.h>
+#include <dotnet.h>
 
 #define TAG "FusionCore"
 
@@ -24,13 +25,23 @@ int il2cpp_init_hook(char *domain_name)
     if (config.initialized)
     {
         // setup environment variables
-        setenv("FUSION_BEPINEX_PATH", config.bepinexPath.c_str(), 1);
+        setenv("FUSION_BEPINEX_PATH", config.bepInExDirectory.c_str(), 1);
         setenv("FUSION_GAME_BINARY", libmain_get_override_il2cpp_path(), 1);
         setenv("FUSION_GAME_DATA_DIR", config.gameDataDirectory.c_str(), 1);
         setenv("FUSION_APP_DATA_DIR", config.appDataDirectory.c_str(), 1);
         setenv("FUSION_UNITY_VERSION", "2021.3.45f1", 1);
 
-        // TODO: initialize modloader
+        fs::path bepInExCoreDirectory = fs::path(config.bepInExDirectory) / "core";
+
+        DotNetConfig dotNetConfig;
+        dotNetConfig.runtimeDir = config.dotnetDirectory;
+        dotNetConfig.managedLibsDir = bepInExCoreDirectory.string();
+        dotNetConfig.entryPointAssembly = "BepInEx.Unity.IL2CPP";
+        dotNetConfig.entryPointType = "BepInEx.Unity.IL2CPP.FusionCoreEntrypoint";
+        dotNetConfig.entryPointMethod = "Start";
+
+        // execute the managed assembly
+        dotnet_execute_assembly(dotNetConfig);
     }
     else
     {
