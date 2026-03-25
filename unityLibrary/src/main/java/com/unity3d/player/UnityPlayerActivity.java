@@ -29,8 +29,8 @@ import dev.allofus.fusioncore.NativeLibraryManager;
 public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecycleEvents
 {
 
-    public final String TARGET_GAME = "com.innersloth.spacemafia";
-    //public final String TARGET_GAME = "com.abstractsoft.hybridanimals";
+    //public final String TARGET_GAME = "com.innersloth.spacemafia";
+    public final String TARGET_GAME = "com.abstractsoft.hybridanimals";
 
     protected UnityPlayer mUnityPlayer; // don't change the name of this variable; referenced from native code
     public Context m_context;
@@ -102,7 +102,7 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 
             mUnityPlayer = new UnityPlayer(wrappedContext, this);
             UnityPlayer.currentActivity = this;
-            UnityPlayer.currentContext = wrappedContext;
+            //UnityPlayer.currentContext = wrappedContext;
             setContentView(mUnityPlayer);
             mUnityPlayer.requestFocus();
             applyImmersiveMode();
