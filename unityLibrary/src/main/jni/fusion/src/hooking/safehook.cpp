@@ -149,6 +149,101 @@ bool protect_trampoline(void *trampoline, size_t size, int protection)
     return true;
 }
 
+// This should never be true in arm32 because the return buffer is passed through a pointer
+// in the arguments, but on arm64 it's passed through X8. We can safely assume we are
+// in arm64 if this flag is set.
+//
+// Functions that return structs through X8 need a special trampoline
+// to save the pointer to a thread local variable so il2cppinterop
+// can read it properly.
+void *bridge_hook(void *target_function, void *hook_function)
+{
+    log_format(LogLevel::DEBUG, TAG,
+                      "Target at offset 0x{:X} requires special return buffer handling, setting up trampoline.",
+                      reinterpret_cast<uintptr_t>(target_function));
+
+    // required size is 4 instructions (16 bytes) + 2 literals (16 bytes) = 32 bytes
+    size_t requiredSize = 32;
+    if (!allocator)
+    {
+        log(LogLevel::ERROR, TAG, "Cannot allocate trampoline for return buffer hook! Null allocator!");
+        return nullptr;
+    }
+
+    void *trampoline = allocator(target_function, reinterpret_cast<void *>(library_base), requiredSize);
+
+    if (!trampoline)
+    {
+        log(LogLevel::ERROR, TAG,
+                   "Failed to allocate trampoline for special return buffer hook! Cannot install hook.");
+        return nullptr;
+    }
+
+    if (!protect_trampoline(trampoline, requiredSize, PROT_READ | PROT_WRITE))
+    {
+        log_format(LogLevel::ERROR, TAG,
+                          "Failed to set memory protection for trampoline! Cannot install hook.");
+        return nullptr;
+    }
+
+    // The bridge function will store X8 into TLS,
+    // then jump to the pointer in X10, which we will set to the hook function pointer.
+    if (!bridge_function)
+    {
+        log(LogLevel::ERROR, TAG,
+                   "Bridge function address is null! Cannot install special return buffer hook.");
+        return nullptr;
+    }
+
+    log_format(LogLevel::DEBUG, TAG,
+                      "Emitting jump from trampoline at 0x{:X} to bridge at 0x{:X} with hook pointer in X10",
+                      reinterpret_cast<uintptr_t>(trampoline), reinterpret_cast<uintptr_t>(bridge_function));
+
+    // Write the pointer of hook to correct register, then jump to the return buffer bridge
+    auto *code = reinterpret_cast<uint32_t *>(trampoline);
+
+    // Memory layout:
+    // 0x00: LDR X16, [PC, #16]         -> Load hook pointer into X16
+    // 0x04: LDR X17, [PC, #20]         -> Load bridge address into X17
+    // 0x08: BR X17                     -> Jump to bridge
+    // 0x0C: NOP                        -> Padding to align literal pool
+    // 0x10: .quad hook pointer         -> Literal pool with hook pointer
+    // 0x18: .quad bridge address       -> Literal pool with bridge address
+
+    // LDR X16, [PC, #16]
+    code[0] = 0x58000090;
+    // LDR X17, [PC, #20]
+    code[1] = 0x580000B1;
+    // BR X17
+    code[2] = 0xD61F0220;
+    // NOP
+    code[3] = 0xD503201F;
+
+    // Literal pool: [hook pointer][bridge address]
+    auto *literal = reinterpret_cast<uint64_t *>(code + 4);
+    literal[0] = reinterpret_cast<uint64_t>(hook_function);
+    literal[1] = reinterpret_cast<uint64_t>(bridge_function);
+
+    auto start = reinterpret_cast<uintptr_t>(trampoline);
+    __builtin___clear_cache(reinterpret_cast<char *>(start),
+                            reinterpret_cast<char *>(start + requiredSize));
+
+    if (!protect_trampoline(trampoline, requiredSize, PROT_READ | PROT_EXEC))
+    {
+        log_format(LogLevel::ERROR, TAG,
+                          "Failed to set memory protection for trampoline! Cannot install hook.");
+        return nullptr;
+    }
+
+    log_format(LogLevel::DEBUG, TAG,
+                      "Special return buffer trampoline set up at 0x{:X}, hooking to trampoline instead of original hook.",
+                      reinterpret_cast<uintptr_t>(trampoline));
+
+    // since we already setup our trampoline to jump to the bridge which then jumps to our hook,
+    // we can just hook to the trampoline directly
+    return trampoline;
+}
+
 void *safehook_create_hook(void *target_function, void *hook_function, bool use_bridge)
 {
     std::lock_guard<std::mutex> guard(hook_mutex);
@@ -181,7 +276,8 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
 
     if (use_bridge)
     {
-        // TODO: implement bridge hooking
+        actual_hook = bridge_hook(target_function, hook_function);
+        if (!actual_hook) return nullptr;
     }
 
     // TODO: better check if function is actually inside libil2cpp.so

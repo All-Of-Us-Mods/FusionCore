@@ -1,6 +1,7 @@
 // Copyright (c) 2026 XtraCube
 #include <hooking/allocator.h>
 #include <utilities/library.h>
+#include <utilities/asm.h>
 #include <logger.h>
 
 #define TAG "Allocator"
