@@ -24,7 +24,7 @@ void create_alert(const char *title, const char *message)
 
 }
 
-void write_log(int level, const char *tag, const char *text)
+void write_log(const char *text)
 {
-    log(static_cast<LogLevel>(level), tag, text);
+    log(LogLevel::INFO, "Fusion.NET", text);
 }

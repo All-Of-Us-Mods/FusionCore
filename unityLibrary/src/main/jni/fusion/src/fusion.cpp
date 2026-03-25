@@ -25,6 +25,7 @@ int il2cpp_init_hook(char *domain_name)
     if (config.initialized)
     {
         // setup environment variables
+        setenv("BEPINEX_GAME_ASSEMBLY_PATH", libmain_get_override_il2cpp_path(), 1);
         setenv("FUSION_BEPINEX_PATH", config.bepInExDirectory.c_str(), 1);
         setenv("FUSION_GAME_BINARY", libmain_get_override_il2cpp_path(), 1);
         setenv("FUSION_GAME_DATA_DIR", config.gameDataDirectory.c_str(), 1);
@@ -39,6 +40,9 @@ int il2cpp_init_hook(char *domain_name)
         dotNetConfig.entryPointAssembly = "BepInEx.Unity.IL2CPP";
         dotNetConfig.entryPointType = "BepInEx.Unity.IL2CPP.FusionCoreEntrypoint";
         dotNetConfig.entryPointMethod = "Start";
+
+        // set TMPDIR for MonoMod lib drops
+        setenv("TMPDIR", config.appDataDirectory.c_str(), 1);
 
         // execute the managed assembly
         dotnet_execute_assembly(dotNetConfig);

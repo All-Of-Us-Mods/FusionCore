@@ -59,14 +59,17 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
             m_context = gameContext;
 
+            // Create custom context to redirect stuff
+            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, myContext, this);
+
             boolean useOriginalLibUnity = getIntent().getBooleanExtra("og_libunity", true);
 
-            String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
+            String gameLibDir = wrappedContext.getApplicationInfo().nativeLibraryDir;
             String appLibDir = myContext.getApplicationInfo().nativeLibraryDir;
 
-            File gameDataDir = gameContext.getExternalFilesDir(null);
+            File gameDataDir = wrappedContext.getExternalFilesDir(null);
             if (gameDataDir == null) {
-                gameDataDir = gameContext.getFilesDir();
+                gameDataDir = wrappedContext.getFilesDir();
             }
 
             File appDataDir = myContext.getExternalFilesDir(null);
@@ -79,6 +82,15 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 
             extractZipFromAssets(myContext, "BepInEx-arm64.zip", bepInExDir);
             extractZipFromAssets(myContext, "dotnet-arm64.zip", dotnetDir);
+
+            System.loadLibrary("System.Native");
+            System.loadLibrary("System.Globalization.Native");
+            System.loadLibrary("System.IO.Compression.Native");
+            System.loadLibrary("System.Security.Cryptography.Native.Android");
+            System.loadLibrary("clrjit");
+            System.loadLibrary("mscordbi");
+            System.loadLibrary("mscordaccore");
+            System.loadLibrary("coreclr");
 
             FusionConfig config = new FusionConfig(
                     gameLibDir,
@@ -94,9 +106,6 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 
             // Setup native library hooks
             NativeLibraryManager.setupLibraryHooks(config);
-
-            // Create custom context to redirect stuff
-            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, myContext, this);
 
             mUnityPlayer = new UnityPlayer(wrappedContext, this);
             UnityPlayer.currentActivity = this;
