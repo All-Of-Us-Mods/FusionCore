@@ -16,14 +16,21 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 
+import dalvik.system.DexClassLoader;
+import dalvik.system.PathClassLoader;
+
 import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 
 import dev.allofus.fusioncore.ActivityBridge;
 import dev.allofus.fusioncore.ClassLoaderHooks;
@@ -65,6 +72,8 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         try {
             Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
             m_context = gameContext;
+
+            setupGameClassLoader(gameContext);
 
             try {
                 // setup classloader hooks for better game compat
@@ -177,6 +186,107 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         applyImmersiveMode();
     }
 
+    private ClassLoader setupGameClassLoader(Context gameContext) {
+        try {
+            PackageManager pm = getPackageManager();
+            ApplicationInfo appInfo = pm.getApplicationInfo(TARGET_GAME, 0);
+            String gameApkPath = appInfo.sourceDir;
+            Log.i(TAG, "Game APK path: " + gameApkPath);
+
+            File dexDir = new File(getFilesDir(), "game_dex");
+            if (!dexDir.exists()) {
+                dexDir.mkdirs();
+            }
+
+            extractAllDexFromApk(gameApkPath, dexDir);
+
+            ClassLoader currentLoader = getClassLoader();
+            File[] dexFiles = dexDir.listFiles((dir, name) -> name.endsWith(".dex"));
+            if (dexFiles != null) {
+                for (File dexFile : dexFiles) {
+                    injectDexPath(currentLoader, dexFile.getAbsolutePath());
+                }
+            }
+
+            Thread.currentThread().setContextClassLoader(currentLoader);
+            Log.i(TAG, "Injected " + (dexFiles != null ? dexFiles.length : 0) + " game dex files");
+            return currentLoader;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to setup game classloader", e);
+            return getClassLoader();
+        }
+    }
+
+    private void injectDexPath(ClassLoader loader, String dexPath) {
+        try {
+            java.lang.reflect.Field pathListField = findField(loader.getClass(), "pathList");
+            Object pathList = pathListField.get(loader);
+
+            java.lang.reflect.Method addDexPathMethod = null;
+            try {
+                addDexPathMethod = pathList.getClass().getDeclaredMethod("addDexPath", String.class, File.class);
+                addDexPathMethod.setAccessible(true);
+                addDexPathMethod.invoke(pathList, dexPath, null);
+                Log.i(TAG, "Injected dex via addDexPath: " + dexPath);
+                return;
+            } catch (NoSuchMethodException ignored) {}
+
+            java.lang.reflect.Field dexElementsField = findField(pathList.getClass(), "dexElements");
+            Object[] oldDexElements = (Object[]) dexElementsField.get(pathList);
+
+            Class<?> elementClass = oldDexElements[0].getClass();
+            java.lang.reflect.Constructor<?> elementConstructor = elementClass.getConstructor(File.class, boolean.class, java.util.zip.ZipFile.class, String.class);
+
+            Object[] newDexElements = (Object[]) java.lang.reflect.Array.newInstance(elementClass, oldDexElements.length + 1);
+
+            System.arraycopy(oldDexElements, 0, newDexElements, 1, oldDexElements.length);
+
+            File dexFile = new File(dexPath);
+            newDexElements[0] = elementConstructor.newInstance(dexFile, true, null, dexPath);
+
+            dexElementsField.set(pathList, newDexElements);
+            Log.i(TAG, "Injected dex via elements: " + dexPath);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to inject dex path: " + dexPath, e);
+        }
+    }
+
+    private java.lang.reflect.Field findField(Class<?> clazz, String name) throws NoSuchFieldException {
+        while (clazz != null) {
+            try {
+                java.lang.reflect.Field field = clazz.getDeclaredField(name);
+                field.setAccessible(true);
+                return field;
+            } catch (NoSuchFieldException e) {
+                clazz = clazz.getSuperclass();
+            }
+        }
+        throw new NoSuchFieldException(name);
+    }
+
+    private void extractAllDexFromApk(String apkPath, File outputDir) throws IOException {
+        int extracted = 0;
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(apkPath))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                String name = entry.getName();
+                if (name.startsWith("classes") && name.endsWith(".dex")) {
+                    File outFile = new File(outputDir, name);
+                    try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                        byte[] buffer = new byte[8192];
+                        int len;
+                        while ((len = zis.read(buffer)) != -1) {
+                            fos.write(buffer, 0, len);
+                        }
+                    }
+                    Log.i(TAG, "Extracted: " + name);
+                    extracted++;
+                    zis.closeEntry();
+                }
+            }
+        }
+        Log.i(TAG, "Extracted " + extracted + " dex files");
+    }
 
     private static boolean copyAssets(AssetManager gameAssets, String assetPath, File outputFolder) {
         deleteRecursive(outputFolder);
