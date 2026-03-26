@@ -64,11 +64,15 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
             m_context = gameContext;
 
-            // setup classloader hooks for better game compat
-            ClassLoaderHooks.installHooks(gameContext.getClassLoader());
+            try {
+                // setup classloader hooks for better game compat
+                ClassLoaderHooks.installHooks(gameContext.getClassLoader());
 
-            // setup packagemanager hooks to handle external component management
-            PackageManagerHooks.installHooks(getPackageManager());
+                // setup packagemanager hooks to handle external component management
+                PackageManagerHooks.installHooks(getPackageManager());
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to install hooks!", e);
+            }
 
             boolean useOriginalLibUnity = getIntent().getBooleanExtra("og_libunity", false);
 
