@@ -14,11 +14,16 @@ dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
     implementation("top.canyie.pine:core:0.3.0")
+    implementation("io.github.hexhacking:xdl:2.3.0")
 }
 
 android {
     namespace = "com.unity3d.player"
     compileSdk = 36
+
+    buildFeatures {
+        prefab = true
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -45,6 +50,7 @@ android {
         jniLibs {
             useLegacyPackaging = true
             keepDebugSymbols += listOf("*/armeabi-v7a/*.so", "*/arm64-v8a/*.so")
+            excludes.add("**/libxdl.so")
         }
     }
 

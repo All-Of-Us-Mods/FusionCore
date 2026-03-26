@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(LIB_FOLDER ${CMAKE_SOURCE_DIR}/../jniLibs/${CMAKE_ANDROID_ARCH_ABI})
 
 find_package(JNI REQUIRED)
+find_package(xdl REQUIRED CONFIG)
 
 include_directories(${JNI_INCLUDE_DIRS})
 
@@ -30,6 +31,7 @@ target_include_directories(fusion PUBLIC include)
 target_link_libraries(
         fusion
         PUBLIC
+        xdl::xdl
         main
         android
         log

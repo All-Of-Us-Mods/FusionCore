@@ -8,6 +8,8 @@
 #include <hooking/safehook.h>
 #include <hooking/allocator.h>
 #include <dotnet.h>
+#include <external/dobby.h>
+#include <external/xdl.h>
 
 #define TAG "FusionCore"
 
@@ -57,6 +59,18 @@ int il2cpp_init_hook(char *domain_name)
     return result;
 }
 
+using scripting_method_invoke_fn = void* (*)(void* method, void* obj, void* args, void* exc, bool);
+scripting_method_invoke_fn original_scripting_method_invoke = nullptr;
+
+// this hook prevents crashes from unstripped libunity failing to resolve scripting methods
+void* scripting_method_invoke_hook(void* method, void* obj, void* args, void* exc, bool something) {
+    if (!method) {
+        return nullptr;
+    }
+
+    return original_scripting_method_invoke(method, obj, args, exc, something);
+}
+
 extern "C" JNIEXPORT void JNICALL loadFusion(
         JNIEnv *env,
         jclass thisObject,
@@ -82,6 +96,32 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
     } else
     {
         libUnity = appLibsPath / "libunity.so";
+    }
+
+    // fix unstripped libunity problems
+    void *libunity_handle = xdl_open(libUnity.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    void *target = xdl_dsym(libunity_handle,
+                     "_Z23scripting_method_invoke18ScriptingMethodPtr18ScriptingObjectPtrR18ScriptingArgumentsP21ScriptingExceptionPtrb",
+                     nullptr
+                     );
+    if (!target)
+    {
+        log_format(LogLevel::ERROR, TAG,
+            "Failed to find target function for scripting_method_invoke_hook: {}", dlerror());
+    }
+    else
+    {
+        if (
+                DobbyHook(target,
+                          reinterpret_cast<dobby_dummy_func_t>(scripting_method_invoke_hook),
+                          reinterpret_cast<dobby_dummy_func_t *>(&original_scripting_method_invoke))
+                == 0)
+        {
+            log(LogLevel::INFO, TAG, "Successfully hooked scripting_method_invoke");
+        } else
+        {
+            log(LogLevel::ERROR, TAG, "Failed to hook scripting_method_invoke");
+        }
     }
 
     fs::path tempLibIl2Cpp = fs::path(config.appInternalDataDirectory) / "libil2cpp.so";
