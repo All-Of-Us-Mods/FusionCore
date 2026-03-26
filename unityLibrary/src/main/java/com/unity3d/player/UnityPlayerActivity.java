@@ -35,8 +35,8 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 {
     public static final String TAG = "FusionCore";
 
-    //public static final String TARGET_GAME = "com.innersloth.spacemafia";
-    public static final String TARGET_GAME = "com.abstractsoft.hybridanimals";
+    public static final String TARGET_GAME = "com.innersloth.spacemafia";
+    //public static final String TARGET_GAME = "com.abstractsoft.hybridanimals";
 
     protected UnityPlayer mUnityPlayer; // don't change the name of this variable; referenced from native code
     public Context m_context;
@@ -59,7 +59,7 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 
         Context wrappedContext = null;
         try {
-            Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
+            Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY | CONTEXT_INCLUDE_CODE);
             m_context = gameContext;
 
             boolean useOriginalLibUnity = getIntent().getBooleanExtra("og_libunity", false);
@@ -124,12 +124,13 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
                 Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
             }
 
-            NativeLibraryManager.addFusionLibrary("main");
-            NativeLibraryManager.addDataLibrary("il2cpp");
+            NativeLibraryManager.addFusionLibrary("main"); // load our custom libmain
+            NativeLibraryManager.addDataLibrary("il2cpp"); // load our patched libil2cpp
             NativeLibraryManager.setupLibraryHooks(config);
 
-            loadNativeLibraries();
+            loadNativeLibraries(); // load stuff like coreclr and fusion itself
 
+            // Initialize Fusion
             ActivityBridge.loadFusion(config);
 
             // Create custom context to redirect stuff
@@ -146,7 +147,7 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 
         mUnityPlayer = new UnityPlayer(wrappedContext, this);
         UnityPlayer.currentActivity = this;
-        //UnityPlayer.currentContext = wrappedContext;
+        UnityPlayer.currentContext = wrappedContext;
         setContentView(mUnityPlayer);
         mUnityPlayer.requestFocus();
         applyImmersiveMode();
