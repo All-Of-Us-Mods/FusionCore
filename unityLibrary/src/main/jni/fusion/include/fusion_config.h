@@ -13,6 +13,8 @@ struct FusionConfig {
     std::string appInternalDataDirectory;
     std::string bepInExDirectory;
     std::string dotnetDirectory;
+    std::string unityDataDirectory;
+    std::string unityVersion;
 };
 
 FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig);

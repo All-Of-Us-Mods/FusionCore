@@ -9,6 +9,8 @@ public class FusionConfig {
             String appInternalDataDirectory,
             String bepInExDir,
             String dotnetDir,
+            String unityDataDir,
+            String unityVersion,
             boolean useOriginalLibUnity
     ) {
         this.gameLibraryDirectory = gameLibDir;
@@ -17,6 +19,8 @@ public class FusionConfig {
         this.appInternalDataDirectory = appInternalDataDirectory;
         this.bepInExDirectory = bepInExDir;
         this.dotnetDirectory = dotnetDir;
+        this.unityDataDirectory = unityDataDir;
+        this.unityVersion = unityVersion;
         this.useOriginalLibUnity = useOriginalLibUnity;
     }
 
@@ -37,6 +41,12 @@ public class FusionConfig {
 
     /// The directory where the .NET runtime should be installed.
     public String dotnetDirectory;
+
+    /// The directory where the game's Unity data files are located.
+    public String unityDataDirectory;
+
+    /// The Unity version of the game.
+    public String unityVersion;
 
     /// Whether to use the original libunity.so from the game or the one provided by Fusion.
     public boolean useOriginalLibUnity;

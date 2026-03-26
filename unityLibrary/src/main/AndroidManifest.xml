@@ -14,8 +14,7 @@
     <package android:name="com.abstractsoft.hybridanimals" />
     <package android:name="air.com.midjiwan.polytopia" />
   </queries>
-  <application android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true">
-    <meta-data android:name="unity.splash-mode" android:value="0" />
+  <application android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true"><meta-data android:name="unity.splash-mode" android:value="0" />
     <meta-data android:name="unity.splash-enable" android:value="True" />
     <meta-data android:name="unity.launch-fullscreen" android:value="True" />
     <meta-data android:name="unity.render-outside-safearea" android:value="True" />

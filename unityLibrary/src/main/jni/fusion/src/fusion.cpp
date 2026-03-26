@@ -7,6 +7,7 @@
 #include <hooking/il2cpp.h>
 #include <hooking/safehook.h>
 #include <hooking/allocator.h>
+#include <hooking/libunity.h>
 #include <dotnet.h>
 #include <external/dobby.h>
 #include <external/xdl.h>
@@ -31,9 +32,9 @@ int il2cpp_init_hook(char *domain_name)
         setenv("BEPINEX_GAME_ASSEMBLY_PATH", libmain_get_override_il2cpp_path(), 1);
         setenv("FUSION_BEPINEX_PATH", config.bepInExDirectory.c_str(), 1);
         setenv("FUSION_GAME_BINARY", libmain_get_override_il2cpp_path(), 1);
-        setenv("FUSION_GAME_DATA_DIR", config.appDataDirectory.c_str(), 1);
+        setenv("FUSION_GAME_DATA_DIR", config.unityDataDirectory.c_str(), 1);
         setenv("FUSION_APP_DATA_DIR", config.appDataDirectory.c_str(), 1);
-        setenv("FUSION_UNITY_VERSION", "6000.0.64f1", 1);
+        setenv("FUSION_UNITY_VERSION", config.unityVersion.c_str(), 1);
 
         fs::path bepInExCoreDirectory = fs::path(config.bepInExDirectory) / "core";
 
@@ -59,18 +60,6 @@ int il2cpp_init_hook(char *domain_name)
     return result;
 }
 
-using scripting_method_invoke_fn = void* (*)(void* method, void* obj, void* args, void* exc, bool);
-scripting_method_invoke_fn original_scripting_method_invoke = nullptr;
-
-// this hook prevents crashes from unstripped libunity failing to resolve scripting methods
-void* scripting_method_invoke_hook(void* method, void* obj, void* args, void* exc, bool something) {
-    if (!method) {
-        return nullptr;
-    }
-
-    return original_scripting_method_invoke(method, obj, args, exc, something);
-}
-
 extern "C" JNIEXPORT void JNICALL loadFusion(
         JNIEnv *env,
         jclass thisObject,
@@ -85,7 +74,7 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
 
     // Construct paths to the game and app libraries
     fs::path gameLibsPath(config.gameLibraryDirectory);
-    fs::path appLibsPath(config.appLibraryDirectory);
+    fs::path appInternalDataPath(config.appInternalDataDirectory);
 
     fs::path libIl2Cpp = gameLibsPath / "libil2cpp.so";
     fs::path libUnity;
@@ -95,51 +84,28 @@ extern "C" JNIEXPORT void JNICALL loadFusion(
         libUnity = gameLibsPath / "libunity.so";
     } else
     {
-        libUnity = appLibsPath / "libunity.so";
+        libUnity = appInternalDataPath / "libunity.so";
     }
 
     // fix unstripped libunity problems
-    {
-        dlopen(libUnity.c_str(), RTLD_NOW | RTLD_GLOBAL);
-        void *libunity_handle = xdl_open(libUnity.c_str(), XDL_DEFAULT);
-        void *target = xdl_dsym(libunity_handle,
-                                "_Z23scripting_method_invoke18ScriptingMethodPtr18ScriptingObjectPtrR18ScriptingArgumentsP21ScriptingExceptionPtrb",
-                                nullptr
-        );
-        if (!target)
-        {
-            log_format(LogLevel::ERROR, TAG,
-                       "Failed to find target function for scripting_method_invoke_hook: {}",
-                       dlerror());
-        } else
-        {
-            if (
-                    DobbyHook(target,
-                              reinterpret_cast<dobby_dummy_func_t>(scripting_method_invoke_hook),
-                              reinterpret_cast<dobby_dummy_func_t *>(&original_scripting_method_invoke))
-                    == 0)
-            {
-                log(LogLevel::INFO, TAG, "Successfully hooked scripting_method_invoke");
-            } else
-            {
-                log(LogLevel::ERROR, TAG, "Failed to hook scripting_method_invoke");
-            }
-        }
-    }
+    std::string libUnityPath = libUnity.string();
+    try_hook_libunity(libUnityPath, (gameLibsPath / "libunity.so").string());
 
-    fs::path tempLibIl2Cpp = fs::path(config.appInternalDataDirectory) / "libil2cpp.so";
+    // construct path for our patched libil2cpp copy
+    fs::path patchedLibIl2Cpp = fs::path(config.appInternalDataDirectory) / "libil2cpp.so";
 
-    allocate_setup_injected(libIl2Cpp.c_str(), tempLibIl2Cpp.c_str(), 1024 * 1024);
+    // inject a 1MB pool for our hooks to use for code generation and trampoline storage
+    allocate_setup_injected(libIl2Cpp.c_str(), patchedLibIl2Cpp.c_str(), 1024 * 1024);
 
     // set our custom libmain override paths
-    libmain_set_override_il2cpp_path(tempLibIl2Cpp.c_str());
-    libmain_set_override_unity_path(libUnity.c_str());
+    libmain_set_override_il2cpp_path(patchedLibIl2Cpp.c_str());
+    libmain_set_override_unity_path(libUnityPath.c_str());
 
     // initialize il2cpp
-    if (!il2cpp_initialize(tempLibIl2Cpp.c_str()))
+    if (!il2cpp_initialize(patchedLibIl2Cpp.c_str()))
     {
         log_format(LogLevel::ERROR, TAG, "Failed to initialize il2cpp with path: {}",
-                   tempLibIl2Cpp.c_str());
+                   patchedLibIl2Cpp.c_str());
         return;
     }
 

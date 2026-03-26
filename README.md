@@ -12,6 +12,10 @@ As of writing this, PC versions of BepInEx and MelonLoader still use .NET 6.0 an
 However, FusionCore uses .NET 10.0 and MonoMod reorganized, so if you directly use MonoMod in your mods,
 you will need to make it compatible with the newer MonoMod version.
 
+There is no Lemon/Melonloader support yet, just BepInEx Fusion (my custom fork of BepInEx).
+
+FusionCore automatically detects Unity version, then downloads the unstripped libunity.so file. You only need to follow the configuration steps below to make things work.
+
 ## Configuration
 
 1. Replace `unity-classes.jar` in `unityLibrary/libs` with the `classes.jar` from the exact Unity version used by the target game.
@@ -23,11 +27,7 @@ you will need to make it compatible with the newer MonoMod version.
 3. Add/update `<queries><package ... /></queries>` in `unityLibrary/src/main/AndroidManifest.xml` for your target package.
    - Android package visibility rules require this for package context lookup.
 
-4. Confirm ABI and native dependencies:
-   - Current Gradle config is ARM64 only (`arm64-v8a`) in both `launcher/build.gradle.kts` and `unityLibrary/build.gradle.kts`.
-   - `unityLibrary/src/main/jni/fusion/CMakeLists.txt` links against `libdobby.so` and `libcoreclr.so` from `unityLibrary/src/main/jniLibs/${CMAKE_ANDROID_ARCH_ABI}`.
-
-5. Fix Unity-version-specific compile/runtime differences as needed.
+4. Fix Unity-version-specific compile/runtime differences as needed. To help with this, you can export an empty Unity project using the Editor for your version and use it as a reference.
 
 ## Build
 
