@@ -33,6 +33,8 @@ FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
     GET_JSTRING_FIELD(appInternalDataDirectory);
     GET_JSTRING_FIELD(bepInExDirectory);
     GET_JSTRING_FIELD(dotnetDirectory);
+    GET_JSTRING_FIELD(unityDataDirectory);
+    GET_JSTRING_FIELD(unityVersion);
 
     config.initialized = true;
 

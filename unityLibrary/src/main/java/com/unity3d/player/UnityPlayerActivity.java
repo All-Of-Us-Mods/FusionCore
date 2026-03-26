@@ -3,9 +3,11 @@ package com.unity3d.player;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -18,19 +20,23 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import dev.allofus.fusioncore.ActivityBridge;
 import dev.allofus.fusioncore.CustomContextWrapper;
 import dev.allofus.fusioncore.FusionConfig;
+import dev.allofus.fusioncore.LibUnityDownloader;
 import dev.allofus.fusioncore.NativeLibraryManager;
+import dev.allofus.fusioncore.VersionLookup;
 
 public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecycleEvents
 {
+    public static final String TAG = "FusionCore";
 
-    //public final String TARGET_GAME = "com.innersloth.spacemafia";
-    public final String TARGET_GAME = "com.abstractsoft.hybridanimals";
+    //public static final String TARGET_GAME = "com.innersloth.spacemafia";
+    public static final String TARGET_GAME = "com.abstractsoft.hybridanimals";
 
     protected UnityPlayer mUnityPlayer; // don't change the name of this variable; referenced from native code
     public Context m_context;
@@ -51,6 +57,7 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 
         // ---------- FUSION CORE -------------
 
+        Context wrappedContext = null;
         try {
             Context gameContext = createPackageContext(TARGET_GAME, CONTEXT_IGNORE_SECURITY);
             m_context = gameContext;
@@ -63,6 +70,29 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             File appDataDir = getExternalFilesDir(null);
             if (appDataDir == null) {
                 appDataDir = getFilesDir();
+            }
+
+            var copiedData = new File(appDataDir, "Data_copy");
+            boolean copied = copyAssets(gameContext.getAssets(), "bin/Data", copiedData);
+            if (!copied) {
+                Log.e(TAG, "Failed to copy Unity Data assets! BepInEx may not work correctly.");
+            }
+
+            String version = VersionLookup.TryLookup(copiedData);
+            if (version == null) {
+                Log.e(TAG, "Failed to determine Unity version! BepInEx may not work correctly.");
+                version = "2017.0.0";
+                // force using original libunity since we don't know the version
+                // and the one provided by Fusion may not be compatible
+                useOriginalLibUnity = true;
+            } else {
+                Log.i(TAG, "Determined Unity version: " + version);
+                if (LibUnityDownloader.downloadAndCacheSafely(getFilesDir(), version)) {
+                    Log.i(TAG, "Successfully downloaded libunity for version " + version);
+                } else {
+                    Log.e(TAG, "Failed to download libunity for version " + version + ", falling back to original. BepInEx may not work correctly.");
+                    useOriginalLibUnity = true;
+                }
             }
 
             File bepInExDir = new File(appDataDir, "BepInEx");
@@ -78,18 +108,23 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
                     getFilesDir().getAbsolutePath(),
                     bepInExDir.getAbsolutePath(),
                     dotnetDir.getAbsolutePath(),
+                    copiedData.getAbsolutePath(),
+                    version,
                     useOriginalLibUnity
             );
 
             // Setup native library hooks
-            for (File file : new File(gameLibDir).listFiles())
-            {
-                String extractedName = file.getName().substring(3).replace(".so", "");
-                NativeLibraryManager.addGameLibrary(extractedName);
+            File[] nativeLibs = new File(gameLibDir).listFiles();
+            if (nativeLibs != null) {
+                for (File file : nativeLibs) {
+                    String extractedName = file.getName().substring(3).replace(".so", "");
+                    NativeLibraryManager.addGameLibrary(extractedName);
+                }
+            } else {
+                Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
             }
 
             NativeLibraryManager.addFusionLibrary("main");
-            NativeLibraryManager.addFusionLibrary("unity");
             NativeLibraryManager.addDataLibrary("il2cpp");
             NativeLibraryManager.setupLibraryHooks(config);
 
@@ -98,18 +133,97 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             ActivityBridge.loadFusion(config);
 
             // Create custom context to redirect stuff
-            CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, this, this);
-
-            mUnityPlayer = new UnityPlayer(wrappedContext, this);
-            UnityPlayer.currentActivity = this;
-            //UnityPlayer.currentContext = wrappedContext;
-            setContentView(mUnityPlayer);
-            mUnityPlayer.requestFocus();
-            applyImmersiveMode();
+            wrappedContext = new CustomContextWrapper(gameContext, this, this);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "Failed to initialize Fusion Core!", e);
         }
+
+        if (wrappedContext == null) {
+            Log.e(TAG, "Failed to create wrapped context! The game may crash or fail to load.");
+            wrappedContext = this;
+        }
+
+        mUnityPlayer = new UnityPlayer(wrappedContext, this);
+        UnityPlayer.currentActivity = this;
+        //UnityPlayer.currentContext = wrappedContext;
+        setContentView(mUnityPlayer);
+        mUnityPlayer.requestFocus();
+        applyImmersiveMode();
+    }
+
+
+    private static boolean copyAssets(AssetManager gameAssets, String assetPath, File outputFolder) {
+        deleteRecursive(outputFolder);
+
+        try {
+            if (!copyAssetEntry(gameAssets, assetPath, outputFolder)) {
+                Log.e(TAG, "Could not find Unity Data assets!");
+                return false;
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to copy Unity Data assets!", e);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static boolean copyAssetEntry(AssetManager gameAssets, String assetPath, File outputTarget) throws IOException {
+        String[] children = gameAssets.list(assetPath);
+        if (children == null) {
+            return false;
+        }
+
+        if (children.length > 0) {
+            if (!outputTarget.exists() && !outputTarget.mkdirs()) {
+                return false;
+            }
+
+            for (String child : children) {
+                File childTarget = new File(outputTarget, child);
+                String childPath = assetPath + "/" + child;
+                if (!copyAssetEntry(gameAssets, childPath, childTarget)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        File parent = outputTarget.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            return false;
+        }
+
+        byte[] buffer = new byte[8192];
+        try (InputStream is = gameAssets.open(assetPath);
+             OutputStream os = new FileOutputStream(outputTarget)) {
+            int length;
+            while ((length = is.read(buffer)) > 0) {
+                os.write(buffer, 0, length);
+            }
+        }
+
+        return true;
+    }
+
+    private static boolean deleteRecursive(File file) {
+        if (file == null || !file.exists()) {
+            return true;
+        }
+
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (!deleteRecursive(f)) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return file.delete();
     }
 
     private static void loadNativeLibraries()
@@ -175,7 +289,7 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Failed to extract " + assetName + " from assets!", e);
         }
     }
 
