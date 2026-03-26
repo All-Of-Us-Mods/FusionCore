@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -106,6 +107,9 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             UnityPlayer.currentContext = wrappedContext;
 
             View unityView = mUnityPlayer.getView();
+            if (unityView.getParent() instanceof ViewGroup) {
+                ((ViewGroup) unityView.getParent()).removeView(unityView);
+            }
             setContentView(unityView);
             unityView.requestFocus();
             applyImmersiveMode();

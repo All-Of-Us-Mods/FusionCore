@@ -15,6 +15,9 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
     implementation("top.canyie.pine:core:0.3.0")
     implementation("io.github.hexhacking:xdl:2.3.0")
+    // TODO: check if needed
+    implementation("com.android.installreferrer:installreferrer:2.2")
+    implementation("com.android.billingclient:billing:8.3.0")
 }
 
 android {
