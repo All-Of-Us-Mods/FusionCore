@@ -33,7 +33,7 @@ int il2cpp_init_hook(char *domain_name)
         setenv("FUSION_GAME_BINARY", libmain_get_override_il2cpp_path(), 1);
         setenv("FUSION_GAME_DATA_DIR", config.appDataDirectory.c_str(), 1);
         setenv("FUSION_APP_DATA_DIR", config.appDataDirectory.c_str(), 1);
-        setenv("FUSION_UNITY_VERSION", "2021.3.43f1", 1);
+        setenv("FUSION_UNITY_VERSION", "6000.0.64f1", 1);
 
         fs::path bepInExCoreDirectory = fs::path(config.bepInExDirectory) / "core";
 

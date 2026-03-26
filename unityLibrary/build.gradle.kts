@@ -42,7 +42,7 @@ android {
     externalNativeBuild {
         cmake {
             path = File("./src/main/jni/CMakeLists.txt")
-            version = "3.31.1"
+            version = "3.31.6"
         }
     }
 
@@ -58,4 +58,3 @@ android {
         abortOnError = false
     }
 }
-

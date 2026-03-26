@@ -30,7 +30,8 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
 {
 
     //public final String TARGET_GAME = "com.innersloth.spacemafia";
-    public final String TARGET_GAME = "com.abstractsoft.hybridanimals";
+    //public final String TARGET_GAME = "com.abstractsoft.hybridanimals";
+    public final String TARGET_GAME = "air.com.midjiwan.polytopia";
 
     protected UnityPlayer mUnityPlayer; // don't change the name of this variable; referenced from native code
     public Context m_context;
@@ -100,11 +101,13 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             // Create custom context to redirect stuff
             CustomContextWrapper wrappedContext = new CustomContextWrapper(gameContext, this, this);
 
-            mUnityPlayer = new UnityPlayer(wrappedContext, this);
+            mUnityPlayer = new UnityPlayerForActivityOrService(wrappedContext, this);
             UnityPlayer.currentActivity = this;
-            //UnityPlayer.currentContext = wrappedContext;
-            setContentView(mUnityPlayer);
-            mUnityPlayer.requestFocus();
+            UnityPlayer.currentContext = wrappedContext;
+
+            View unityView = mUnityPlayer.getView();
+            setContentView(unityView);
+            unityView.requestFocus();
             applyImmersiveMode();
 
         } catch (Exception e) {
@@ -271,17 +274,14 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
     @Override public void onLowMemory()
     {
         super.onLowMemory();
-        mUnityPlayer.lowMemory();
+        notifyTrimMemory(UnityPlayerForActivityOrService.MemoryUsage.Critical);
     }
 
     // Trim Memory Unity
     @Override public void onTrimMemory(int level)
     {
         super.onTrimMemory(level);
-        if (level == TRIM_MEMORY_RUNNING_CRITICAL)
-        {
-            mUnityPlayer.lowMemory();
-        }
+        notifyTrimMemory(mapTrimLevel(level));
     }
 
     // This ensures the layout will be correct.
@@ -311,8 +311,29 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
     }
 
     // Pass any events not handled by (unfocused) views straight to UnityPlayer
-    @Override public boolean onKeyUp(int keyCode, KeyEvent event)     { return mUnityPlayer.onKeyUp(keyCode, event); }
-    @Override public boolean onKeyDown(int keyCode, KeyEvent event)   { return mUnityPlayer.onKeyDown(keyCode, event); }
-    @Override public boolean onTouchEvent(MotionEvent event)          { return mUnityPlayer.onTouchEvent(event); }
-    @Override public boolean onGenericMotionEvent(MotionEvent event)  { return mUnityPlayer.onGenericMotionEvent(event); }
+    @Override public boolean onKeyUp(int keyCode, KeyEvent event)     { return mUnityPlayer.injectEvent(event) || super.onKeyUp(keyCode, event); }
+    @Override public boolean onKeyDown(int keyCode, KeyEvent event)   { return mUnityPlayer.injectEvent(event) || super.onKeyDown(keyCode, event); }
+    @Override public boolean onTouchEvent(MotionEvent event)          { return mUnityPlayer.injectEvent(event) || super.onTouchEvent(event); }
+    @Override public boolean onGenericMotionEvent(MotionEvent event)  { return mUnityPlayer.injectEvent(event) || super.onGenericMotionEvent(event); }
+
+    private void notifyTrimMemory(UnityPlayerForActivityOrService.MemoryUsage usage)
+    {
+        if (mUnityPlayer instanceof UnityPlayerForActivityOrService) {
+            ((UnityPlayerForActivityOrService) mUnityPlayer).onTrimMemory(usage);
+        }
+    }
+
+    private UnityPlayerForActivityOrService.MemoryUsage mapTrimLevel(int level)
+    {
+        if (level >= TRIM_MEMORY_COMPLETE || level >= TRIM_MEMORY_RUNNING_CRITICAL) {
+            return UnityPlayerForActivityOrService.MemoryUsage.Critical;
+        }
+        if (level >= TRIM_MEMORY_BACKGROUND || level >= TRIM_MEMORY_RUNNING_LOW) {
+            return UnityPlayerForActivityOrService.MemoryUsage.High;
+        }
+        if (level >= TRIM_MEMORY_UI_HIDDEN || level >= TRIM_MEMORY_MODERATE) {
+            return UnityPlayerForActivityOrService.MemoryUsage.Medium;
+        }
+        return UnityPlayerForActivityOrService.MemoryUsage.Low;
+    }
 }
