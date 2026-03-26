@@ -13,13 +13,13 @@
     <package android:name="com.innersloth.spacemafia" />
     <package android:name="com.abstractsoft.hybridanimals" />
   </queries>
-  <application android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true">
-    <meta-data android:name="unity.splash-mode" android:value="0" />
+  <application android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true"><meta-data android:name="unity.splash-mode" android:value="0" />
     <meta-data android:name="unity.splash-enable" android:value="True" />
     <meta-data android:name="unity.launch-fullscreen" android:value="True" />
     <meta-data android:name="unity.render-outside-safearea" android:value="True" />
     <meta-data android:name="notch.config" android:value="portrait|landscape" />
     <meta-data android:name="unity.auto-report-fully-drawn" android:value="true" />
+    <meta-data android:name="com.google.android.gms.version" android:value="12451000" />
     <activity android:name="com.unity3d.player.UnityPlayerActivity" android:theme="@style/UnityThemeSelector" android:screenOrientation="fullUser" android:launchMode="singleTask" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density" android:resizeableActivity="false" android:hardwareAccelerated="false" android:windowLayoutInDisplayCutoutMode="shortEdges" android:exported="true">
       <intent-filter>
         <category android:name="android.intent.category.LAUNCHER" />
