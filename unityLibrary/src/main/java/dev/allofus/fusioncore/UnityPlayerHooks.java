@@ -53,7 +53,7 @@ public class UnityPlayerHooks {
         Log.i(TAG, "Found UnityPlayer class: " + unityPlayerClass.getName());
 
         ArrayList<Field> activityFields = new ArrayList<>();
-        for (Field field : unityPlayerClass.getDeclaredFields()) {
+        for (Field field : unityPlayerClass.getFields()) {
             if (Activity.class.isAssignableFrom(field.getType())) {
                 field.setAccessible(true);
                 activityFields.add(field);
@@ -69,6 +69,10 @@ public class UnityPlayerHooks {
                 @Override
                 public void beforeCall(Pine.CallFrame callFrame) {
                     try {
+                        if (callFrame.args[0] == null || !(callFrame.args[0] instanceof Activity)) {
+                            Log.w(TAG, "First argument is not a Activity, skipping hook");
+                            return;
+                        }
                         // In UnityPlayerHooks beforeCall:
                         Log.i("UnityPlayerHooks", "Constructor firing, context class: "
                                 + callFrame.args[0].getClass().getName());
@@ -86,6 +90,7 @@ public class UnityPlayerHooks {
                     }
                     for (Field field : activityFields) {
                         try {
+                            Log.i(TAG, "Setting activity field: " + field.getName());
                             field.set(callFrame.thisObject, activity);
                         } catch (IllegalAccessException e) {
                             throw new RuntimeException("Failed to set activity field: " + field.getName(), e);
