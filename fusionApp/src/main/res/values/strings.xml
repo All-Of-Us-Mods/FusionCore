@@ -9,12 +9,12 @@
     <string name="bootstrap_status_preparing">Preparing target package…</string>
     <string name="bootstrap_status_copy_assets">Copying Unity data…</string>
     <string name="bootstrap_status_detecting_version">Detecting Unity version…</string>
-    <string name="bootstrap_status_downloading_libunity">Downloading libunity…</string>
+    <string name="bootstrap_status_downloading_libunity">Downloading unstripped libunity…</string>
     <string name="bootstrap_status_extracting_runtime">Extracting runtime files…</string>
     <string name="bootstrap_status_registering_libraries">Registering native libraries…</string>
     <string name="bootstrap_status_installing_hooks">Installing hooks…</string>
     <string name="bootstrap_status_launching">Launching game…</string>
     <string name="bootstrap_status_error">Launch failed</string>
-    <string name="bootstrap_download_progress">Downloading libunity… %1$d%% (%2$s / %3$s)</string>
+    <string name="bootstrap_download_progress">%1$d%% (%2$s / %3$s)</string>
 </resources>
 
