@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="selector_title">Select a game</string>
+    <string name="selector_subtitle">Supported packages are listed below.</string>
+    <string name="selector_empty_not_configured">No supported packages configured..</string>
+    <string name="selector_empty_not_installed">No supported packages are currently installed.</string>
+</resources>
+

@@ -34,11 +34,12 @@
       <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
       <meta-data android:name="notch_support" android:value="true" />
     </activity>
-    <activity android:name="dev.allofus.fusioncore.BootstrapActivity" android:theme="@style/UnityThemeSelector" android:launchMode="singleTask" android:exported="true">
+    <activity android:name="dev.allofus.fusioncore.SelectorActivity" android:theme="@style/UnityThemeSelector" android:exported="true">
       <intent-filter>
         <category android:name="android.intent.category.LAUNCHER" />
         <action android:name="android.intent.action.MAIN" />
       </intent-filter>
     </activity>
+    <activity android:name="dev.allofus.fusioncore.BootstrapActivity" android:theme="@style/UnityThemeSelector" android:launchMode="singleTask" android:exported="true" />
   </application>
 </manifest>

@@ -26,9 +26,8 @@ import top.canyie.pine.callback.MethodHook;
 public class BootstrapActivity extends Activity {
     private static final String TAG = "FusionCore";
 
+    public static final String EXTRA_TARGET_PACKAGE = "target_package";
     public static final String EXTRA_USE_ORIGINAL_LIBUNITY = "og_libunity";
-
-    public static final String TARGET_PACKAGE = "com.DanVogt.DATAWING";
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
 
     private static final AtomicBoolean HOOK_INSTALLED = new AtomicBoolean(false);
@@ -39,9 +38,16 @@ public class BootstrapActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Intent launchIntent = getPackageManager().getLaunchIntentForPackage(TARGET_PACKAGE);
+        String targetPackage = getIntent().getStringExtra(EXTRA_TARGET_PACKAGE);
+        if (targetPackage == null || targetPackage.isEmpty()) {
+            Log.e(TAG, "No target package specified in intent extras!");
+            finish();
+            return;
+        }
+
+        Intent launchIntent = getPackageManager().getLaunchIntentForPackage(targetPackage);
         if (launchIntent == null) {
-            Log.e(TAG, "No launch intent for target package: " + TARGET_PACKAGE);
+            Log.e(TAG, "No launch intent for target package: " + targetPackage);
             finish();
             return;
         }
@@ -50,17 +56,18 @@ public class BootstrapActivity extends Activity {
         if (launcher == null) {
             launcher = launchIntent.resolveActivity(getPackageManager());
         }
+
         if (launcher == null) {
-            Log.e(TAG, "Failed to resolve launcher activity for target package: " + TARGET_PACKAGE);
+            Log.e(TAG, "Failed to resolve launcher activity for target package: " + targetPackage);
             finish();
             return;
         }
 
         Context gameContext;
         try {
-            gameContext = createPackageContext(TARGET_PACKAGE, CONTEXT_IGNORE_SECURITY | CONTEXT_INCLUDE_CODE);
+            gameContext = createPackageContext(targetPackage, CONTEXT_IGNORE_SECURITY | CONTEXT_INCLUDE_CODE);
         } catch (Exception e) {
-            Log.e(TAG, "Failed to create package context for target package: " + TARGET_PACKAGE, e);
+            Log.e(TAG, "Failed to create package context for target package: " + targetPackage, e);
             finish();
             return;
         }
@@ -77,7 +84,7 @@ public class BootstrapActivity extends Activity {
         final boolean useOriginalLibUnity = getIntent().getBooleanExtra(EXTRA_USE_ORIGINAL_LIBUNITY, false);
 
         if (!installLauncherOnCreateHook(gameContext, launcherClassName,
-                (launcherActivity, bundle) -> initializeFusion(launcherActivity, gameContext, TARGET_PACKAGE, useOriginalLibUnity))) {
+                (launcherActivity, bundle) -> initializeFusion(launcherActivity, gameContext, targetPackage, useOriginalLibUnity))) {
             finish();
             Toast.makeText(this, "Failed to install launcher hook! See log for details.", Toast.LENGTH_LONG).show();
             return;
@@ -164,12 +171,7 @@ public class BootstrapActivity extends Activity {
             String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
             String appLibDir = launcherActivity.getApplicationInfo().nativeLibraryDir;
 
-            File appDataDir = launcherActivity.getExternalFilesDir(null);
-            if (appDataDir == null) {
-                appDataDir = launcherActivity.getFilesDir();
-            }
-
-            appDataDir = new File(appDataDir, targetPackage);
+            final File appDataDir = new File(launcherActivity.getFilesDir(), targetPackage);
 
             File copiedData = new File(appDataDir, "Data_copy");
             boolean copied = copyAssets(gameContext.getAssets(), "bin/Data", copiedData);
