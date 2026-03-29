@@ -5,5 +5,16 @@
     <string name="selector_subtitle">Supported packages are listed below.</string>
     <string name="selector_empty_not_configured">No supported packages configured..</string>
     <string name="selector_empty_not_installed">No supported packages are currently installed.</string>
+    <string name="bootstrap_title">Launching selected game</string>
+    <string name="bootstrap_status_preparing">Preparing target package…</string>
+    <string name="bootstrap_status_copy_assets">Copying Unity data…</string>
+    <string name="bootstrap_status_detecting_version">Detecting Unity version…</string>
+    <string name="bootstrap_status_downloading_libunity">Downloading libunity…</string>
+    <string name="bootstrap_status_extracting_runtime">Extracting runtime files…</string>
+    <string name="bootstrap_status_registering_libraries">Registering native libraries…</string>
+    <string name="bootstrap_status_installing_hooks">Installing hooks…</string>
+    <string name="bootstrap_status_launching">Launching game…</string>
+    <string name="bootstrap_status_error">Launch failed</string>
+    <string name="bootstrap_download_progress">Downloading libunity… %1$d%% (%2$s / %3$s)</string>
 </resources>
 

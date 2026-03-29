@@ -4,21 +4,18 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.AssetManager;
 import android.os.Bundle;
+import android.os.Looper;
 import android.util.Log;
+import android.view.View;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
@@ -30,25 +27,40 @@ public class BootstrapActivity extends Activity {
     public static final String EXTRA_USE_ORIGINAL_LIBUNITY = "og_libunity";
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
 
-    private static final AtomicBoolean HOOK_INSTALLED = new AtomicBoolean(false);
-    private static final AtomicBoolean FUSION_INITIALIZED = new AtomicBoolean(false);
-    private static final AtomicBoolean NATIVE_LIBS_LOADED = new AtomicBoolean(false);
+    private final AtomicBoolean hookInstalled = new AtomicBoolean(false);
+    private final AtomicBoolean fusionInitialized = new AtomicBoolean(false);
+    private final AtomicBoolean nativeLibsLoaded = new AtomicBoolean(false);
+
+    private TextView statusView;
+    private TextView progressDetailsView;
+    private ProgressBar spinnerProgress;
+    private ProgressBar downloadProgress;
+    private volatile PreparedFusionState preparedState;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_bootstrap);
+        statusView = findViewById(R.id.bootstrap_status);
+        progressDetailsView = findViewById(R.id.bootstrap_progress_details);
+        spinnerProgress = findViewById(R.id.bootstrap_progress);
+        downloadProgress = findViewById(R.id.bootstrap_download_progress);
+        setPhaseStatus(getString(R.string.bootstrap_status_preparing));
 
         String targetPackage = getIntent().getStringExtra(EXTRA_TARGET_PACKAGE);
         if (targetPackage == null || targetPackage.isEmpty()) {
-            Log.e(TAG, "No target package specified in intent extras!");
-            finish();
+            failAndFinish("No target package specified in intent extras!", null);
             return;
         }
 
+        // Let the loading screen render first, then perform initialization work.
+        statusView.post(() -> new Thread(() -> runBootstrapFlow(targetPackage), "bootstrap-flow").start());
+    }
+
+    private void runBootstrapFlow(String targetPackage) {
         Intent launchIntent = getPackageManager().getLaunchIntentForPackage(targetPackage);
         if (launchIntent == null) {
-            Log.e(TAG, "No launch intent for target package: " + targetPackage);
-            finish();
+            failAndFinish("No launch intent for target package: " + targetPackage, null);
             return;
         }
 
@@ -58,8 +70,7 @@ public class BootstrapActivity extends Activity {
         }
 
         if (launcher == null) {
-            Log.e(TAG, "Failed to resolve launcher activity for target package: " + targetPackage);
-            finish();
+            failAndFinish("Failed to resolve launcher activity for target package: " + targetPackage, null);
             return;
         }
 
@@ -67,11 +78,19 @@ public class BootstrapActivity extends Activity {
         try {
             gameContext = createPackageContext(targetPackage, CONTEXT_IGNORE_SECURITY | CONTEXT_INCLUDE_CODE);
         } catch (Exception e) {
-            Log.e(TAG, "Failed to create package context for target package: " + targetPackage, e);
-            finish();
+            failAndFinish("Failed to create package context for target package: " + targetPackage, e);
             return;
         }
 
+        boolean useOriginalLibUnity = getIntent().getBooleanExtra(EXTRA_USE_ORIGINAL_LIBUNITY, false);
+        try {
+            preparedState = prepareFusionState(this, gameContext, targetPackage, useOriginalLibUnity);
+        } catch (Throwable t) {
+            failAndFinish("Failed while preparing Fusion runtime.", t);
+            return;
+        }
+
+        setPhaseStatus(getString(R.string.bootstrap_status_installing_hooks));
         try {
             ClassLoaderHooks.installHooks(gameContext.getClassLoader());
             PackageManagerHooks.installHooks(getPackageManager());
@@ -81,26 +100,117 @@ public class BootstrapActivity extends Activity {
         }
 
         final String launcherClassName = launcher.getClassName();
-        final boolean useOriginalLibUnity = getIntent().getBooleanExtra(EXTRA_USE_ORIGINAL_LIBUNITY, false);
-
         if (!installLauncherOnCreateHook(gameContext, launcherClassName,
-                (launcherActivity, bundle) -> initializeFusion(launcherActivity, gameContext, targetPackage, useOriginalLibUnity))) {
-            finish();
-            Toast.makeText(this, "Failed to install launcher hook! See log for details.", Toast.LENGTH_LONG).show();
+                (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
+            failAndFinish("Failed to install launcher hook! See log for details.", null);
             return;
         }
 
         try {
             var launcherClass = gameContext.getClassLoader().loadClass(launcherClassName);
 
-            var intent = new Intent(this, launcherClass);
-            startActivity(intent);
-
-            finish();
+            setPhaseStatus(getString(R.string.bootstrap_status_launching));
+            runOnMainThread(() -> {
+                try {
+                    var intent = new Intent(this, launcherClass);
+                    startActivity(intent);
+                    finish();
+                } catch (Throwable t) {
+                    failAndFinish("Failed to launch target app's launcher activity: " + launcherClassName, t);
+                }
+            });
         } catch (Exception e) {
-            Log.e(TAG, "Failed to launch target app's launcher activity: " + launcherClassName, e);
-            Toast.makeText(this, "Failed to launch target app! See log for details.", Toast.LENGTH_LONG).show();
+            failAndFinish("Failed to launch target app's launcher activity: " + launcherClassName, e);
+        }
+    }
+
+    private void setPhaseStatus(String status) {
+        runOnMainThread(() -> {
+            if (statusView != null) {
+                statusView.setText(status);
+            }
+            if (spinnerProgress != null) {
+                spinnerProgress.setVisibility(View.VISIBLE);
+            }
+            if (downloadProgress != null) {
+                downloadProgress.setVisibility(View.GONE);
+                downloadProgress.setIndeterminate(false);
+                downloadProgress.setProgress(0);
+            }
+            if (progressDetailsView != null) {
+                progressDetailsView.setVisibility(View.GONE);
+                progressDetailsView.setText("");
+            }
+        });
+    }
+
+    private void setDownloadStatus(long downloadedBytes, long totalBytes) {
+        runOnMainThread(() -> {
+            if (spinnerProgress != null) {
+                spinnerProgress.setVisibility(View.GONE);
+            }
+            long progress = Math.max(0L, Math.min(100L, (downloadedBytes * 100L) / totalBytes));
+            if (downloadProgress != null) {
+                downloadProgress.setVisibility(View.VISIBLE);
+                boolean hasTotal = totalBytes > 0L;
+                downloadProgress.setIndeterminate(!hasTotal);
+                if (hasTotal) {
+                    int percent = (int) progress;
+                    downloadProgress.setProgress(percent);
+                }
+            }
+            if (statusView != null) {
+                statusView.setText(getString(R.string.bootstrap_status_downloading_libunity));
+            }
+            if (progressDetailsView != null) {
+                progressDetailsView.setVisibility(View.VISIBLE);
+                int percent = totalBytes > 0L
+                        ? (int) progress
+                        : 0;
+                progressDetailsView.setText(getString(
+                        R.string.bootstrap_download_progress,
+                        percent,
+                        formatBytes(downloadedBytes),
+                        totalBytes > 0L ? formatBytes(totalBytes) : "?"
+                ));
+            }
+        });
+    }
+
+    private String formatBytes(long bytes) {
+        if (bytes < 1024L) {
+            return bytes + " B";
+        }
+        double value = bytes;
+        String[] units = new String[]{"B", "KB", "MB", "GB"};
+        int unitIndex = 0;
+        while (value >= 1024.0 && unitIndex < units.length - 1) {
+            value /= 1024.0;
+            unitIndex++;
+        }
+        return String.format(Locale.US, "%.1f %s", value, units[unitIndex]);
+    }
+
+    private void failAndFinish(String message, Throwable error) {
+        runOnMainThread(() -> {
+            if (error != null) {
+                Log.e(TAG, message, error);
+            } else {
+                Log.e(TAG, message);
+            }
+            if (statusView != null) {
+                statusView.setText(getString(R.string.bootstrap_status_error));
+            }
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
             finish();
+        });
+    }
+
+    private void runOnMainThread(Runnable runnable) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            runnable.run();
+        } else {
+            runOnUiThread(runnable);
         }
     }
 
@@ -108,14 +218,16 @@ public class BootstrapActivity extends Activity {
         void run(Activity launcherActivity, Bundle bundle);
     }
 
-    private static boolean installLauncherOnCreateHook(Context gameContext, String launcherClassName, BeforeOnCreateAction action) {
-        if (HOOK_INSTALLED.get()) {
+    private boolean installLauncherOnCreateHook(Context gameContext,
+                                                String launcherClassName,
+                                                BeforeOnCreateAction action) {
+        if (hookInstalled.get()) {
             return true;
         }
 
         try {
             Class<?> launcherClass = Class.forName(launcherClassName, false, gameContext.getClassLoader());
-            Method onCreateMethod = findOnCreateMethod(launcherClass);
+            Method onCreateMethod = Utilities.findOnCreateMethod(launcherClass);
             onCreateMethod.setAccessible(true);
 
             Pine.hook(onCreateMethod, new MethodHook() {
@@ -139,7 +251,7 @@ public class BootstrapActivity extends Activity {
                 }
             });
 
-            HOOK_INSTALLED.set(true);
+            hookInstalled.set(true);
             Log.i(TAG, "Installed launcher onCreate hook for " + launcherClassName);
             return true;
         } catch (Exception e) {
@@ -148,81 +260,24 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private static Method findOnCreateMethod(Class<?> clazz) throws NoSuchMethodException {
-        Class<?> current = clazz;
-        while (current != null) {
-            try {
-                return current.getDeclaredMethod("onCreate", Bundle.class);
-            } catch (NoSuchMethodException ignored) {
-                current = current.getSuperclass();
-            }
-        }
-
-        throw new NoSuchMethodException("onCreate(Bundle) not found for " + clazz.getName());
-    }
-
-    private static void initializeFusion(Activity launcherActivity, Context gameContext, String targetPackage, boolean useOriginalLibUnity) {
-        if (!FUSION_INITIALIZED.compareAndSet(false, true)) {
+    private void initializeFusion(Activity launcherActivity, String targetPackage) {
+        if (!fusionInitialized.compareAndSet(false, true)) {
             return;
         }
 
+        PreparedFusionState prepared = preparedState;
+        if (prepared == null || !targetPackage.equals(prepared.targetPackage)) {
+            Log.e(TAG, "Fusion config was not prepared for target package: " + targetPackage);
+            return;
+        }
+
+        String launcherName = launcherActivity != null
+                ? launcherActivity.getClass().getName()
+                : "<unknown launcher>";
+        Log.i(TAG, "Initializing Fusion for " + targetPackage + " via " + launcherName);
+
         try {
-            String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
-            String appLibDir = launcherActivity.getApplicationInfo().nativeLibraryDir;
-
-            final File appDataDir = new File(launcherActivity.getFilesDir(), targetPackage);
-
-            File copiedData = new File(appDataDir, "Data_copy");
-            boolean copied = copyAssets(gameContext.getAssets(), "bin/Data", copiedData);
-            if (!copied) {
-                Log.e(TAG, "Failed to copy Unity Data assets! BepInEx may not work correctly.");
-            }
-
-            String version = VersionLookup.TryLookup(copiedData);
-            if (version == null) {
-                Log.e(TAG, "Failed to determine Unity version! BepInEx may not work correctly.");
-                version = BACKUP_UNITY_VERSION;
-                useOriginalLibUnity = true;
-            } else {
-                Log.i(TAG, "Determined Unity version: " + version);
-                if (LibUnityDownloader.downloadAndCacheSafely(appDataDir, version)) {
-                    Log.i(TAG, "Successfully downloaded libunity for version " + version);
-                } else {
-                    Log.e(TAG, "Failed to download libunity for version " + version + ", falling back to original.");
-                    useOriginalLibUnity = true;
-                }
-            }
-
-            File bepInExDir = new File(appDataDir, "BepInEx");
-            File dotnetDir = new File(appDataDir, "dotnet");
-
-            extractZipFromAssets(launcherActivity, "BepInEx-arm64.zip", bepInExDir);
-            extractZipFromAssets(launcherActivity, "dotnet-arm64.zip", dotnetDir);
-
-            FusionConfig config = new FusionConfig(
-                    gameLibDir,
-                    appLibDir,
-                    appDataDir.getAbsolutePath(),
-                    bepInExDir.getAbsolutePath(),
-                    dotnetDir.getAbsolutePath(),
-                    copiedData.getAbsolutePath(),
-                    version,
-                    useOriginalLibUnity
-            );
-
-            File[] nativeLibs = new File(gameLibDir).listFiles();
-            if (nativeLibs != null) {
-                for (File file : nativeLibs) {
-                    String name = file.getName();
-                    if (name.startsWith("lib") && name.endsWith(".so") && name.length() > 6) {
-                        String extractedName = name.substring(3, name.length() - 3);
-                        NativeLibraryManager.addGameLibrary(extractedName);
-                    }
-                }
-            } else {
-                Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
-            }
-
+            FusionConfig config = prepared.config;
             System.loadLibrary("main");
 
             NativeLibraryManager.addDataLibrary("il2cpp");
@@ -236,81 +291,99 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private static boolean copyAssets(AssetManager gameAssets, String assetPath, File outputFolder) {
-        deleteRecursive(outputFolder);
+    private PreparedFusionState prepareFusionState(Context appContext,
+                                                   Context gameContext,
+                                                   String targetPackage,
+                                                   boolean useOriginalLibUnity) {
+        String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
+        String appLibDir = appContext.getApplicationInfo().nativeLibraryDir;
+        File appDataDir = new File(appContext.getFilesDir(), targetPackage);
 
-        try {
-            if (!copyAssetEntry(gameAssets, assetPath, outputFolder)) {
-                Log.e(TAG, "Could not find Unity Data assets!");
-                return false;
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to copy Unity Data assets!", e);
-            return false;
+        setPhaseStatus(getString(R.string.bootstrap_status_copy_assets));
+        File copiedData = new File(appDataDir, "Data_copy");
+        boolean copied = Utilities.copyAssets(gameContext.getAssets(), "bin/Data", copiedData);
+        if (!copied) {
+            Log.e(TAG, "Failed to copy Unity Data assets! BepInEx may not work correctly.");
         }
 
-        return true;
-    }
+        setPhaseStatus(getString(R.string.bootstrap_status_detecting_version));
+        String version = VersionLookup.TryLookup(copiedData);
+        if (version == null) {
+            Log.e(TAG, "Failed to determine Unity version! BepInEx may not work correctly.");
+            version = BACKUP_UNITY_VERSION;
+            useOriginalLibUnity = true;
+        } else {
+            Log.i(TAG, "Determined Unity version: " + version);
+            if (LibUnityDownloader.downloadAndCacheSafely(appDataDir, version, new LibUnityDownloader.DownloadProgressListener() {
+                @Override
+                public void onDownloadStarted(String url, long totalBytes) {
+                    setDownloadStatus(0L, totalBytes);
+                }
 
-    private static boolean copyAssetEntry(AssetManager gameAssets, String assetPath, File outputTarget) throws IOException {
-        String[] children = gameAssets.list(assetPath);
-        if (children == null) {
-            return false;
+                @Override
+                public void onDownloadProgress(long downloadedBytes, long totalBytes) {
+                    setDownloadStatus(downloadedBytes, totalBytes);
+                }
+
+                @Override
+                public void onDownloadFinished(boolean success, boolean usedCache) {
+                    // No-op: next phase status is set by prepareFusionState.
+                }
+            })) {
+                Log.i(TAG, "Successfully downloaded libunity for version " + version);
+            } else {
+                Log.e(TAG, "Failed to download libunity for version " + version + ", falling back to original.");
+                useOriginalLibUnity = true;
+            }
         }
 
-        if (children.length > 0) {
-            if (!outputTarget.exists() && !outputTarget.mkdirs()) {
-                return false;
-            }
+        setPhaseStatus(getString(R.string.bootstrap_status_extracting_runtime));
+        File bepInExDir = new File(appDataDir, "BepInEx");
+        File dotnetDir = new File(appDataDir, "dotnet");
 
-            for (String child : children) {
-                File childTarget = new File(outputTarget, child);
-                String childPath = assetPath + "/" + child;
-                if (!copyAssetEntry(gameAssets, childPath, childTarget)) {
-                    return false;
+        Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
+        Utilities.extractZipFromAssets(appContext, "dotnet-arm64.zip", dotnetDir);
+
+        setPhaseStatus(getString(R.string.bootstrap_status_registering_libraries));
+        File[] nativeLibs = new File(gameLibDir).listFiles();
+        if (nativeLibs != null) {
+            for (File file : nativeLibs) {
+                String name = file.getName();
+                if (name.startsWith("lib") && name.endsWith(".so") && name.length() > 6) {
+                    String extractedName = name.substring(3, name.length() - 3);
+                    NativeLibraryManager.addGameLibrary(extractedName);
                 }
             }
-            return true;
+        } else {
+            Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
         }
 
-        File parent = outputTarget.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            return false;
-        }
+        FusionConfig config = new FusionConfig(
+                gameLibDir,
+                appLibDir,
+                appDataDir.getAbsolutePath(),
+                bepInExDir.getAbsolutePath(),
+                dotnetDir.getAbsolutePath(),
+                copiedData.getAbsolutePath(),
+                version,
+                useOriginalLibUnity
+        );
 
-        byte[] buffer = new byte[8192];
-        try (InputStream is = gameAssets.open(assetPath);
-             OutputStream os = new FileOutputStream(outputTarget)) {
-            int length;
-            while ((length = is.read(buffer)) > 0) {
-                os.write(buffer, 0, length);
-            }
-        }
-
-        return true;
+        return new PreparedFusionState(targetPackage, config);
     }
 
-    private static boolean deleteRecursive(File file) {
-        if (file == null || !file.exists()) {
-            return true;
-        }
+    private static final class PreparedFusionState {
+        private final String targetPackage;
+        private final FusionConfig config;
 
-        if (file.isDirectory()) {
-            File[] files = file.listFiles();
-            if (files != null) {
-                for (File f : files) {
-                    if (!deleteRecursive(f)) {
-                        return false;
-                    }
-                }
-            }
+        private PreparedFusionState(String targetPackage, FusionConfig config) {
+            this.targetPackage = targetPackage;
+            this.config = config;
         }
-
-        return file.delete();
     }
 
-    private static void loadNativeLibraries() {
-        if (!NATIVE_LIBS_LOADED.compareAndSet(false, true)) {
+    private void loadNativeLibraries() {
+        if (!nativeLibsLoaded.compareAndSet(false, true)) {
             return;
         }
 
@@ -323,57 +396,5 @@ public class BootstrapActivity extends Activity {
         System.loadLibrary("mscordaccore");
         System.loadLibrary("coreclr");
         System.loadLibrary("fusion");
-    }
-
-    private static void extractZipFromAssets(Context context, String assetName, File outputFolder) {
-        try {
-            if (!outputFolder.exists() && !outputFolder.mkdirs()) {
-                throw new IOException("Failed to create output directory: " + outputFolder.getAbsolutePath());
-            }
-
-            String outputRoot = outputFolder.getCanonicalPath() + File.separator;
-            byte[] buffer = new byte[8192];
-
-            try (InputStream is = context.getAssets().open(assetName);
-                 ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
-                ZipEntry ze;
-                while ((ze = zis.getNextEntry()) != null) {
-                    String entryName = ze.getName();
-                    if (entryName == null || entryName.isEmpty()) {
-                        zis.closeEntry();
-                        continue;
-                    }
-
-                    File target = new File(outputFolder, entryName);
-                    String targetPath = target.getCanonicalPath();
-
-                    if (!targetPath.startsWith(outputRoot)) {
-                        throw new IOException("Blocked zip entry outside output folder: " + entryName);
-                    }
-
-                    if (ze.isDirectory()) {
-                        if (!target.exists() && !target.mkdirs()) {
-                            throw new IOException("Failed to create directory: " + targetPath);
-                        }
-                    } else {
-                        File parent = target.getParentFile();
-                        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                            throw new IOException("Failed to create parent directory: " + parent.getAbsolutePath());
-                        }
-
-                        try (FileOutputStream fos = new FileOutputStream(target)) {
-                            int count;
-                            while ((count = zis.read(buffer)) != -1) {
-                                fos.write(buffer, 0, count);
-                            }
-                        }
-                    }
-
-                    zis.closeEntry();
-                }
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to extract " + assetName + " from assets!", e);
-        }
     }
 }
