@@ -38,6 +38,8 @@ public class ClassLoaderHooks {
     public static void installHooks(ClassLoader gameClassLoader) {
 
         Method loadClassMethod = loadClassMethodViaReflection();
+        ClassLoader myClassLoader = ClassLoaderHooks.class.getClassLoader();
+        assert myClassLoader != null : "My classloader is null, this should never happen";
 
         Pine.hook(loadClassMethod, new MethodHook() {
             @Override
@@ -46,24 +48,31 @@ public class ClassLoaderHooks {
                     // Only attempt fallback if class was not found
                     if (callFrame.getThrowable() instanceof ClassNotFoundException) {
                         String className = (String) callFrame.args[0];
+                        boolean resolve = (boolean) callFrame.args[1];
                         Log.d(TAG, "afterLoadClass: class not found in default loader: " + className);
 
-                        // Skip fallback if this is already the game classloader
+                        // Try our classloader
                         if (callFrame.thisObject == gameClassLoader) {
-                            Log.d(TAG, "Skipping fallback: loader is already game classloader");
-                            return;
-                        }
+                            try {
+                                Class<?> myClass = (Class<?>) callFrame.invokeOriginalMethod(myClassLoader, className, resolve);
+                                callFrame.setResult(myClass);
+                                Log.d(TAG, "Successfully loaded from our classloader: " + className);
+                            } catch (Exception e) {
+                                Log.d(TAG, "Class not found in our classloader: " + className);
+                            }
 
-                        // Attempt to load from game classloader, but don't let exceptions propagate to JNI
-                        try {
-                            Class<?> gameClass = gameClassLoader.loadClass(className);
-                            callFrame.setResult(gameClass);
-                            Log.d(TAG, "Successfully loaded from game classloader: " + className);
-                        } catch (ClassNotFoundException e) {
-                            Log.d(TAG, "Class not found in game classloader either: " + className);
-                        } catch (Exception e) {
-                            // Catch any other exceptions to prevent them from propagating to JNI
-                            Log.w(TAG, "Unexpected error loading class from game classloader: " + className, e);
+                            return;
+                        } else if (callFrame.thisObject == myClassLoader) {
+                            // try loading from game classloader
+                            try {
+                                Class<?> gameClass = (Class<?>) callFrame.invokeOriginalMethod(gameClassLoader, className, resolve);
+                                callFrame.setResult(gameClass);
+                                Log.d(TAG, "Successfully loaded from game classloader: " + className);
+                            } catch (Exception e) {
+                                Log.d(TAG, "Class not found in game classloader: " + className);
+                            }
+
+                            return;
                         }
                     }
                 } catch (Exception e) {
