@@ -34,7 +34,7 @@ android {
     defaultConfig {
         minSdk = 24
         targetSdk = 36
-        applicationId = "dev.allofus.fusioncore"
+        applicationId = "com.erisws.hamodloader"
         versionCode = 1
         versionName = "0.1"
         ndk {
@@ -47,7 +47,7 @@ android {
     externalNativeBuild {
         cmake {
             path = File("./src/main/jni/CMakeLists.txt")
-            version = "3.31.1"
+            version = "4.1.2"
         }
     }
 
