@@ -194,9 +194,9 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             Log.i(TAG, "Game APK path: " + gameApkPath);
 
             File dexDir = new File(getFilesDir(), "game_dex");
-            if (!dexDir.exists()) {
-                dexDir.mkdirs();
-            }
+            // Clean up stale read-only dex files from previous run
+            forceDeleteRecursive(dexDir);
+            dexDir.mkdirs();
 
             extractAllDexFromApk(gameApkPath, dexDir);
 
@@ -204,6 +204,8 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             File[] dexFiles = dexDir.listFiles((dir, name) -> name.endsWith(".dex"));
             if (dexFiles != null) {
                 for (File dexFile : dexFiles) {
+                    // Android 10+ requires dex files to be non-writable
+                    dexFile.setWritable(false);
                     injectDexPath(currentLoader, dexFile.getAbsolutePath());
                 }
             }
@@ -359,6 +361,18 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         }
 
         return file.delete();
+    }
+
+    private static void forceDeleteRecursive(File file) {
+        if (file == null || !file.exists()) return;
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) forceDeleteRecursive(f);
+            }
+        }
+        file.setWritable(true);
+        file.delete();
     }
 
     private static void loadNativeLibraries()
