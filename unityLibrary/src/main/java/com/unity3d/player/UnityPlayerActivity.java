@@ -204,6 +204,7 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             File[] dexFiles = dexDir.listFiles((dir, name) -> name.endsWith(".dex"));
             if (dexFiles != null) {
                 for (File dexFile : dexFiles) {
+                    dexFile.setReadOnly();
                     injectDexPath(currentLoader, dexFile.getAbsolutePath());
                 }
             }
