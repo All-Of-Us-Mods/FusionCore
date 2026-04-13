@@ -13,12 +13,13 @@
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
   <queries>
     <package android:name="com.innersloth.spacemafia" />
-    <package android:name="com.abstractsoft.animalsmash" />
-    <package android:name="com.abstractsoft.hybridanimals" />
-    <package android:name="com.abstractsoft.humansversusai" />
-    <package android:name="com.abstractsoft.mashypets" />
+    <package android:name="com.Earthkwak.Platformer" />
     <package android:name="com.antiherostudios.misfitz" />
     <package android:name="com.Radeon.RecRoom" />
+    <package android:name="com.abstractsoft.hybridanimals" />
+    <!--<package android:name="com.abstractsoft.humansversusai" />
+    <package android:name="com.abstractsoft.animalsmash" />
+    <package android:name="com.abstractsoft.mashypets" />-->
     <package android:name="com.StefMorojna.SpaceflightSimulator" />
     <package android:name="com.DanVogt.DATAWING" />
   </queries>
