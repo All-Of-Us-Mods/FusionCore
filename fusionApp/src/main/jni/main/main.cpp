@@ -72,6 +72,8 @@ static bool preload_sibling_library(const char *libraryFileName)
 static bool preload_dotnet_runtime_libraries()
 {
     const char *required[] = {
+            "libcrypto.so",
+            "libssl.so",
             "libcoreclr.so",
             "libclrjit.so",
             "libSystem.Native.so",
