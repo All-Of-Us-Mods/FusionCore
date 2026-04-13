@@ -38,7 +38,8 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
     public static final String TAG = "FusionCore";
 
     //public static final String TARGET_GAME = "com.innersloth.spacemafia";
-    public static final String TARGET_GAME = "com.abstractsoft.hybridanimals";
+    //public static final String TARGET_GAME = "com.abstractsoft.hybridanimals";
+    public static final String TARGET_GAME = "com.Radeon.RecRoom";
 
     protected UnityPlayer mUnityPlayer; // don't change the name of this variable; referenced from native code
     public Context m_context;
