@@ -13,7 +13,7 @@
   <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
   <queries>
     <package android:name="com.innersloth.spacemafia" />
-    <package android:name="com.abstractsoft.animalmash" />
+    <package android:name="com.abstractsoft.animalsmash" />
     <package android:name="com.abstractsoft.hybridanimals" />
     <package android:name="com.abstractsoft.humansversusai" />
     <package android:name="com.abstractsoft.mashypets" />

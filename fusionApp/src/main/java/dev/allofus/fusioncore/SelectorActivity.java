@@ -31,7 +31,7 @@ public class SelectorActivity extends Activity {
     private static final int REQUEST_MANAGE_EXTERNAL_STORAGE = 1001;
     private static final String[] SUPPORTED_PACKAGES = {
             "com.innersloth.spacemafia",
-            "com.abstractsoft.animalmash",
+            "com.abstractsoft.animalsmash",
             "com.abstractsoft.hybridanimals",
             "com.abstractsoft.humansversusai",
             "com.abstractsoft.mashypets",
