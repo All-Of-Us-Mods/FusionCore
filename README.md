@@ -28,8 +28,7 @@ We will try to add support, but there are no guarantees. If you want to help, yo
 
 ## Configuration
 
-1. Set the target package in `unityLibrary/src/main/java/dev/allofus/fusioncore/BootstrapActivity.java`:
-   - `TARGET_GAME`
+1. Add the target package to the `SelectorActivity`'s package list.
 
 2. Add/update `<queries><package ... /></queries>` in `unityLibrary/src/main/AndroidManifest.xml` for your target package.
    - Android package visibility rules require this for package context lookup.
