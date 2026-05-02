@@ -1,5 +1,7 @@
 # Fusion Core
 
+[![](https://dcbadge.limes.pink/api/server/MzufgkERdS)](https://discord.gg/MzufgkERdS)
+
 Unity modding framework for Android IL2CPP games.
 
 ## Compatibility
