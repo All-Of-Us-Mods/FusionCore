@@ -14,7 +14,8 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
     implementation("top.canyie.pine:core:0.3.0")
     implementation("io.github.hexhacking:xdl:2.3.0")
-    implementation("androidx.annotation:annotation-jvm:1.9.1")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.appcompat:appcompat:1.7.1")
 }
 
 android {
@@ -46,7 +47,7 @@ android {
     externalNativeBuild {
         cmake {
             path = File("./src/main/jni/CMakeLists.txt")
-            version = "3.31.1"
+            version = "4.3.2"
         }
     }
 

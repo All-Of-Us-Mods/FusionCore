@@ -30,8 +30,6 @@ FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
     GET_JSTRING_FIELD(gameLibraryDirectory);
     GET_JSTRING_FIELD(appLibraryDirectory);
     GET_JSTRING_FIELD(appDataDirectory);
-    GET_JSTRING_FIELD(bepInExDirectory);
-    GET_JSTRING_FIELD(dotnetDirectory);
     GET_JSTRING_FIELD(unityDataDirectory);
     GET_JSTRING_FIELD(unityVersion);
 
@@ -46,8 +44,6 @@ void fusion_print_config(const FusionConfig &config)
     log_format(LogLevel::DEBUG, TAG, "Game Library Directory: {}", config.gameLibraryDirectory);
     log_format(LogLevel::DEBUG, TAG, "App Library Directory: {}", config.appLibraryDirectory);
     log_format(LogLevel::DEBUG, TAG, "App Data Directory: {}", config.appDataDirectory);
-    log_format(LogLevel::DEBUG, TAG, "BepInEx Path: {}", config.bepInExDirectory);
-    log_format(LogLevel::DEBUG, TAG, "Dotnet Path: {}", config.dotnetDirectory);
     log_format(LogLevel::DEBUG, TAG, "Unity Data Directory: {}", config.unityDataDirectory);
     log_format(LogLevel::DEBUG, TAG, "Unity Version: {}", config.unityVersion);
 }

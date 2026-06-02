@@ -22,11 +22,12 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class SelectorActivity extends Activity {
+public class SelectorActivity extends AppCompatActivity {
     private static final String TAG = "FusionCore";
     private static final int REQUEST_MANAGE_EXTERNAL_STORAGE = 1001;
     private static final String[] SUPPORTED_PACKAGES = {
@@ -39,7 +40,8 @@ public class SelectorActivity extends Activity {
             "com.antiherostudios.misfitz",
             "com.Radeon.RecRoom",
             "com.StefMorojna.SpaceflightSimulator",
-            "com.DanVogt.DATAWING"
+            "com.DanVogt.DATAWING",
+            "com.AnotherAxiom.GorillaTag"
     };
 
     private String pendingLaunchPackage;

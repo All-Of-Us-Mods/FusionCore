@@ -68,29 +68,24 @@ static bool preload_sibling_library(const char *libraryFileName)
     return true;
 }
 
-static bool preload_dotnet_runtime_libraries()
+static bool preload_lemonloader_runtime_libraries()
 {
+    // libBootstrap.so links against libdobby.so, libcrypto.so, and libssl.so. These ship in
+    // jniLibs alongside libBootstrap.so itself; preload them eagerly so the linker resolves
+    // them out of the app's native library directory before libBootstrap's NEEDED entries
+    // attempt a system search.
     const char *required[] = {
             "libcrypto.so",
             "libssl.so",
-            "libcoreclr.so",
-            "libclrjit.so",
-            "libSystem.Native.so",
-            "libSystem.Globalization.Native.so",
-            "libSystem.IO.Compression.Native.so",
-            "libSystem.Security.Cryptography.Native.OpenSsl.so"
     };
 
     for (const char *libraryName : required) {
         if (!preload_sibling_library(libraryName)) {
-            LOGE("preload_dotnet_runtime_libraries: failed to load required runtime library %s", libraryName);
+            LOGE("preload_lemonloader_runtime_libraries: failed to load required runtime library %s", libraryName);
             return false;
         }
     }
 
-    // Optional diagnostics/profiling helpers used by some runtimes.
-    preload_sibling_library("libmscordaccore.so");
-    preload_sibling_library("libmscordbi.so");
     return true;
 }
 
@@ -177,7 +172,7 @@ static void *resolve_or_load_fusion_handle()
     }
 
     preload_sibling_library("libdobby.so");
-    if (!preload_dotnet_runtime_libraries()) {
+    if (!preload_lemonloader_runtime_libraries()) {
         return nullptr;
     }
 

@@ -3,20 +3,30 @@ package dev.allofus.fusioncore;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Looper;
 import android.util.Log;
+import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -26,7 +36,7 @@ import dalvik.system.DexClassLoader;
 import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
 
-public class BootstrapActivity extends Activity {
+public class BootstrapActivity extends AppCompatActivity {
     private static final String TAG = "FusionCore";
 
     public static final String EXTRA_TARGET_PACKAGE = "target_package";
@@ -54,12 +64,27 @@ public class BootstrapActivity extends Activity {
 
         String targetPackage = getIntent().getStringExtra(EXTRA_TARGET_PACKAGE);
         if (targetPackage == null || targetPackage.isEmpty()) {
+            // Fall back to meta-data on the launching component so activity-aliases
+            // (e.g. the per-game VR Library icons) can pin a target without extras.
+            try {
+                ComponentName cn = getIntent().getComponent();
+                if (cn == null) cn = getComponentName();
+                ActivityInfo info = getPackageManager().getActivityInfo(cn, PackageManager.GET_META_DATA);
+                if (info.metaData != null) {
+                    targetPackage = info.metaData.getString(EXTRA_TARGET_PACKAGE);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to read target_package meta-data", e);
+            }
+        }
+        if (targetPackage == null || targetPackage.isEmpty()) {
             failAndFinish("No target package specified in intent extras!", null);
             return;
         }
+        final String finalTargetPackage = targetPackage;
 
         // Let the loading screen render first, then perform initialization work.
-        statusView.post(() -> new Thread(() -> runBootstrapFlow(targetPackage), "bootstrap-flow").start());
+        statusView.post(() -> new Thread(() -> runBootstrapFlow(finalTargetPackage), "bootstrap-flow").start());
     }
 
     private void runBootstrapFlow(String targetPackage) {
@@ -99,12 +124,18 @@ public class BootstrapActivity extends Activity {
         try {
             ClassLoaderHooks.installHooks(gameContext.getClassLoader());
             PackageManagerHooks.installHooks(getPackageManager());
-            UnityPlayerHooks.installHooks(gameContext);
+            UnityPlayerHooks.installHooks(gameContext, preparedState.metadataZip);
         } catch (Exception e) {
             Log.e(TAG, "Failed to install base hooks", e);
         }
 
         final String launcherClassName = launcher.getClassName();
+        try {
+            AppCompatBypassHooks.installHooks(gameContext.getClassLoader(), launcherClassName);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to install AppCompat bypass hooks", e);
+        }
+
         if (!installLauncherOnCreateHook(gameContext.getClassLoader(), launcherClassName,
                 (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
             failAndFinish("Failed to install launcher hook! See log for details.", null);
@@ -238,10 +269,14 @@ public class BootstrapActivity extends Activity {
             Pine.hook(onCreateMethod, new MethodHook() {
                 @Override
                 public void beforeCall(Pine.CallFrame callFrame) {
+                    Log.i(TAG, "beforeCall fired for: " + callFrame.thisObject);
                     if (!(callFrame.thisObject instanceof Activity)) {
                         Log.w(TAG, "Launcher hook hit but receiver is not an Activity: " + callFrame.thisObject);
                         return;
                     }
+                    Activity activity = (Activity) callFrame.thisObject;
+
+                    activity.setTheme(dev.allofus.fusioncore.R.style.UnityThemeSelector);
 
                     Bundle bundle = null;
                     if (callFrame.args != null && callFrame.args.length > 0 && callFrame.args[0] instanceof Bundle) {
@@ -310,13 +345,40 @@ public class BootstrapActivity extends Activity {
         File copiedData = new File(appDataDir, "Data_copy");
         boolean copied = Utilities.copyAssets(gameContext.getAssets(), "bin/Data", copiedData);
         if (!copied) {
-            Log.e(TAG, "Failed to copy Unity Data assets! BepInEx may not work correctly.");
+            Log.e(TAG, "Failed to copy Unity Data assets! MelonLoader may not work correctly.");
         }
-
+        File mdZip = new File(appDataDir, "metadata_override.zip");
+        if (!mdZip.exists()) {
+            try {
+                File mdSrc = new File(copiedData, "Managed/Metadata/global-metadata.dat");
+                createUncompressedAssetZip(mdSrc,
+                        "assets/bin/Data/Managed/Metadata/global-metadata.dat", mdZip);
+                Log.i(TAG, "Created uncompressed metadata zip at " + mdZip.getAbsolutePath());
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to create metadata zip", e);
+            }
+        }
+        File melonAssemblyGenDir = new File("/storage/emulated/0/MelonLoader/dev.allofus.fusioncore/MelonLoader/Dependencies/Il2CppAssemblyGenerator");
+        File mdDest = new File("/storage/emulated/0/MelonLoader/dev.allofus.fusioncore", "global-metadata.dat");
+        if (!mdDest.exists() || mdDest.length() == 0) {
+            melonAssemblyGenDir.mkdirs();
+            File mdSrc = new File(copiedData, "Managed/Metadata/global-metadata.dat");
+            try (java.io.InputStream in = new java.io.FileInputStream(mdSrc);
+                 java.io.OutputStream out = new java.io.FileOutputStream(mdDest)) {
+                byte[] buf = new byte[65536];
+                int len;
+                while ((len = in.read(buf)) > 0) out.write(buf, 0, len);
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            Log.i(TAG, "Pre-placed global-metadata.dat at " + mdDest.getAbsolutePath());
+        }
         setPhaseStatus(getString(R.string.bootstrap_status_detecting_version));
         String version = VersionLookup.TryLookup(copiedData);
         if (version == null) {
-            Log.e(TAG, "Failed to determine Unity version! BepInEx may not work correctly.");
+            Log.e(TAG, "Failed to determine Unity version! MelonLoader may not work correctly.");
             version = BACKUP_UNITY_VERSION;
             useOriginalLibUnity = true;
         } else {
@@ -344,16 +406,6 @@ public class BootstrapActivity extends Activity {
             }
         }
 
-        setPhaseStatus(getString(R.string.bootstrap_status_extracting_runtime));
-        File dotnetDir = new File(appDataDir, "dotnet");
-
-        File sdCard = Environment.getExternalStorageDirectory();
-        File dataOnSdCard = new File(new File(sdCard, "FusionCore"), targetPackage);
-        File bepInExDir = new File(dataOnSdCard, "BepInEx");
-
-        Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
-        Utilities.extractZipFromAssets(appContext, "dotnet-arm64.zip", dotnetDir);
-
         setPhaseStatus(getString(R.string.bootstrap_status_registering_libraries));
         File[] nativeLibs = new File(gameLibDir).listFiles();
         if (nativeLibs != null) {
@@ -365,33 +417,50 @@ public class BootstrapActivity extends Activity {
                 }
             }
         } else {
-            Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
+            Log.e(TAG, "Failed to list game native libraries! MelonLoader may not work correctly.");
         }
 
         FusionConfig config = new FusionConfig(
                 gameLibDir,
                 appLibDir,
                 appDataDir.getAbsolutePath(),
-                bepInExDir.getAbsolutePath(),
-                dotnetDir.getAbsolutePath(),
                 copiedData.getAbsolutePath(),
                 version,
                 useOriginalLibUnity
         );
 
-        return new PreparedFusionState(targetPackage, config);
+        return new PreparedFusionState(targetPackage, config, mdZip);
     }
-
+    private static void createUncompressedAssetZip(File src, String entryPath, File dest) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(dest);
+             java.util.zip.ZipOutputStream zos = new java.util.zip.ZipOutputStream(fos)) {
+            zos.setMethod(java.util.zip.ZipOutputStream.STORED);
+            byte[] data = null;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                data = Files.readAllBytes(src.toPath());
+            }
+            java.util.zip.ZipEntry entry = new java.util.zip.ZipEntry(entryPath);
+            entry.setSize(data.length);
+            entry.setCompressedSize(data.length);
+            java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+            crc.update(data);
+            entry.setCrc(crc.getValue());
+            zos.putNextEntry(entry);
+            zos.write(data);
+            zos.closeEntry();
+        }
+    }
     private static final class PreparedFusionState {
         private final String targetPackage;
         private final FusionConfig config;
+        private final File metadataZip;
 
-        private PreparedFusionState(String targetPackage, FusionConfig config) {
+        private PreparedFusionState(String targetPackage, FusionConfig config, File metadataZip) {
             this.targetPackage = targetPackage;
             this.config = config;
+            this.metadataZip = metadataZip;
         }
     }
-
     private String resolveTargetGameAbi(String gameLibDir) {
         if (gameLibDir == null || gameLibDir.isEmpty()) {
             return null;

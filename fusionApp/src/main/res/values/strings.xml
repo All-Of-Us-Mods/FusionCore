@@ -5,7 +5,7 @@
     <string name="selector_subtitle">Supported packages are listed below.</string>
     <string name="selector_empty_not_configured">No supported packages configured..</string>
     <string name="selector_empty_not_installed">No supported packages are currently installed.</string>
-    <string name="selector_storage_permission_prompt">Grant "All files access" so Fusion Core can write BepInEx files to Documents.</string>
+    <string name="selector_storage_permission_prompt">Grant "All files access" so Fusion Core can write MelonLoader files to Documents.</string>
     <string name="selector_storage_permission_required">All files access is required to continue.</string>
     <string name="selector_storage_permission_open_failed">Could not open storage permission settings.</string>
     <string name="bootstrap_title">Launching selected game</string>
@@ -13,11 +13,20 @@
     <string name="bootstrap_status_copy_assets">Copying Unity data…</string>
     <string name="bootstrap_status_detecting_version">Detecting Unity version…</string>
     <string name="bootstrap_status_downloading_libunity">Downloading unstripped libunity…</string>
-    <string name="bootstrap_status_extracting_runtime">Extracting runtime files…</string>
     <string name="bootstrap_status_registering_libraries">Registering native libraries…</string>
     <string name="bootstrap_status_installing_hooks">Installing hooks…</string>
     <string name="bootstrap_status_launching">Launching game…</string>
     <string name="bootstrap_status_error">Launch failed</string>
     <string name="bootstrap_download_progress">%1$d%% (%2$s / %3$s)</string>
+    <!-- NonUnityBootstrapActivity status strings -->
+    <string name="non_unity_status_preparing">Preparing target package…</string>
+    <string name="non_unity_status_registering_libraries">Registering native libraries…</string>
+    <string name="non_unity_status_library_hooks">Installing library redirect hook…</string>
+    <string name="non_unity_status_classloader_hooks">Installing class-loader hooks…</string>
+    <string name="non_unity_status_pm_hooks">Installing package-manager hooks…</string>
+    <string name="non_unity_status_resolving_activity">Resolving target activity…</string>
+    <string name="non_unity_status_appcompat_hooks">Installing AppCompat bypass hooks…</string>
+    <string name="non_unity_status_injection_hook">Installing injection hook…</string>
+    <string name="non_unity_status_launching">Launching…</string>
+    <string name="non_unity_status_error">Launch failed</string>
 </resources>
-

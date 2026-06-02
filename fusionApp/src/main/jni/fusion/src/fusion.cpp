@@ -1,6 +1,7 @@
 // Copyright (c) 2026 XtraCube
 #include <unistd.h>
 #include <jni.h>
+#include <dlfcn.h>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
@@ -12,7 +13,6 @@
 #include <hooking/safehook.h>
 #include <hooking/allocator.h>
 #include <hooking/libunity.h>
-#include <dotnet.h>
 #include <external/dobby.h>
 #include <external/xdl.h>
 
@@ -25,6 +25,9 @@ static FusionConfig stagedConfig;
 static std::string stagedPatchedIl2CppPath;
 static std::mutex stageMutex;
 static bool hasStagedConfig = false;
+
+using BootstrapStartupFn = void (*)();
+using BootstrapJniOnLoadFn = jint (*)(JavaVM *, void *);
 
 static std::unordered_map<std::string, std::string> read_key_value_file(const char *configPath)
 {
@@ -66,8 +69,6 @@ static bool parse_fusion_config_from_file(const char *configPath, FusionConfig *
     config->gameLibraryDirectory = values["gameLibraryDirectory"];
     config->appLibraryDirectory = values["appLibraryDirectory"];
     config->appDataDirectory = values["appDataDirectory"];
-    config->bepInExDirectory = values["bepInExDirectory"];
-    config->dotnetDirectory = values["dotnetDirectory"];
     config->unityDataDirectory = values["unityDataDirectory"];
     config->unityVersion = values["unityVersion"];
     config->useOriginalLibUnity = parse_bool_value(values["useOriginalLibUnity"]);
@@ -121,57 +122,76 @@ static bool stage_fusion_config(const FusionConfig &parsedConfig)
     return true;
 }
 
-int il2cpp_init_hook(char *domain_name)
+static std::string resolve_sibling_library_path(const char *libraryFileName)
 {
-    log_format(LogLevel::INFO, TAG, "il2cpp_init called with domain: {}", domain_name);
-    il2cpp_destroy_init_hook();
-
-    // call the original il2cpp_init function
-    int result = il2cpp_init(domain_name);
-
-    if (runtimeConfig.initialized)
-    {
-        // setup environment variables
-        setenv("BEPINEX_GAME_ASSEMBLY_PATH", libmain_get_override_il2cpp_path(), 1);
-        setenv("FUSION_BEPINEX_PATH", runtimeConfig.bepInExDirectory.c_str(), 1);
-        setenv("FUSION_GAME_BINARY", libmain_get_override_il2cpp_path(), 1);
-        setenv("FUSION_GAME_DATA_DIR", runtimeConfig.unityDataDirectory.c_str(), 1);
-        setenv("FUSION_APP_DATA_DIR", runtimeConfig.appDataDirectory.c_str(), 1);
-        setenv("FUSION_UNITY_VERSION", runtimeConfig.unityVersion.c_str(), 1);
-
-        const char *ssl_cert_path = "/apex/com.android.conscrypt/cacerts";
-        const char *backup_cert_path = "/system/etc/security/cacerts";
-        if (access(ssl_cert_path, R_OK) == 0) {
-            setenv("SSL_CERT_DIR", ssl_cert_path, 1);
-        } else if (access(backup_cert_path, R_OK) == 0) {
-            setenv("SSL_CERT_DIR", backup_cert_path, 1);
-        } else {
-            log(LogLevel::WARN, TAG, "No readable SSL cert file found; HTTPS requests may fail.");
-        }
-        log_format(LogLevel::INFO, TAG, "Using {} for SSL certificates", getenv("SSL_CERT_DIR"));
-
-        fs::path bepInExCoreDirectory = fs::path(runtimeConfig.bepInExDirectory) / "core";
-
-        DotNetConfig dotNetConfig;
-        dotNetConfig.runtimeDir = runtimeConfig.dotnetDirectory;
-        dotNetConfig.managedLibsDir = bepInExCoreDirectory.string();
-        dotNetConfig.entryPointAssembly = "BepInEx.Unity.IL2CPP";
-        dotNetConfig.entryPointType = "BepInEx.Unity.IL2CPP.FusionCoreEntrypoint";
-        dotNetConfig.entryPointMethod = "Start";
-
-        // set TMPDIR for MonoMod lib drops
-        setenv("TMPDIR", runtimeConfig.appDataDirectory.c_str(), 1);
-
-        // execute the managed assembly
-        dotnet_execute_assembly(dotNetConfig);
-    }
-    else
-    {
-        log(LogLevel::WARN, TAG, "FusionConfig not initialized. Skipping modloader initialization.");
+    Dl_info info{};
+    if (dladdr(reinterpret_cast<void *>(&resolve_sibling_library_path), &info) == 0 || !info.dli_fname) {
+        return {};
     }
 
-    log_format(LogLevel::INFO, TAG, "il2cpp_init returned: {}", result);
-    return result;
+    std::string selfPath(info.dli_fname);
+    size_t lastSlash = selfPath.find_last_of('/');
+    if (lastSlash == std::string::npos) {
+        return {};
+    }
+
+    return selfPath.substr(0, lastSlash + 1) + libraryFileName;
+}
+
+static bool launch_lemonloader_bootstrap(JNIEnv *env)
+{
+    // .NET 8 CoreCLR on Android needs W^X disabled and ReadyToRun off, otherwise
+    // JIT compilation deadlocks/aborts during the first managed call. Must be set
+    // before libcoreclr loads (i.e. before libBootstrap's hostfxr init runs).
+    setenv("DOTNET_EnableWriteXorExecute", "0", 1);
+    setenv("DOTNET_ReadyToRun", "0", 1);
+
+    const char *bootstrapName = "libBootstrap.so";
+    std::string bootstrapPath = resolve_sibling_library_path(bootstrapName);
+    if (bootstrapPath.empty()) {
+        log_format(LogLevel::ERROR, TAG,
+                   "Failed to resolve sibling path for {}", bootstrapName);
+        return false;
+    }
+
+    dlerror();
+    void *handle = dlopen(bootstrapPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
+    if (!handle) {
+        const char *err = dlerror();
+        log_format(LogLevel::ERROR, TAG,
+                   "Failed to dlopen {}: {}", bootstrapPath, err ? err : "(no dlerror)");
+        return false;
+    }
+
+    auto jniOnLoad = reinterpret_cast<BootstrapJniOnLoadFn>(dlsym(handle, "JNI_OnLoad"));
+    if (!jniOnLoad) {
+        log_format(LogLevel::ERROR, TAG, "{} missing JNI_OnLoad export", bootstrapName);
+        return false;
+    }
+
+    auto startup = reinterpret_cast<BootstrapStartupFn>(dlsym(handle, "startup"));
+    if (!startup) {
+        log_format(LogLevel::ERROR, TAG, "{} missing startup export", bootstrapName);
+        return false;
+    }
+
+    JavaVM *vm = nullptr;
+    if (env->GetJavaVM(&vm) != JNI_OK || !vm) {
+        log(LogLevel::ERROR, TAG, "Failed to obtain JavaVM for libBootstrap initialization.");
+        return false;
+    }
+
+    jint loadResult = jniOnLoad(vm, nullptr);
+    if (loadResult < JNI_VERSION_1_6) {
+        log_format(LogLevel::ERROR, TAG,
+                   "libBootstrap JNI_OnLoad returned unsupported version {}", loadResult);
+        return false;
+    }
+
+    log(LogLevel::INFO, TAG, "libBootstrap JNI_OnLoad completed; invoking startup...");
+    startup();
+    log(LogLevel::INFO, TAG, "libBootstrap startup returned.");
+    return true;
 }
 
 extern "C" bool fusion_stage_from_config_path(const char *configPath)
@@ -192,8 +212,6 @@ extern "C" bool fusion_stage_from_config_path(const char *configPath)
 
 extern "C" bool fusion_bootstrap_from_libmain(JNIEnv *env)
 {
-    (void) env;
-
     FusionConfig configToRun;
     std::string patchedIl2CppPath;
     {
@@ -224,10 +242,13 @@ extern "C" bool fusion_bootstrap_from_libmain(JNIEnv *env)
         return false;
     }
 
-    log(LogLevel::INFO, TAG, "Installing il2cpp hooks...");
-    il2cpp_install_init_hook(il2cpp_init_hook);
-    log(LogLevel::INFO, TAG, "il2cpp hooks installed successfully!");
+    log(LogLevel::INFO, TAG, "Handing control to LemonLoader (libBootstrap.so)...");
+    if (!launch_lemonloader_bootstrap(env))
+    {
+        log(LogLevel::ERROR, TAG, "Failed to launch LemonLoader bootstrap.");
+        return false;
+    }
+
     log(LogLevel::INFO, TAG, "FusionCore bootstrap finished successfully.");
     return true;
 }
-

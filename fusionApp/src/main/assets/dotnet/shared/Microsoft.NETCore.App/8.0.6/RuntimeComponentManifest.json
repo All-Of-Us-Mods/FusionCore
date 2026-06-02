@@ -1,0 +1,19 @@
+{
+    "items": {
+        "_MonoRuntimeComponentLinking": [
+            { "identity": "static", "RuntimeIdentifier": "linux-arm64" },
+        ],
+        "_MonoRuntimeComponentSharedLibExt": [
+            { "identity": ".so", "RuntimeIdentifier": "linux-arm64" },
+        ],
+        "_MonoRuntimeComponentStaticLibExt": [
+            { "identity": ".a", "RuntimeIdentifier": "linux-arm64" },
+        ],
+        "_MonoRuntimeAvailableComponents": [
+            { "identity": "debugger", "RuntimeIdentifier": "linux-arm64" },
+{ "identity": "hot_reload", "RuntimeIdentifier": "linux-arm64" },
+{ "identity": "diagnostics_tracing", "RuntimeIdentifier": "linux-arm64" },
+{ "identity": "marshal-ilgen", "RuntimeIdentifier": "linux-arm64" },
+        ],
+    }
+}

@@ -9,13 +9,9 @@ find_package(xdl REQUIRED CONFIG)
 
 include_directories(${JNI_INCLUDE_DIRS})
 
-set(SOURCE_FILES src/fusion.cpp)
-
 add_library(fusion SHARED
         src/fusion.cpp
         src/fusion_config.cpp
-        src/dotnet.cpp
-        src/exports.cpp
         src/logger.cpp
         src/hooking/allocator.cpp
         src/hooking/il2cpp.cpp
@@ -37,5 +33,4 @@ target_link_libraries(
         android
         log
         ${LIB_FOLDER}/libdobby.so
-        ${LIB_FOLDER}/libcoreclr.so
 )

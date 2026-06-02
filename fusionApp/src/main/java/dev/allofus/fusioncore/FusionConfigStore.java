@@ -31,8 +31,6 @@ public final class FusionConfigStore {
             writeLine(writer, "gameLibraryDirectory", config.gameLibraryDirectory);
             writeLine(writer, "appLibraryDirectory", config.appLibraryDirectory);
             writeLine(writer, "appDataDirectory", config.appDataDirectory);
-            writeLine(writer, "bepInExDirectory", config.bepInExDirectory);
-            writeLine(writer, "dotnetDirectory", config.dotnetDirectory);
             writeLine(writer, "unityDataDirectory", config.unityDataDirectory);
             writeLine(writer, "unityVersion", config.unityVersion);
             writeLine(writer, "useOriginalLibUnity", Boolean.toString(config.useOriginalLibUnity));

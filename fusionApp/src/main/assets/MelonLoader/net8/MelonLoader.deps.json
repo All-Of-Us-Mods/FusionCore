@@ -1,0 +1,768 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "MelonLoader/0.6.6": {
+        "dependencies": {
+          "AsmResolver.DotNet": "6.0.0-beta.2",
+          "AssetRipper.VersionUtilities": "1.5.0",
+          "AssetsTools.NET": "3.0.0",
+          "HarmonyX": "2.16.1",
+          "Il2CppInterop.Common": "1.5.1",
+          "Il2CppInterop.Generator": "1.5.1",
+          "Il2CppInterop.HarmonySupport": "1.5.1",
+          "Il2CppInterop.Runtime": "1.5.1",
+          "JNISharp": "1.0.0",
+          "Microsoft.Diagnostics.Runtime": "3.1.512801",
+          "Samboy063.Tomlet": "5.3.1",
+          "System.Configuration.ConfigurationManager": "8.0.0",
+          "System.Drawing.Common": "8.0.8",
+          "bHapticsLib": "1.0.6",
+          "0Harmony": "2.16.1.0"
+        },
+        "runtime": {
+          "MelonLoader.dll": {}
+        }
+      },
+      "AsmResolver/6.0.0-beta.2": {
+        "runtime": {
+          "lib/net8.0/AsmResolver.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
+          }
+        }
+      },
+      "AsmResolver.DotNet/6.0.0-beta.2": {
+        "dependencies": {
+          "AsmResolver.PE": "6.0.0-beta.2"
+        },
+        "runtime": {
+          "lib/net8.0/AsmResolver.DotNet.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
+          }
+        }
+      },
+      "AsmResolver.PE/6.0.0-beta.2": {
+        "dependencies": {
+          "AsmResolver.PE.File": "6.0.0-beta.2"
+        },
+        "runtime": {
+          "lib/net8.0/AsmResolver.PE.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
+          }
+        }
+      },
+      "AsmResolver.PE.File/6.0.0-beta.2": {
+        "dependencies": {
+          "AsmResolver": "6.0.0-beta.2"
+        },
+        "runtime": {
+          "lib/net8.0/AsmResolver.PE.File.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
+          }
+        }
+      },
+      "AssetRipper.VersionUtilities/1.5.0": {
+        "runtime": {
+          "lib/net7.0/AssetRipper.VersionUtilities.dll": {
+            "assemblyVersion": "1.5.0.0",
+            "fileVersion": "1.5.0.0"
+          }
+        }
+      },
+      "AssetsTools.NET/3.0.0": {
+        "runtime": {
+          "lib/netstandard2.0/AssetsTools.NET.dll": {
+            "assemblyVersion": "3.0.0.0",
+            "fileVersion": "3.0.0.0"
+          }
+        }
+      },
+      "bHapticsLib/1.0.6": {
+        "dependencies": {
+          "WebSocketDotNet": "1.0.0"
+        },
+        "runtime": {
+          "lib/net5.0/bHapticsLib.dll": {
+            "assemblyVersion": "1.0.6.0",
+            "fileVersion": "1.0.6.0"
+          }
+        }
+      },
+      "Disarm/2022.1.0-master.57": {
+        "runtime": {
+          "lib/net6.0/Disarm.dll": {
+            "assemblyVersion": "2022.1.0.0",
+            "fileVersion": "2022.1.0.0"
+          }
+        }
+      },
+      "Iced/1.17.0": {
+        "runtime": {
+          "lib/netstandard2.1/Iced.dll": {
+            "assemblyVersion": "1.17.0.0",
+            "fileVersion": "1.17.0.0"
+          }
+        }
+      },
+      "IndexRange/1.0.2": {
+        "runtime": {
+          "lib/netstandard2.1/IndexRange.dll": {
+            "assemblyVersion": "1.0.2.0",
+            "fileVersion": "1.0.2.0"
+          }
+        }
+      },
+      "Microsoft.Bcl.AsyncInterfaces/1.1.0": {
+        "runtime": {
+          "lib/netstandard2.1/Microsoft.Bcl.AsyncInterfaces.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "4.700.19.56404"
+          }
+        }
+      },
+      "Microsoft.Diagnostics.NETCore.Client/0.2.410101": {
+        "dependencies": {
+          "Microsoft.Bcl.AsyncInterfaces": "1.1.0",
+          "Microsoft.Extensions.Logging": "2.1.1"
+        },
+        "runtime": {
+          "lib/net6.0/Microsoft.Diagnostics.NETCore.Client.dll": {
+            "assemblyVersion": "0.2.8.10101",
+            "fileVersion": "0.2.8.10101"
+          }
+        }
+      },
+      "Microsoft.Diagnostics.Runtime/3.1.512801": {
+        "dependencies": {
+          "Microsoft.Diagnostics.NETCore.Client": "0.2.410101"
+        },
+        "runtime": {
+          "lib/net6.0/Microsoft.Diagnostics.Runtime.dll": {
+            "assemblyVersion": "3.1.10.12801",
+            "fileVersion": "3.1.10.12801"
+          }
+        }
+      },
+      "Microsoft.Extensions.Configuration/2.1.1": {
+        "dependencies": {
+          "Microsoft.Extensions.Configuration.Abstractions": "2.1.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Extensions.Configuration.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.18157"
+          }
+        }
+      },
+      "Microsoft.Extensions.Configuration.Abstractions/2.1.1": {
+        "dependencies": {
+          "Microsoft.Extensions.Primitives": "2.1.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Extensions.Configuration.Abstractions.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.18157"
+          }
+        }
+      },
+      "Microsoft.Extensions.Configuration.Binder/2.1.1": {
+        "dependencies": {
+          "Microsoft.Extensions.Configuration": "2.1.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Extensions.Configuration.Binder.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.18157"
+          }
+        }
+      },
+      "Microsoft.Extensions.DependencyInjection.Abstractions/2.1.1": {
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.18157"
+          }
+        }
+      },
+      "Microsoft.Extensions.Logging/2.1.1": {
+        "dependencies": {
+          "Microsoft.Extensions.Configuration.Binder": "2.1.1",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "2.1.1",
+          "Microsoft.Extensions.Logging.Abstractions": "6.0.1",
+          "Microsoft.Extensions.Options": "2.1.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Extensions.Logging.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.18157"
+          }
+        }
+      },
+      "Microsoft.Extensions.Logging.Abstractions/6.0.1": {
+        "runtime": {
+          "lib/net6.0/Microsoft.Extensions.Logging.Abstractions.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.322.12309"
+          }
+        }
+      },
+      "Microsoft.Extensions.Options/2.1.1": {
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "2.1.1",
+          "Microsoft.Extensions.Primitives": "2.1.1"
+        },
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Extensions.Options.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.18157"
+          }
+        }
+      },
+      "Microsoft.Extensions.Primitives/2.1.1": {
+        "runtime": {
+          "lib/netstandard2.0/Microsoft.Extensions.Primitives.dll": {
+            "assemblyVersion": "2.1.1.0",
+            "fileVersion": "2.1.1.18157"
+          }
+        }
+      },
+      "Microsoft.Win32.SystemEvents/8.0.0": {
+        "runtime": {
+          "lib/net8.0/Microsoft.Win32.SystemEvents.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net8.0/Microsoft.Win32.SystemEvents.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "Mono.Cecil/0.11.6": {
+        "runtime": {
+          "lib/netstandard2.0/Mono.Cecil.Mdb.dll": {
+            "assemblyVersion": "0.11.6.0",
+            "fileVersion": "0.11.6.0"
+          },
+          "lib/netstandard2.0/Mono.Cecil.Pdb.dll": {
+            "assemblyVersion": "0.11.6.0",
+            "fileVersion": "0.11.6.0"
+          },
+          "lib/netstandard2.0/Mono.Cecil.Rocks.dll": {
+            "assemblyVersion": "0.11.6.0",
+            "fileVersion": "0.11.6.0"
+          },
+          "lib/netstandard2.0/Mono.Cecil.dll": {
+            "assemblyVersion": "0.11.6.0",
+            "fileVersion": "0.11.6.0"
+          }
+        }
+      },
+      "MonoMod.Backports/1.1.2": {
+        "dependencies": {
+          "MonoMod.ILHelpers": "1.1.0"
+        },
+        "runtime": {
+          "lib/net8.0/MonoMod.Backports.dll": {
+            "assemblyVersion": "1.1.2.0",
+            "fileVersion": "1.1.2.0"
+          }
+        }
+      },
+      "MonoMod.Core/1.3.4": {
+        "dependencies": {
+          "Mono.Cecil": "0.11.6",
+          "MonoMod.Backports": "1.1.2",
+          "MonoMod.ILHelpers": "1.1.0",
+          "MonoMod.Utils": "25.0.12"
+        },
+        "runtime": {
+          "lib/net8.0/MonoMod.Core.dll": {
+            "assemblyVersion": "1.3.4.0",
+            "fileVersion": "1.3.4.0"
+          },
+          "lib/net8.0/MonoMod.Iced.dll": {
+            "assemblyVersion": "1.21.0.0",
+            "fileVersion": "1.21.0.0"
+          }
+        }
+      },
+      "MonoMod.ILHelpers/1.1.0": {
+        "runtime": {
+          "lib/net8.0/MonoMod.ILHelpers.dll": {
+            "assemblyVersion": "1.1.0.0",
+            "fileVersion": "1.1.0.0"
+          }
+        }
+      },
+      "MonoMod.RuntimeDetour/25.3.4": {
+        "dependencies": {
+          "Mono.Cecil": "0.11.6",
+          "MonoMod.Backports": "1.1.2",
+          "MonoMod.Core": "1.3.4",
+          "MonoMod.ILHelpers": "1.1.0",
+          "MonoMod.Utils": "25.0.12"
+        },
+        "runtime": {
+          "lib/net8.0/MonoMod.RuntimeDetour.dll": {
+            "assemblyVersion": "25.3.4.0",
+            "fileVersion": "25.3.4.0"
+          }
+        }
+      },
+      "MonoMod.Utils/25.0.12": {
+        "dependencies": {
+          "Mono.Cecil": "0.11.6",
+          "MonoMod.Backports": "1.1.2",
+          "MonoMod.ILHelpers": "1.1.0"
+        },
+        "runtime": {
+          "lib/net8.0/MonoMod.Utils.dll": {
+            "assemblyVersion": "25.0.12.0",
+            "fileVersion": "25.0.12.0"
+          }
+        }
+      },
+      "Samboy063.Tomlet/5.3.1": {
+        "runtime": {
+          "lib/net7.0/Tomlet.dll": {
+            "assemblyVersion": "5.3.1.0",
+            "fileVersion": "5.3.1.0"
+          }
+        }
+      },
+      "System.Configuration.ConfigurationManager/8.0.0": {
+        "dependencies": {
+          "System.Diagnostics.EventLog": "8.0.0",
+          "System.Security.Cryptography.ProtectedData": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/System.Configuration.ConfigurationManager.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "System.Diagnostics.EventLog/8.0.0": {
+        "runtime": {
+          "lib/net8.0/System.Diagnostics.EventLog.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.Messages.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          },
+          "runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "System.Drawing.Common/8.0.8": {
+        "dependencies": {
+          "Microsoft.Win32.SystemEvents": "8.0.0"
+        },
+        "runtime": {
+          "lib/net8.0/System.Drawing.Common.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.824.36606"
+          }
+        }
+      },
+      "System.Security.Cryptography.ProtectedData/8.0.0": {
+        "runtime": {
+          "lib/net8.0/System.Security.Cryptography.ProtectedData.dll": {
+            "assemblyVersion": "8.0.0.0",
+            "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "WebSocketDotNet/1.0.0": {
+        "dependencies": {
+          "IndexRange": "1.0.2"
+        },
+        "runtime": {
+          "lib/net6.0/WebSocketDotNet.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "HarmonyX/2.16.1": {
+        "dependencies": {
+          "MonoMod.RuntimeDetour": "25.3.4"
+        },
+        "runtime": {
+          "0Harmony.dll": {
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
+      "Il2CppInterop.Common/1.5.1": {
+        "dependencies": {
+          "Disarm": "2022.1.0-master.57",
+          "Iced": "1.17.0",
+          "Microsoft.Extensions.Logging.Abstractions": "6.0.1"
+        },
+        "runtime": {
+          "Il2CppInterop.Common.dll": {
+            "assemblyVersion": "1.5.1.0",
+            "fileVersion": "1.5.1.0"
+          }
+        }
+      },
+      "Il2CppInterop.Generator/1.5.1": {
+        "dependencies": {
+          "AsmResolver.DotNet": "6.0.0-beta.2",
+          "Il2CppInterop.Common": "1.5.1",
+          "MonoMod.Backports": "1.1.2"
+        },
+        "runtime": {
+          "Il2CppInterop.Generator.dll": {
+            "assemblyVersion": "1.5.1.0",
+            "fileVersion": "1.5.1.0"
+          }
+        }
+      },
+      "Il2CppInterop.HarmonySupport/1.5.1": {
+        "dependencies": {
+          "HarmonyX": "2.16.1",
+          "Il2CppInterop.Runtime": "1.5.1"
+        },
+        "runtime": {
+          "Il2CppInterop.HarmonySupport.dll": {
+            "assemblyVersion": "1.5.1.0",
+            "fileVersion": "1.5.1.0"
+          }
+        }
+      },
+      "Il2CppInterop.Runtime/1.5.1": {
+        "dependencies": {
+          "Iced": "1.17.0",
+          "Il2CppInterop.Common": "1.5.1"
+        },
+        "runtime": {
+          "Il2CppInterop.Runtime.dll": {
+            "assemblyVersion": "1.5.1.0",
+            "fileVersion": "1.5.1.0"
+          }
+        }
+      },
+      "JNISharp/1.0.0": {
+        "runtime": {
+          "JNISharp.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "0Harmony/2.16.1.0": {
+        "runtime": {
+          "0Harmony.dll": {
+            "assemblyVersion": "2.16.1.0",
+            "fileVersion": "2.16.1.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "MelonLoader/0.6.6": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AsmResolver/6.0.0-beta.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-ZcwdCdLWMI+keM9EbhEHJ8jICQq9G0huxJpXDay3oHy8lIGI8HMgh1QVKU0+elGveGA0psErKh02Zj3048MZLQ==",
+      "path": "asmresolver/6.0.0-beta.2",
+      "hashPath": "asmresolver.6.0.0-beta.2.nupkg.sha512"
+    },
+    "AsmResolver.DotNet/6.0.0-beta.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-QKJKzaiiOk8tA7EJN6m6tG/l9sWoHyAqN1pL9TVS5uAO+1MLzHd8nwaoziIHpzDWI3F9e4EYbuuWd2sb1KaU4Q==",
+      "path": "asmresolver.dotnet/6.0.0-beta.2",
+      "hashPath": "asmresolver.dotnet.6.0.0-beta.2.nupkg.sha512"
+    },
+    "AsmResolver.PE/6.0.0-beta.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-V5mwgLYvVTuv7PGZEz+lM3xZO1OWAbLXClg+JzLsOE/CL+IVM+Sog5Ngyi+v4wLoHK8KPq4dQrSy4X2B0gmL2g==",
+      "path": "asmresolver.pe/6.0.0-beta.2",
+      "hashPath": "asmresolver.pe.6.0.0-beta.2.nupkg.sha512"
+    },
+    "AsmResolver.PE.File/6.0.0-beta.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-6OMbBs6aEtnXcf5X4AXTG5WC8j+r6+fqIAWTRz+6ygdCwsjzKOxAAEbKrsLKmuTVn62TWN4j2B3T4V/zdSrybQ==",
+      "path": "asmresolver.pe.file/6.0.0-beta.2",
+      "hashPath": "asmresolver.pe.file.6.0.0-beta.2.nupkg.sha512"
+    },
+    "AssetRipper.VersionUtilities/1.5.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-WHIfN5HlKIitJyeK+wt9d+lH22yMAqZ412QSKjwvS1Y5jdGJHwalNRn2H/tODHyUqZotMSXGo9acPWkiW8k/Yg==",
+      "path": "assetripper.versionutilities/1.5.0",
+      "hashPath": "assetripper.versionutilities.1.5.0.nupkg.sha512"
+    },
+    "AssetsTools.NET/3.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-mo7TYy/f6Z9YBhmGeluOuaZ310i4qZy0VGCMNgocYajgjwN0m0l04LDpelWIjEkzlqOKZMAp1LspTW/iygSPyQ==",
+      "path": "assetstools.net/3.0.0",
+      "hashPath": "assetstools.net.3.0.0.nupkg.sha512"
+    },
+    "bHapticsLib/1.0.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-vR4lFYAlz+xrgd0xAbPg9gGdkYq9KybnO+oyCo74OfaRt6EMYRFt5KUKZOu0oCaRrQcm32E3gPiQrla9t4AmkA==",
+      "path": "bhapticslib/1.0.6",
+      "hashPath": "bhapticslib.1.0.6.nupkg.sha512"
+    },
+    "Disarm/2022.1.0-master.57": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-/dkg7hg8iPBQN4bTV1lMQacarH6fMpgUXhJuo6iI7Wv7YpH7g5F9hJfje7dSMhqG0YlDacLuyWvcph5GzKUXog==",
+      "path": "disarm/2022.1.0-master.57",
+      "hashPath": "disarm.2022.1.0-master.57.nupkg.sha512"
+    },
+    "Iced/1.17.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8x+HCVTl/HHTGpscH3vMBhV8sknN/muZFw9s3TsI8SA6+c43cOTCi2+jE4KsU8pNLbJ++iF2ZFcpcXHXtDglnw==",
+      "path": "iced/1.17.0",
+      "hashPath": "iced.1.17.0.nupkg.sha512"
+    },
+    "IndexRange/1.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-BxTYJba0X+rMh7kyA2fYpOrFR3+bIVnBT/VzRinlAe7UZmHGcZk2SoWEIXzqnSFdkfCoi4K0QoHoE/nc71lmDg==",
+      "path": "indexrange/1.0.2",
+      "hashPath": "indexrange.1.0.2.nupkg.sha512"
+    },
+    "Microsoft.Bcl.AsyncInterfaces/1.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-1Am6l4Vpn3/K32daEqZI+FFr96OlZkgwK2LcT3pZ2zWubR5zTPW3/FkO1Rat9kb7oQOa4rxgl9LJHc5tspCWfg==",
+      "path": "microsoft.bcl.asyncinterfaces/1.1.0",
+      "hashPath": "microsoft.bcl.asyncinterfaces.1.1.0.nupkg.sha512"
+    },
+    "Microsoft.Diagnostics.NETCore.Client/0.2.410101": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-I4hMjlbPcM5R+M4ThD2Zt1z58M8uZnWkDbFLXHntOOAajajEucrw4XYNSaoi5rgoqksgxQ3g388Vof4QzUNwdQ==",
+      "path": "microsoft.diagnostics.netcore.client/0.2.410101",
+      "hashPath": "microsoft.diagnostics.netcore.client.0.2.410101.nupkg.sha512"
+    },
+    "Microsoft.Diagnostics.Runtime/3.1.512801": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0lMUDr2oxNZa28D6NH5BuSQEe5T9tZziIkvkD44YkkCGQXPJqvFjLq5ZQq1hYLl3RjQJrY+hR0jFgap+EWPDTw==",
+      "path": "microsoft.diagnostics.runtime/3.1.512801",
+      "hashPath": "microsoft.diagnostics.runtime.3.1.512801.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Configuration/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-LjVKO6P2y52c5ZhTLX/w8zc5H4Y3J/LJsgqTBj49TtFq/hAtVNue/WA0F6/7GMY90xhD7K0MDZ4qpOeWXbLvzg==",
+      "path": "microsoft.extensions.configuration/2.1.1",
+      "hashPath": "microsoft.extensions.configuration.2.1.1.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Configuration.Abstractions/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-VfuZJNa0WUshZ/+8BFZAhwFKiKuu/qOUCFntfdLpHj7vcRnsGHqd3G2Hse78DM+pgozczGM63lGPRLmy+uhUOA==",
+      "path": "microsoft.extensions.configuration.abstractions/2.1.1",
+      "hashPath": "microsoft.extensions.configuration.abstractions.2.1.1.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Configuration.Binder/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fcLCTS03poWE4v9tSNBr3pWn0QwGgAn1vzqHXlXgvqZeOc7LvQNzaWcKRQZTdEc3+YhQKwMsOtm3VKSA2aWQ8w==",
+      "path": "microsoft.extensions.configuration.binder/2.1.1",
+      "hashPath": "microsoft.extensions.configuration.binder.2.1.1.nupkg.sha512"
+    },
+    "Microsoft.Extensions.DependencyInjection.Abstractions/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-MgYpU5cwZohUMKKg3sbPhvGG+eAZ/59E9UwPwlrUkyXU+PGzqwZg9yyQNjhxuAWmoNoFReoemeCku50prYSGzA==",
+      "path": "microsoft.extensions.dependencyinjection.abstractions/2.1.1",
+      "hashPath": "microsoft.extensions.dependencyinjection.abstractions.2.1.1.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Logging/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hh+mkOAQDTp6XH80xJt3+wwYVzkbwYQl9XZRCz4Um0JjP/o7N9vHM3rZ6wwwtr+BBe/L6iBO2sz0px6OWBzqZQ==",
+      "path": "microsoft.extensions.logging/2.1.1",
+      "hashPath": "microsoft.extensions.logging.2.1.1.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Logging.Abstractions/6.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-dzB2Cgg+JmrouhjkcQGzSFjjvpwlq353i8oBQO2GWNjCXSzhbtBRUf28HSauWe7eib3wYOdb3tItdjRwAdwCSg==",
+      "path": "microsoft.extensions.logging.abstractions/6.0.1",
+      "hashPath": "microsoft.extensions.logging.abstractions.6.0.1.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Options/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-V7lXCU78lAbzaulCGFKojcCyG8RTJicEbiBkPJjFqiqXwndEBBIehdXRMWEVU3UtzQ1yDvphiWUL9th6/4gJ7w==",
+      "path": "microsoft.extensions.options/2.1.1",
+      "hashPath": "microsoft.extensions.options.2.1.1.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Primitives/2.1.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-scJ1GZNIxMmjpENh0UZ8XCQ6vzr/LzeF9WvEA51Ix2OQGAs9WPgPu8ABVUdvpKPLuor/t05gm6menJK3PwqOXg==",
+      "path": "microsoft.extensions.primitives/2.1.1",
+      "hashPath": "microsoft.extensions.primitives.2.1.1.nupkg.sha512"
+    },
+    "Microsoft.Win32.SystemEvents/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-9opKRyOKMCi2xJ7Bj7kxtZ1r9vbzosMvRrdEhVhDz8j8MoBGgB+WmC94yH839NPH+BclAjtQ/pyagvi/8gDLkw==",
+      "path": "microsoft.win32.systemevents/8.0.0",
+      "hashPath": "microsoft.win32.systemevents.8.0.0.nupkg.sha512"
+    },
+    "Mono.Cecil/0.11.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-f33RkDtZO8VlGXCtmQIviOtxgnUdym9xx/b1p9h91CRGOsJFxCFOFK1FDbVt1OCf1aWwYejUFa2MOQyFWTFjbA==",
+      "path": "mono.cecil/0.11.6",
+      "hashPath": "mono.cecil.0.11.6.nupkg.sha512"
+    },
+    "MonoMod.Backports/1.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-baYlNy8n8kmaNhNvqmZ/dIPOeO1r9//dG1i2WbunMWtWZ2EKtIgmXaS+ZzphzTsikkGnoD4Jwr5g0TVdpDjgpw==",
+      "path": "monomod.backports/1.1.2",
+      "hashPath": "monomod.backports.1.1.2.nupkg.sha512"
+    },
+    "MonoMod.Core/1.3.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-yeLEs4Y+hfFjiShKotDYKWiwnADra2kj8pYl66QewdcM/IRPIbjG6wAIVq38Zj9Ry2me33DCwXOHWrTnR7dZ1Q==",
+      "path": "monomod.core/1.3.4",
+      "hashPath": "monomod.core.1.3.4.nupkg.sha512"
+    },
+    "MonoMod.ILHelpers/1.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-L2FWjhTrv7tcIxshfZ+M3OcaNr4cNw0IwiVZEgwqRnZ5QAN3+RrNJ8ZwCzwXUWyPDqooJxMcjjg8PsSYUiNBjQ==",
+      "path": "monomod.ilhelpers/1.1.0",
+      "hashPath": "monomod.ilhelpers.1.1.0.nupkg.sha512"
+    },
+    "MonoMod.RuntimeDetour/25.3.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hzAogPejsFAAWUaa+dFXH2GR2LdLSEAfPfT1sz1wCPXBxHzufbcVo8NkpsrhLEYVIQ0BDb1Xsyv/MqyFShC4bA==",
+      "path": "monomod.runtimedetour/25.3.4",
+      "hashPath": "monomod.runtimedetour.25.3.4.nupkg.sha512"
+    },
+    "MonoMod.Utils/25.0.12": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8i/uRhkl7vW2DNMmDsIz+D7VaMtv9/jH+m7f4y5Zz3FJGbm15MVSwVfOp/fVV/1Ld6YFxk6jophDNVbAZUKR1Q==",
+      "path": "monomod.utils/25.0.12",
+      "hashPath": "monomod.utils.25.0.12.nupkg.sha512"
+    },
+    "Samboy063.Tomlet/5.3.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-UOpMGsQVZ7Zc7SFnihQUe6H4QtTCfi+cR57fDL3PgDyCdY3tywPSESJPQDdH3hlDehxsjDnxDCd/HUCCJMUqag==",
+      "path": "samboy063.tomlet/5.3.1",
+      "hashPath": "samboy063.tomlet.5.3.1.nupkg.sha512"
+    },
+    "System.Configuration.ConfigurationManager/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-JlYi9XVvIREURRUlGMr1F6vOFLk7YSY4p1vHo4kX3tQ0AGrjqlRWHDi66ImHhy6qwXBG3BJ6Y1QlYQ+Qz6Xgww==",
+      "path": "system.configuration.configurationmanager/8.0.0",
+      "hashPath": "system.configuration.configurationmanager.8.0.0.nupkg.sha512"
+    },
+    "System.Diagnostics.EventLog/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-fdYxcRjQqTTacKId/2IECojlDSFvp7LP5N78+0z/xH7v/Tuw5ZAxu23Y6PTCRinqyu2ePx+Gn1098NC6jM6d+A==",
+      "path": "system.diagnostics.eventlog/8.0.0",
+      "hashPath": "system.diagnostics.eventlog.8.0.0.nupkg.sha512"
+    },
+    "System.Drawing.Common/8.0.8": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-4ZM1wvLjz9nVVExsfPAaSl/qOvU+QNedJL5rQ+2Wbow+iGeyO0e7XN07707rMBgaffEeeLrCZBwC0oHUuvRdPw==",
+      "path": "system.drawing.common/8.0.8",
+      "hashPath": "system.drawing.common.8.0.8.nupkg.sha512"
+    },
+    "System.Security.Cryptography.ProtectedData/8.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-+TUFINV2q2ifyXauQXRwy4CiBhqvDEDZeVJU7qfxya4aRYOKzVBpN+4acx25VcPB9ywUN6C0n8drWl110PhZEg==",
+      "path": "system.security.cryptography.protecteddata/8.0.0",
+      "hashPath": "system.security.cryptography.protecteddata.8.0.0.nupkg.sha512"
+    },
+    "WebSocketDotNet/1.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-QbnWXQ8d0qPlweDjiYJa33kiXAV/tz7WHqm0wUjIQagd0XWVQrXTPgWNIAtoUKXJ2Qeu03M4Y6+P1MuWfun0eQ==",
+      "path": "websocketdotnet/1.0.0",
+      "hashPath": "websocketdotnet.1.0.0.nupkg.sha512"
+    },
+    "HarmonyX/2.16.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Il2CppInterop.Common/1.5.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Il2CppInterop.Generator/1.5.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Il2CppInterop.HarmonySupport/1.5.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Il2CppInterop.Runtime/1.5.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "JNISharp/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "0Harmony/2.16.1.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

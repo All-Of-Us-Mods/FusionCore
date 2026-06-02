@@ -2,6 +2,8 @@ package dev.allofus.fusioncore;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.ContextWrapper;
+import android.content.res.AssetManager;
 import android.graphics.Color;
 import android.os.Looper;
 import android.util.Log;
@@ -13,8 +15,10 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 
@@ -24,7 +28,7 @@ import top.canyie.pine.callback.MethodHook;
 public class UnityPlayerHooks {
 
     public static String TAG = "UnityPlayerHooks";
-
+    private static String gameActivityClassName = null;
     public static final String[] UnityPlayerClassNames = new String[] {
             "com.unity3d.player.UnityPlayer",
             "com.unity3d.player.UnityPlayerForGameActivity",
@@ -32,7 +36,7 @@ public class UnityPlayerHooks {
     };
 
     // this is used to inject CustomContextWrapper into the game activity
-    public static void installHooks(Context gameContext) {
+    public static void installHooks(Context gameContext, File metadataZip) {
         var classLoader = gameContext.getClassLoader();
         if (classLoader == null) {
             throw new IllegalStateException("ClassLoader is null");
@@ -72,6 +76,11 @@ public class UnityPlayerHooks {
 
         for (Constructor<?> constructor : constructors) {
             Log.i(TAG, "Hooking constructor: " + constructor);
+            // If the formal parameter type is Activity (not just Context), the reflective
+            // backup invoke rejects a ContextWrapper substitute. UnityPlayerForGameActivity's
+            // ctor takes Activity strictly - leave its arg untouched and only run the overlay.
+            final Class<?> firstParamType = constructor.getParameterTypes()[0];
+            final boolean canWrapArg = !Activity.class.isAssignableFrom(firstParamType);
             Pine.hook(constructor, new MethodHook() {
                 Activity activity = null;
                 View loadingOverlay;
@@ -83,12 +92,46 @@ public class UnityPlayerHooks {
                             Log.w(TAG, "First argument is not a Activity, skipping hook");
                             return;
                         }
-                        // In UnityPlayerHooks beforeCall:
-                        Log.i("UnityPlayerHooks", "Constructor firing, context class: "
-                                + callFrame.args[0].getClass().getName());
                         activity = (Activity) callFrame.args[0];
                         loadingOverlay = showLoadingOverlay(activity, "Injecting Fusion hooks...");
-                        callFrame.args[0] = new CustomContextWrapper(gameContext, activity, activity);
+                        if (canWrapArg) {
+                            callFrame.args[0] = new CustomContextWrapper(gameContext, activity, gameContext);
+                        } else {
+                            try {
+                                final AssetManager gameAssets = gameContext.getAssets();
+                                final File dataCopyDir = new File(
+                                        new File(metadataZip.getParentFile(), "Data_copy"),
+                                        "Managed/Metadata/global-metadata.dat"
+                                );
+
+                                // Hook AssetManager.open(String) to serve compressed assets from disk
+                                Method openMethod = AssetManager.class.getMethod("open", String.class);
+                                Pine.hook(openMethod, new MethodHook() {
+                                    @Override
+                                    public void beforeCall(Pine.CallFrame frame) {
+                                        String path = (String) frame.args[0];
+                                        if (path != null && path.endsWith("global-metadata.dat")) {
+                                            try {
+                                                Log.i(TAG, "Redirecting AssetManager.open(" + path + ") to disk copy");
+                                                frame.setResult(new java.io.FileInputStream(dataCopyDir));
+                                            } catch (Exception e) {
+                                                Log.e(TAG, "Failed to open on-disk metadata", e);
+                                            }
+                                        }
+                                    }
+                                });
+
+                                Method getAssetsMethod = android.view.ContextThemeWrapper.class.getMethod("getAssets");
+                                Pine.hook(getAssetsMethod, new MethodHook() {
+                                    @Override
+                                    public void beforeCall(Pine.CallFrame frame) {
+                                        frame.setResult(gameAssets);
+                                    }
+                                });
+                            } catch (NoSuchMethodException e) {
+                                Log.e(TAG, "Failed to hook asset methods", e);
+                            }
+                        }
                     } catch (Exception e) {
                         Log.i(TAG, "Failed to wrap context!", e);
                     }
@@ -110,6 +153,8 @@ public class UnityPlayerHooks {
                             throw new RuntimeException("Failed to set activity field: " + field.getName(), e);
                         }
                     }
+                    gameActivityClassName = callFrame.thisObject.getClass().getName();
+
                 }
             });
         }

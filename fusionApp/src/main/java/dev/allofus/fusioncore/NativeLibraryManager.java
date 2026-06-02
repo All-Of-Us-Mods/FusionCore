@@ -11,10 +11,10 @@ import top.canyie.pine.callback.MethodHook;
 
 public class NativeLibraryManager {
     private static final String TAG = "NativeLibraryManager";
-
+    public static FusionConfig activeConfig;
     private static final ArrayList<String> FusionLibraries = new ArrayList<>();
 
-    private static final ArrayList<String> GameLibraries = new ArrayList<>();
+    public static final ArrayList<String> GameLibraries = new ArrayList<>();
 
     private static final ArrayList<String> DataLibraries = new ArrayList<>();
 
@@ -22,7 +22,29 @@ public class NativeLibraryManager {
     {
         FusionLibraries.add(fusionLibName);
     }
+    public static String resolveLibraryPath(String libName) {
+        if (activeConfig == null) return null;
 
+        for (String fusionLib : FusionLibraries) {
+            if (fusionLib.equals(libName)) {
+                return activeConfig.appLibraryDirectory + "/lib" + libName + ".so";
+            }
+        }
+
+        for (String dataLib : DataLibraries) {
+            if (dataLib.equals(libName)) {
+                return activeConfig.appDataDirectory + "/lib" + libName + ".so";
+            }
+        }
+
+        for (String gameLib : GameLibraries) {
+            if (gameLib.equals(libName)) {
+                return activeConfig.gameLibraryDirectory + "/lib" + libName + ".so";
+            }
+        }
+
+        return null;
+    }
     public static void addGameLibrary(String gameLibName)
     {
         GameLibraries.add(gameLibName);
@@ -35,6 +57,7 @@ public class NativeLibraryManager {
 
     // this redirects library loading to the libraries we want the game to use
     public static void setupLibraryHooks(FusionConfig config) {
+        activeConfig = config;
         Method findLibraryMethod = findLibraryMethodViaReflection();
 
         if (findLibraryMethod == null) {

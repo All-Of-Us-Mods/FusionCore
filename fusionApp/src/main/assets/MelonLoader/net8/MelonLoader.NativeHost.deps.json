@@ -1,0 +1,487 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "MelonLoader.NativeHost/1.0.0": {
+        "dependencies": {
+          "LavaGang.MelonLoader": "0.6.6",
+          "0Harmony": "2.16.1.0",
+          "MelonLoader": "0.6.6.0"
+        },
+        "runtime": {
+          "MelonLoader.NativeHost.dll": {}
+        }
+      },
+      "Disarm/2022.1.0-master.57": {
+        "runtime": {
+          "lib/net6.0/Disarm.dll": {
+            "assemblyVersion": "2022.1.0.0",
+            "fileVersion": "2022.1.0.0"
+          }
+        }
+      },
+      "Iced/1.17.0": {
+        "runtime": {
+          "lib/netstandard2.1/Iced.dll": {
+            "assemblyVersion": "1.17.0.0",
+            "fileVersion": "1.17.0.0"
+          }
+        }
+      },
+      "Microsoft.Extensions.Logging.Abstractions/6.0.1": {
+        "runtime": {
+          "lib/net6.0/Microsoft.Extensions.Logging.Abstractions.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.322.12309"
+          }
+        }
+      },
+      "Mono.Cecil/0.11.6": {
+        "runtime": {
+          "lib/netstandard2.0/Mono.Cecil.Mdb.dll": {
+            "assemblyVersion": "0.11.6.0",
+            "fileVersion": "0.11.6.0"
+          },
+          "lib/netstandard2.0/Mono.Cecil.Pdb.dll": {
+            "assemblyVersion": "0.11.6.0",
+            "fileVersion": "0.11.6.0"
+          },
+          "lib/netstandard2.0/Mono.Cecil.Rocks.dll": {
+            "assemblyVersion": "0.11.6.0",
+            "fileVersion": "0.11.6.0"
+          },
+          "lib/netstandard2.0/Mono.Cecil.dll": {
+            "assemblyVersion": "0.11.6.0",
+            "fileVersion": "0.11.6.0"
+          }
+        }
+      },
+      "MonoMod.Backports/1.1.2": {
+        "dependencies": {
+          "MonoMod.ILHelpers": "1.1.0"
+        },
+        "runtime": {
+          "lib/net8.0/MonoMod.Backports.dll": {
+            "assemblyVersion": "1.1.2.0",
+            "fileVersion": "1.1.2.0"
+          }
+        }
+      },
+      "MonoMod.Core/1.3.4": {
+        "dependencies": {
+          "Mono.Cecil": "0.11.6",
+          "MonoMod.Backports": "1.1.2",
+          "MonoMod.ILHelpers": "1.1.0",
+          "MonoMod.Utils": "25.0.12"
+        },
+        "runtime": {
+          "lib/net8.0/MonoMod.Core.dll": {
+            "assemblyVersion": "1.3.4.0",
+            "fileVersion": "1.3.4.0"
+          },
+          "lib/net8.0/MonoMod.Iced.dll": {
+            "assemblyVersion": "1.21.0.0",
+            "fileVersion": "1.21.0.0"
+          }
+        }
+      },
+      "MonoMod.ILHelpers/1.1.0": {
+        "runtime": {
+          "lib/net8.0/MonoMod.ILHelpers.dll": {
+            "assemblyVersion": "1.1.0.0",
+            "fileVersion": "1.1.0.0"
+          }
+        }
+      },
+      "MonoMod.RuntimeDetour/25.3.4": {
+        "dependencies": {
+          "Mono.Cecil": "0.11.6",
+          "MonoMod.Backports": "1.1.2",
+          "MonoMod.Core": "1.3.4",
+          "MonoMod.ILHelpers": "1.1.0",
+          "MonoMod.Utils": "25.0.12"
+        },
+        "runtime": {
+          "lib/net8.0/MonoMod.RuntimeDetour.dll": {
+            "assemblyVersion": "25.3.4.0",
+            "fileVersion": "25.3.4.0"
+          }
+        }
+      },
+      "MonoMod.Utils/25.0.12": {
+        "dependencies": {
+          "Mono.Cecil": "0.11.6",
+          "MonoMod.Backports": "1.1.2",
+          "MonoMod.ILHelpers": "1.1.0"
+        },
+        "runtime": {
+          "lib/net8.0/MonoMod.Utils.dll": {
+            "assemblyVersion": "25.0.12.0",
+            "fileVersion": "25.0.12.0"
+          }
+        }
+      },
+      "HarmonyX/2.16.1": {
+        "dependencies": {
+          "MonoMod.RuntimeDetour": "25.3.4"
+        },
+        "runtime": {
+          "0Harmony.dll": {
+            "fileVersion": "0.0.0.0"
+          }
+        }
+      },
+      "Il2CppInterop.Common/1.5.1": {
+        "dependencies": {
+          "Disarm": "2022.1.0-master.57",
+          "Iced": "1.17.0",
+          "Microsoft.Extensions.Logging.Abstractions": "6.0.1"
+        },
+        "runtime": {
+          "Il2CppInterop.Common.dll": {
+            "assemblyVersion": "1.5.1.0",
+            "fileVersion": "1.5.1.0"
+          }
+        }
+      },
+      "Il2CppInterop.Generator/1.5.1": {
+        "dependencies": {
+          "Il2CppInterop.Common": "1.5.1",
+          "MonoMod.Backports": "1.1.2"
+        },
+        "runtime": {
+          "Il2CppInterop.Generator.dll": {
+            "assemblyVersion": "1.5.1.0",
+            "fileVersion": "1.5.1.0"
+          }
+        }
+      },
+      "Il2CppInterop.HarmonySupport/1.5.1": {
+        "dependencies": {
+          "HarmonyX": "2.16.1",
+          "Il2CppInterop.Runtime": "1.5.1"
+        },
+        "runtime": {
+          "Il2CppInterop.HarmonySupport.dll": {
+            "assemblyVersion": "1.5.1.0",
+            "fileVersion": "1.5.1.0"
+          }
+        }
+      },
+      "Il2CppInterop.Runtime/1.5.1": {
+        "dependencies": {
+          "Iced": "1.17.0",
+          "Il2CppInterop.Common": "1.5.1"
+        },
+        "runtime": {
+          "Il2CppInterop.Runtime.dll": {
+            "assemblyVersion": "1.5.1.0",
+            "fileVersion": "1.5.1.0"
+          }
+        }
+      },
+      "JNISharp/1.0.0": {
+        "runtime": {
+          "JNISharp.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "LavaGang.MelonLoader/0.6.6": {
+        "dependencies": {
+          "HarmonyX": "2.16.1",
+          "Il2CppInterop.Common": "1.5.1",
+          "Il2CppInterop.Generator": "1.5.1",
+          "Il2CppInterop.HarmonySupport": "1.5.1",
+          "Il2CppInterop.Runtime": "1.5.1",
+          "JNISharp": "1.0.0"
+        },
+        "runtime": {
+          "MelonLoader.dll": {
+            "assemblyVersion": "0.6.6.0",
+            "fileVersion": "0.6.6.0"
+          }
+        }
+      },
+      "0Harmony/2.16.1.0": {
+        "runtime": {
+          "0Harmony.dll": {
+            "assemblyVersion": "2.16.1.0",
+            "fileVersion": "2.16.1.0"
+          }
+        }
+      },
+      "MelonLoader/0.6.6.0": {
+        "runtime": {
+          "MelonLoader.dll": {
+            "assemblyVersion": "0.6.6.0",
+            "fileVersion": "0.6.6.0"
+          }
+        }
+      },
+      "bHapticsLib/1.0.6.0": {
+        "runtime": {
+          "bHapticsLib.dll": {
+            "assemblyVersion": "1.0.6.0",
+            "fileVersion": "1.0.6.0"
+          }
+        }
+      },
+      "AssetRipper.VersionUtilities/1.5.0.0": {
+        "runtime": {
+          "AssetRipper.VersionUtilities.dll": {
+            "assemblyVersion": "1.5.0.0",
+            "fileVersion": "1.5.0.0"
+          }
+        }
+      },
+      "AssetsTools.NET/3.0.0.0": {
+        "runtime": {
+          "AssetsTools.NET.dll": {
+            "assemblyVersion": "3.0.0.0",
+            "fileVersion": "3.0.0.0"
+          }
+        }
+      },
+      "Tomlet/5.3.1.0": {
+        "runtime": {
+          "Tomlet.dll": {
+            "assemblyVersion": "5.3.1.0",
+            "fileVersion": "5.3.1.0"
+          }
+        }
+      },
+      "AsmResolver.DotNet/6.0.0.0": {
+        "runtime": {
+          "AsmResolver.DotNet.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
+          }
+        }
+      },
+      "AsmResolver.PE/6.0.0.0": {
+        "runtime": {
+          "AsmResolver.PE.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
+          }
+        }
+      },
+      "AsmResolver/6.0.0.0": {
+        "runtime": {
+          "AsmResolver.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
+          }
+        }
+      },
+      "Microsoft.Diagnostics.Runtime/3.1.10.12801": {
+        "runtime": {
+          "Microsoft.Diagnostics.Runtime.dll": {
+            "assemblyVersion": "3.1.10.12801",
+            "fileVersion": "3.1.10.12801"
+          }
+        }
+      },
+      "AsmResolver.PE.File/6.0.0.0": {
+        "runtime": {
+          "AsmResolver.PE.File.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.0.0"
+          }
+        }
+      },
+      "WebSocketDotNet/1.0.0.0": {
+        "runtime": {
+          "WebSocketDotNet.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "Microsoft.Diagnostics.NETCore.Client/0.2.8.10101": {
+        "runtime": {
+          "Microsoft.Diagnostics.NETCore.Client.dll": {
+            "assemblyVersion": "0.2.8.10101",
+            "fileVersion": "0.2.8.10101"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "MelonLoader.NativeHost/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Disarm/2022.1.0-master.57": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-/dkg7hg8iPBQN4bTV1lMQacarH6fMpgUXhJuo6iI7Wv7YpH7g5F9hJfje7dSMhqG0YlDacLuyWvcph5GzKUXog==",
+      "path": "disarm/2022.1.0-master.57",
+      "hashPath": "disarm.2022.1.0-master.57.nupkg.sha512"
+    },
+    "Iced/1.17.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8x+HCVTl/HHTGpscH3vMBhV8sknN/muZFw9s3TsI8SA6+c43cOTCi2+jE4KsU8pNLbJ++iF2ZFcpcXHXtDglnw==",
+      "path": "iced/1.17.0",
+      "hashPath": "iced.1.17.0.nupkg.sha512"
+    },
+    "Microsoft.Extensions.Logging.Abstractions/6.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-dzB2Cgg+JmrouhjkcQGzSFjjvpwlq353i8oBQO2GWNjCXSzhbtBRUf28HSauWe7eib3wYOdb3tItdjRwAdwCSg==",
+      "path": "microsoft.extensions.logging.abstractions/6.0.1",
+      "hashPath": "microsoft.extensions.logging.abstractions.6.0.1.nupkg.sha512"
+    },
+    "Mono.Cecil/0.11.6": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-f33RkDtZO8VlGXCtmQIviOtxgnUdym9xx/b1p9h91CRGOsJFxCFOFK1FDbVt1OCf1aWwYejUFa2MOQyFWTFjbA==",
+      "path": "mono.cecil/0.11.6",
+      "hashPath": "mono.cecil.0.11.6.nupkg.sha512"
+    },
+    "MonoMod.Backports/1.1.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-baYlNy8n8kmaNhNvqmZ/dIPOeO1r9//dG1i2WbunMWtWZ2EKtIgmXaS+ZzphzTsikkGnoD4Jwr5g0TVdpDjgpw==",
+      "path": "monomod.backports/1.1.2",
+      "hashPath": "monomod.backports.1.1.2.nupkg.sha512"
+    },
+    "MonoMod.Core/1.3.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-yeLEs4Y+hfFjiShKotDYKWiwnADra2kj8pYl66QewdcM/IRPIbjG6wAIVq38Zj9Ry2me33DCwXOHWrTnR7dZ1Q==",
+      "path": "monomod.core/1.3.4",
+      "hashPath": "monomod.core.1.3.4.nupkg.sha512"
+    },
+    "MonoMod.ILHelpers/1.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-L2FWjhTrv7tcIxshfZ+M3OcaNr4cNw0IwiVZEgwqRnZ5QAN3+RrNJ8ZwCzwXUWyPDqooJxMcjjg8PsSYUiNBjQ==",
+      "path": "monomod.ilhelpers/1.1.0",
+      "hashPath": "monomod.ilhelpers.1.1.0.nupkg.sha512"
+    },
+    "MonoMod.RuntimeDetour/25.3.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hzAogPejsFAAWUaa+dFXH2GR2LdLSEAfPfT1sz1wCPXBxHzufbcVo8NkpsrhLEYVIQ0BDb1Xsyv/MqyFShC4bA==",
+      "path": "monomod.runtimedetour/25.3.4",
+      "hashPath": "monomod.runtimedetour.25.3.4.nupkg.sha512"
+    },
+    "MonoMod.Utils/25.0.12": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8i/uRhkl7vW2DNMmDsIz+D7VaMtv9/jH+m7f4y5Zz3FJGbm15MVSwVfOp/fVV/1Ld6YFxk6jophDNVbAZUKR1Q==",
+      "path": "monomod.utils/25.0.12",
+      "hashPath": "monomod.utils.25.0.12.nupkg.sha512"
+    },
+    "HarmonyX/2.16.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Il2CppInterop.Common/1.5.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Il2CppInterop.Generator/1.5.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Il2CppInterop.HarmonySupport/1.5.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Il2CppInterop.Runtime/1.5.1": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "JNISharp/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "LavaGang.MelonLoader/0.6.6": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "0Harmony/2.16.1.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "MelonLoader/0.6.6.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "bHapticsLib/1.0.6.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AssetRipper.VersionUtilities/1.5.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AssetsTools.NET/3.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Tomlet/5.3.1.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AsmResolver.DotNet/6.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AsmResolver.PE/6.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AsmResolver/6.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Diagnostics.Runtime/3.1.10.12801": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "AsmResolver.PE.File/6.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "WebSocketDotNet/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Diagnostics.NETCore.Client/0.2.8.10101": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
