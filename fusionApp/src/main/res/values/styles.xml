@@ -2,14 +2,18 @@
 <resources>
   <style name="BaseUnityTheme" parent="Theme.AppCompat.NoActionBar">
     <item name="android:windowFullscreen">true</item>
+    <item name="android:windowBackground">@android:color/black</item>
   </style>
+
   <style name="UnityThemeSelector" parent="BaseUnityTheme">
     <item name="android:windowBackground">@android:color/transparent</item>
   </style>
+
   <style name="UnityThemeSelector.Translucent" parent="@style/UnityThemeSelector">
     <item name="android:windowIsTranslucent">true</item>
     <item name="android:windowBackground">@android:color/transparent</item>
   </style>
+  
   <style name="AppTheme" parent="Theme.AppCompat.NoActionBar">
     <item name="android:windowFullscreen">true</item>
     <item name="android:windowBackground">@android:color/black</item>
