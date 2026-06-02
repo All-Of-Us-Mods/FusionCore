@@ -105,6 +105,12 @@ public class BootstrapActivity extends Activity {
         }
 
         final String launcherClassName = launcher.getClassName();
+        try {
+            AppCompatBypassHooks.installHooks(gameContext.getClassLoader(), launcherClassName);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to install AppCompat bypass hooks", e);
+        }
+
         if (!installLauncherOnCreateHook(gameContext.getClassLoader(), launcherClassName,
                 (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
             failAndFinish("Failed to install launcher hook! See log for details.", null);
@@ -242,10 +248,6 @@ public class BootstrapActivity extends Activity {
                         Log.w(TAG, "Launcher hook hit but receiver is not an Activity: " + callFrame.thisObject);
                         return;
                     }
-
-                    Activity activity = (Activity) callFrame.thisObject;
-
-                    activity.setTheme(dev.allofus.fusioncore.R.style.UnityThemeSelector);
 
                     Bundle bundle = null;
                     if (callFrame.args != null && callFrame.args.length > 0 && callFrame.args[0] instanceof Bundle) {
