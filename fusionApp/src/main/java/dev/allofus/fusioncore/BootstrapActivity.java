@@ -243,6 +243,10 @@ public class BootstrapActivity extends Activity {
                         return;
                     }
 
+                    Activity activity = (Activity) callFrame.thisObject;
+
+                    activity.setTheme(dev.allofus.fusioncore.R.style.UnityThemeSelector);
+
                     Bundle bundle = null;
                     if (callFrame.args != null && callFrame.args.length > 0 && callFrame.args[0] instanceof Bundle) {
                         bundle = (Bundle) callFrame.args[0];
