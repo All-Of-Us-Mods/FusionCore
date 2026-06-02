@@ -95,21 +95,5 @@
         <category android:name="com.oculus.intent.category.VR" />
       </intent-filter>
     </activity>
-    <!-- Direct-launch alias for Gorilla Tag. Registers a separate VR Library icon
-         on Quest so the OS spawns the :vr process in VR mode from the start -
-         bypasses the 2D SelectorActivity launch path entirely. -->
-    <activity-alias
-        android:name="dev.allofus.fusioncore.GorillaTagLauncher"
-        android:targetActivity="dev.allofus.fusioncore.BootstrapActivity"
-        android:exported="true"
-        android:label="FusionCore - Gorilla Tag"
-        android:icon="@mipmap/app_icon">
-      <meta-data android:name="target_package" android:value="com.AnotherAxiom.GorillaTag" />
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN" />
-        <category android:name="android.intent.category.LAUNCHER" />
-        <category android:name="com.oculus.intent.category.VR" />
-      </intent-filter>
-    </activity-alias>
   </application>
 </manifest>
