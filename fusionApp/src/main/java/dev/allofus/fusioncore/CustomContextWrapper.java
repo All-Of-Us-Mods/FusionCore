@@ -174,7 +174,7 @@ public class CustomContextWrapper extends ContextWrapper {
     @Override
     public Display getDisplay() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return fusionContext.getDisplay();
+            return getBaseContext().getDisplay();
         }
         return null;
     }
@@ -183,6 +183,9 @@ public class CustomContextWrapper extends ContextWrapper {
     public Object getSystemService(@NonNull String name) {
         if (LAYOUT_INFLATER_SERVICE.equals(name)) {
             return LayoutInflater.from(fusionContext).cloneInContext(this);
+        }
+        if (WINDOW_SERVICE.equals(name) || DISPLAY_SERVICE.equals(name)) {
+            return getBaseContext().getSystemService(name);
         }
         return fusionContext.getSystemService(name);
     }
