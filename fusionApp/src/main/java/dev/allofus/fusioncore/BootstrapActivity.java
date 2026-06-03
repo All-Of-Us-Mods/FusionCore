@@ -99,12 +99,17 @@ public class BootstrapActivity extends Activity {
         try {
             ClassLoaderHooks.installHooks(gameContext.getClassLoader());
             PackageManagerHooks.installHooks(getPackageManager());
-            UnityPlayerHooks.installHooks(gameContext);
+            UnityPlayerHooks.installHooks(gameContext, getApplicationContext(), targetPackage);
         } catch (Exception e) {
             Log.e(TAG, "Failed to install base hooks", e);
         }
 
         final String launcherClassName = launcher.getClassName();
+        
+        if (!installAttachBaseContextHook(gameContext.getClassLoader(), launcherClassName, gameContext, getApplicationContext(), targetPackage)) {
+            Log.w(TAG, "attachBaseContext hook installation failed, AppCompat may crash");
+        }
+        
         if (!installLauncherOnCreateHook(gameContext.getClassLoader(), launcherClassName,
                 (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
             failAndFinish("Failed to install launcher hook! See log for details.", null);
@@ -221,6 +226,78 @@ public class BootstrapActivity extends Activity {
 
     private interface BeforeOnCreateAction {
         void run(Activity launcherActivity, Bundle bundle);
+    }
+
+    private boolean installAttachBaseContextHook(ClassLoader gameClassLoader, String launcherClassName,
+            Context gameContext, Context fusionContext, String targetPackage) {
+        try {
+            Class<?> launcherClass = Class.forName(launcherClassName, false, gameClassLoader);
+            Method method = null;
+            Class<?> clazz = launcherClass;
+            while (clazz != null && method == null) {
+                try {
+                    method = clazz.getDeclaredMethod("attachBaseContext", Context.class);
+                } catch (NoSuchMethodException e) {
+                    clazz = clazz.getSuperclass();
+                }
+            }
+            if (method == null) {
+                Log.w(TAG, "attachBaseContext not found in " + launcherClassName);
+                return false;
+            }
+            method.setAccessible(true);
+
+            final Class<?> targetClass = launcherClass;
+            Pine.hook(method, new MethodHook() {
+                @Override
+                public void beforeCall(Pine.CallFrame callFrame) {
+                    if (!targetClass.isInstance(callFrame.thisObject)) {
+                        return;
+                    }
+                    Context base = (Context) callFrame.args[0];
+                    CustomContextWrapper wrapper = new CustomContextWrapper(
+                            gameContext, fusionContext, base, targetPackage);
+                    callFrame.args[0] = wrapper;
+                }
+
+                @Override
+                public void afterCall(Pine.CallFrame callFrame) {
+                    if (!targetClass.isInstance(callFrame.thisObject)) {
+                        return;
+                    }
+
+                    try {
+                        Activity activity = (Activity) callFrame.thisObject;
+                        Resources gameRes = gameContext.getResources();
+                        int themeId = gameRes.getIdentifier(
+                                "BaseUnityGameActivityTheme", "style", targetPackage);
+                        if (themeId != 0) {
+                            activity.setTheme(themeId);
+                            Log.i(TAG, "Applied game theme BaseUnityGameActivityTheme (0x" +
+                                    Integer.toHexString(themeId) + ") for " + targetPackage);
+                        } else {
+                            themeId = gameRes.getIdentifier(
+                                    "UnityThemeSelector", "style", targetPackage);
+                            if (themeId != 0) {
+                                activity.setTheme(themeId);
+                                Log.i(TAG, "Applied fallback game theme UnityThemeSelector (0x" +
+                                        Integer.toHexString(themeId) + ") for " + targetPackage);
+                            } else {
+                                Log.w(TAG, "Could not find game theme for " + targetPackage);
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.w(TAG, "Could not set game theme dynamically", e);
+                    }
+                }
+            });
+
+            Log.i(TAG, "Installed attachBaseContext hook for " + launcherClassName);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to install attachBaseContext hook", e);
+            return false;
+        }
     }
 
     private boolean installLauncherOnCreateHook(ClassLoader gameClassLoader,
