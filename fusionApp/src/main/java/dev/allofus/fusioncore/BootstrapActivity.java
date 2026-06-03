@@ -28,6 +28,7 @@ import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
 
 public class BootstrapActivity extends Activity {
+
     private static final String TAG = "FusionCore";
 
     public static final String EXTRA_TARGET_PACKAGE = "target_package";
@@ -226,6 +227,7 @@ public class BootstrapActivity extends Activity {
     }
 
     private interface BeforeOnCreateAction {
+
         void run(Activity launcherActivity, Bundle bundle);
     }
 
@@ -302,8 +304,8 @@ public class BootstrapActivity extends Activity {
     }
 
     private boolean installLauncherOnCreateHook(ClassLoader gameClassLoader,
-                                                String launcherClassName,
-                                                BeforeOnCreateAction action) {
+            String launcherClassName,
+            BeforeOnCreateAction action) {
         if (hookInstalled.get()) {
             return true;
         }
@@ -376,9 +378,9 @@ public class BootstrapActivity extends Activity {
     }
 
     private PreparedFusionState prepareFusionState(Context appContext,
-                                                   Context gameContext,
-                                                   String targetPackage,
-                                                   boolean useOriginalLibUnity) {
+            Context gameContext,
+            String targetPackage,
+            boolean useOriginalLibUnity) {
         String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
         String appLibDir = appContext.getApplicationInfo().nativeLibraryDir;
         String targetGameAbi = resolveTargetGameAbi(gameLibDir);
@@ -396,6 +398,9 @@ public class BootstrapActivity extends Activity {
         if (version == null) {
             Log.e(TAG, "Failed to determine Unity version! BepInEx may not work correctly.");
             version = BACKUP_UNITY_VERSION;
+            useOriginalLibUnity = true;
+        } else if (useOriginalLibUnity) {
+            Log.i(TAG, "Skipping libunity download");
             useOriginalLibUnity = true;
         } else {
             Log.i(TAG, "Determined Unity version: " + version);
@@ -461,6 +466,7 @@ public class BootstrapActivity extends Activity {
     }
 
     private static final class PreparedFusionState {
+
         private final String targetPackage;
         private final FusionConfig config;
 

@@ -3,6 +3,11 @@
     <string name="app_name">Fusion Core</string>
     <string name="selector_title">Select a game</string>
     <string name="selector_subtitle">Supported packages are listed below.</string>
+    <string name="selector_action_settings">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_action_back">Back</string>
+    <string name="settings_libunity_title">Download unstripped libunity</string>
+    <string name="settings_libunity_desc">You should turn this on if the game you\'re using crashes due to Unity getting mad.</string>
     <string name="selector_empty_not_configured">No supported packages configured..</string>
     <string name="selector_empty_not_installed">No supported packages are currently installed.</string>
     <string name="selector_storage_permission_prompt">Grant "All files access" so Fusion Core can write BepInEx files to Documents.</string>
@@ -20,4 +25,3 @@
     <string name="bootstrap_status_error">Launch failed</string>
     <string name="bootstrap_download_progress">%1$d%% (%2$s / %3$s)</string>
 </resources>
-

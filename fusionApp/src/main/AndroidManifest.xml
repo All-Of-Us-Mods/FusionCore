@@ -63,5 +63,9 @@
         android:theme="@style/UnityThemeSelector"
         android:launchMode="singleTask"
         android:exported="false" />
+    <activity
+        android:name="dev.allofus.fusioncore.SettingsActivity"
+        android:theme="@style/UnityThemeSelector"
+        android:exported="false" />
   </application>
 </manifest>
