@@ -73,7 +73,7 @@ public class CustomContextWrapper extends ContextWrapper {
         if (this.gameExternalCacheDir != null) this.gameExternalCacheDir.mkdirs();
         if (this.gameExternalFilesDir != null) this.gameExternalFilesDir.mkdirs();
 
-        this.getApplicationInfo().dataDir = appContext.getApplicationInfo().dataDir;
+        this.getApplicationInfo().dataDir = baseContext.getApplicationInfo().dataDir;
         // this prevents the game from resolving its own libraries
         // that way we can override them properly with our own versions
         this.getApplicationInfo().nativeLibraryDir = "";
