@@ -30,9 +30,9 @@ public class CustomContextWrapper extends ContextWrapper {
 
     public CustomContextWrapper(Context gameContext, Context fusionContext, Context appContext, String targetPackage) {
         super(gameContext);
-        this.fusionContext = fusionContext;
+        this.fusionContext = appContext;  // Original was doing activity, activity as fusionContext, appContext, but IG I'll just do it like that and won't touch, I really don't understand why it was like that
         this.targetPackage = targetPackage;
-        this.appContext = appContext != fusionContext ? appContext : fusionContext;
+        this.appContext = appContext;  // was the same as fusionContext or appContext cuz Original was doing activity, activity as fusionContext, appContext
 
         this.dataDir = new File(fusionContext.getFilesDir(), targetPackage);
         ensureDirs(
@@ -77,15 +77,12 @@ public class CustomContextWrapper extends ContextWrapper {
             clone.packageName = pkg;
             setField(loadedApk.getClass(), loadedApk, "mApplicationInfo", clone);
 
-            String[] cached = {
-                "mFilesDir", "mCacheDir", "mDatabasesDir",
-                "mPreferencesDir", "mNoBackupFilesDir", "mCodeCacheDir"
-            };
-            for (String name : cached) {
-                try {
-                    setField(impl.getClass(), impl, name, null);
-                } catch (NoSuchFieldException ignored) {}
-            }
+            try {
+                setField(impl.getClass(), impl, "mPreferencesDir", null);
+            } catch (NoSuchFieldException ignored) {}
+
+            // mFilesDir, mCacheDir, mDatabasesDir, mNoBackupFilesDir, mCodeCacheDir are max-target-o
+            // (blocked on API 27+). We override their accessors instead.
         } catch (Exception e) {
             Log.e(TAG, "patchDataDir failed", e);
         }
@@ -126,6 +123,39 @@ public class CustomContextWrapper extends ContextWrapper {
         return new CustomContextWrapper(super.createDeviceContext(deviceId), fusionContext, appContext, targetPackage);
     }
 
+    @Override
+    public File getDataDir() {
+        return dataDir;
+    }
+
+    @Override
+    public File getFilesDir() {
+        return new File(dataDir, "files");
+    }
+
+    @Override
+    public File getCacheDir() {
+        return new File(dataDir, "cache");
+    }
+
+    @Override
+    public File getCodeCacheDir() {
+        return new File(dataDir, "code_cache");
+    }
+
+    @Override
+    public File getNoBackupFilesDir() {
+        return new File(dataDir, "no_backup");
+    }
+
+    @Override
+    public File getDatabasePath(String name) {
+        File db = new File(dataDir, "databases/" + name);
+        File parent = db.getParentFile();
+        if (parent != null) parent.mkdirs();
+        return db;
+    }
+
     @Nullable
     @Override
     public File getExternalCacheDir() {
@@ -140,12 +170,8 @@ public class CustomContextWrapper extends ContextWrapper {
     @Nullable
     @Override
     public File getExternalFilesDir(String type) {
-        if (externalFilesDir == null) {
-            return null;
-        }
-        if (type == null) {
-            return externalFilesDir;
-        }
+        if (externalFilesDir == null) return null;
+        if (type == null) return externalFilesDir;
         File dir = new File(externalFilesDir, type);
         dir.mkdirs();
         return dir;
@@ -160,9 +186,7 @@ public class CustomContextWrapper extends ContextWrapper {
     @Override
     public File[] getExternalMediaDirs() {
         File[] base = fusionContext.getExternalMediaDirs();
-        if (base == null) {
-            return new File[0];
-        }
+        if (base == null) return new File[0];
         File[] out = new File[base.length];
         for (int i = 0; i < base.length; i++) {
             out[i] = new File(base[i], targetPackage);
@@ -174,7 +198,7 @@ public class CustomContextWrapper extends ContextWrapper {
     @Override
     public Display getDisplay() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return getBaseContext().getDisplay();
+            return fusionContext.getDisplay();
         }
         return null;
     }
@@ -184,13 +208,10 @@ public class CustomContextWrapper extends ContextWrapper {
         if (LAYOUT_INFLATER_SERVICE.equals(name)) {
             return LayoutInflater.from(fusionContext).cloneInContext(this);
         }
-        if (WINDOW_SERVICE.equals(name) || DISPLAY_SERVICE.equals(name)) {
-            return getBaseContext().getSystemService(name);
-        }
         return fusionContext.getSystemService(name);
     }
 
-    @Override
+        @Override
     public Context getApplicationContext() {
         return appContext;
     }
