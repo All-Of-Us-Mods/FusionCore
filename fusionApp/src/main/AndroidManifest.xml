@@ -121,5 +121,9 @@
         <category android:name="com.oculus.intent.category.VR" />
       </intent-filter>
     </activity>
+    <activity
+      android:name="dev.allofus.fusioncore.SettingsActivity"
+      android:theme="@style/UnityThemeSelector"
+      android:exported="false" />
   </application>
 </manifest>

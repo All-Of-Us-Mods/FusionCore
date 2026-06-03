@@ -16,6 +16,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -39,7 +40,8 @@ public class SelectorActivity extends Activity {
             "com.antiherostudios.misfitz",
             "com.Radeon.RecRoom",
             "com.StefMorojna.SpaceflightSimulator",
-            "com.DanVogt.DATAWING"
+            "com.DanVogt.DATAWING",
+            "com.schellgames.amongusvr"
     };
 
     private String pendingLaunchPackage;
@@ -97,6 +99,9 @@ public class SelectorActivity extends Activity {
             AppEntry selected = installedTargets.get(position);
             maybeLaunchBootstrap(selected.packageName);
         });
+
+        ImageButton settingsButton = findViewById(R.id.selector_action_settings);
+        settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
     }
 
     @Override
@@ -112,6 +117,7 @@ public class SelectorActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode != REQUEST_MANAGE_EXTERNAL_STORAGE || pendingLaunchPackage == null) {
             return;
         }
@@ -172,6 +178,8 @@ public class SelectorActivity extends Activity {
     private void launchBootstrap(String packageName) {
         Intent intent = new Intent(this, BootstrapActivity.class);
         intent.putExtra(BootstrapActivity.EXTRA_TARGET_PACKAGE, packageName);
+        intent.putExtra(BootstrapActivity.EXTRA_USE_ORIGINAL_LIBUNITY,
+                !FusionSettings.isDownloadUnstrippedLibUnity(this));
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
         overridePendingTransition(0, 0);
