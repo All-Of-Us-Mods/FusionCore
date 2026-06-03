@@ -9,7 +9,8 @@
     <item name="android:windowIsTranslucent">true</item>
     <item name="android:windowBackground">@android:color/transparent</item>
 </style>
-<style name="BaseUnityGameActivityTheme" parent="Theme.AppCompat.Light.NoActionBar">
+<!-- will be overwritten later if you can say that -->
+<style name="BaseUnityGameActivityTheme" parent="android:Theme.Holo.Light.NoActionBar.Fullscreen">
     <item name="android:windowBackground">@android:color/black</item>
 </style>
 <style name="BaseUnityGameActivityTheme.Translucent" parent="@style/BaseUnityGameActivityTheme">
