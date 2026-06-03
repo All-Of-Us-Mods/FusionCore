@@ -1,6 +1,7 @@
 package dev.allofus.fusioncore;
 
 import android.app.Activity;
+import android.content.res.Resources;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
