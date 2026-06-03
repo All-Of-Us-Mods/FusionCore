@@ -36,6 +36,10 @@
       <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
       <meta-data android:name="notch_support" android:value="true" />
     </activity>
+    <activity android:name="com.unity3d.player.UnityPlayerGameActivity" android:theme="@style/BaseUnityGameActivityTheme" android:screenOrientation="fullUser" android:launchMode="singleTask" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density" android:resizeableActivity="false" android:hardwareAccelerated="false" android:windowLayoutInDisplayCutoutMode="shortEdges" android:exported="true">
+      <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+      <meta-data android:name="notch_support" android:value="true" />
+    </activity>
     <activity android:name="com.innersloth.spacemafia.EosUnityPlayerActivity" android:theme="@style/UnityThemeSelector" android:screenOrientation="fullUser" android:launchMode="singleTask" android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density" android:resizeableActivity="false" android:hardwareAccelerated="false" android:windowLayoutInDisplayCutoutMode="shortEdges" android:exported="true">
       <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
       <meta-data android:name="notch_support" android:value="true" />
