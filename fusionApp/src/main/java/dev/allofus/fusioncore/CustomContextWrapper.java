@@ -4,91 +4,91 @@ import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
-import android.content.res.AssetManager;
-import android.content.res.Resources;
 import android.os.Build;
 import android.util.Log;
 import android.view.Display;
 import android.view.LayoutInflater;
 
-import org.jetbrains.annotations.Nullable;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.lang.reflect.Field;
 
 public class CustomContextWrapper extends ContextWrapper {
-    private static final String TAG = "FusionCore";
+    private static final String TAG = "FusionCore";  // maybe move somewhere? Its used in both BootstrapActivity and this
 
-    Context gameContext;
-    Context fusionContext;
-    String targetPackage;
+    private final Context fusionContext;
+    private final Context appContext;
+    private final String targetPackage;
 
-    File gameDataDir;
-    File gameFilesDir;
-    File gameCacheDir;
-    File gameCodeCacheDir;
-    File gameNoBackupDir;
-    File gameDatabasesDir;
-    File gameSharedPrefsDir;
-    File gameExternalCacheDir;
-    File gameExternalFilesDir;
-    File gameObbDir;
+    private final File dataDir;
 
-    ApplicationInfo modifiedAppInfo;
+    @Nullable private final File externalCacheDir;
+    @Nullable private final File externalFilesDir;
+    @Nullable private final File obbDir;
 
-    public CustomContextWrapper(Context gameContext, Context fusionContext, Context baseContext, String targetPackage) {
-        super(baseContext);
-        this.gameContext = gameContext;
+    public CustomContextWrapper(Context gameContext, Context fusionContext, Context appContext, String targetPackage) {
+        super(gameContext);
         this.fusionContext = fusionContext;
         this.targetPackage = targetPackage;
+        this.appContext = appContext != fusionContext ? appContext : fusionContext;
 
-        this.gameDataDir = new File(fusionContext.getFilesDir(), targetPackage);
-        this.gameFilesDir = new File(this.gameDataDir, "files");
-        this.gameCacheDir = new File(this.gameDataDir, "cache");
-        this.gameCodeCacheDir = new File(this.gameDataDir, "code_cache");
-        this.gameNoBackupDir = new File(this.gameDataDir, "no_backup");
-        this.gameDatabasesDir = new File(this.gameDataDir, "databases");
-        this.gameSharedPrefsDir = new File(this.gameDataDir, "shared_prefs");
-
-        File fusionExternalCache = fusionContext.getExternalCacheDir();
-        this.gameExternalCacheDir = fusionExternalCache != null ? new File(fusionExternalCache, targetPackage) : null;
-
-        File fusionExternalFiles = fusionContext.getExternalFilesDir(null);
-        this.gameExternalFilesDir = fusionExternalFiles != null ? new File(fusionExternalFiles, targetPackage) : null;
-
-        this.gameObbDir = new File(fusionContext.getObbDir(), targetPackage);
-
-        ensureDirsExist(
-                this.gameDataDir,
-                this.gameFilesDir,
-                this.gameCacheDir,
-                this.gameCodeCacheDir,
-                this.gameNoBackupDir,
-                this.gameDatabasesDir,
-                this.gameSharedPrefsDir,
-                this.gameObbDir
+        this.dataDir = new File(fusionContext.getFilesDir(), targetPackage);
+        ensureDirs(
+            dataDir,
+            new File(dataDir, "files"),
+            new File(dataDir, "cache"),
+            new File(dataDir, "code_cache"),
+            new File(dataDir, "no_backup"),
+            new File(dataDir, "databases"),
+            new File(dataDir, "shared_prefs"),
+            new File(dataDir, "lib")
         );
-        if (this.gameExternalCacheDir != null) this.gameExternalCacheDir.mkdirs();
-        if (this.gameExternalFilesDir != null) this.gameExternalFilesDir.mkdirs();
 
-        this.getApplicationInfo().dataDir = baseContext.getApplicationInfo().dataDir;
-        // this prevents the game from resolving its own libraries
-        // that way we can override them properly with our own versions
-        this.getApplicationInfo().nativeLibraryDir = "";
+        File extCache = fusionContext.getExternalCacheDir();
+        this.externalCacheDir = extCache != null ? new File(extCache, targetPackage) : null;
+
+        File extFiles = fusionContext.getExternalFilesDir(null);
+        this.externalFilesDir = extFiles != null ? new File(extFiles, targetPackage) : null;
+
+        File obb = fusionContext.getObbDir();
+        this.obbDir = obb != null ? new File(obb, targetPackage) : null;
+
+        if (externalCacheDir != null) externalCacheDir.mkdirs();
+        if (externalFilesDir != null) externalFilesDir.mkdirs();
+        if (obbDir != null) obbDir.mkdirs();
+
+        patchDataDir(gameContext, dataDir, targetPackage);
     }
 
-    // ============ Resource & Package Overrides ============
+    private void patchDataDir(Context base, File dir, String pkg) {
+        try {
+            Context impl = base;
+            while (impl instanceof ContextWrapper) {
+                impl = ((ContextWrapper) impl).getBaseContext();
+            }
 
-    @Override
-    public Resources getResources() {
-        return gameContext.getResources();
-    }
+            Object loadedApk = getField(impl.getClass(), impl, "mPackageInfo");
+            ApplicationInfo ai = (ApplicationInfo) getField(loadedApk.getClass(), loadedApk, "mApplicationInfo");
+            ApplicationInfo clone = new ApplicationInfo(ai);
+            clone.dataDir = dir.getAbsolutePath();
+            clone.nativeLibraryDir = "";
+            clone.packageName = pkg;
+            setField(loadedApk.getClass(), loadedApk, "mApplicationInfo", clone);
 
-    @Override
-    public AssetManager getAssets() {
-        return gameContext.getAssets();
+            String[] cached = {
+                "mFilesDir", "mCacheDir", "mDatabasesDir",
+                "mPreferencesDir", "mNoBackupFilesDir", "mCodeCacheDir"
+            };
+            for (String name : cached) {
+                try {
+                    setField(impl.getClass(), impl, name, null);
+                } catch (NoSuchFieldException ignored) {}
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "patchDataDir failed", e);
+        }
     }
 
     @Override
@@ -97,102 +97,58 @@ public class CustomContextWrapper extends ContextWrapper {
     }
 
     @Override
-    public String getPackageResourcePath() {
-        return gameContext.getPackageResourcePath();
+    public SharedPreferences getSharedPreferences(String name, int mode) {
+        return fusionContext.getSharedPreferences(targetPackage + "_" + name, mode);
     }
 
     @Override
-    public String getPackageCodePath() {
-        return gameContext.getPackageCodePath();
+    public boolean deleteSharedPreferences(String name) {
+        return fusionContext.deleteSharedPreferences(targetPackage + "_" + name);
     }
 
     @Override
-    public Context getApplicationContext() {
-        return fusionContext.getApplicationContext();
-    }
-
-    @Override
-    public ClassLoader getClassLoader() {
-        return gameContext.getClassLoader();
+    public boolean moveSharedPreferencesFrom(Context sourceContext, String name) {
+        return fusionContext.moveSharedPreferencesFrom(sourceContext, targetPackage + "_" + name);
     }
 
     @Override
     public Context createConfigurationContext(android.content.res.Configuration overrideConfiguration) {
-        Context baseContext = super.createConfigurationContext(overrideConfiguration);
-        return new CustomContextWrapper(gameContext, fusionContext, baseContext, targetPackage);
+        return new CustomContextWrapper(super.createConfigurationContext(overrideConfiguration), fusionContext, appContext, targetPackage);
     }
 
     @Override
     public Context createDisplayContext(Display display) {
-        Context baseContext = super.createDisplayContext(display);
-        return new CustomContextWrapper(gameContext, fusionContext, baseContext, targetPackage);
+        return new CustomContextWrapper(super.createDisplayContext(display), fusionContext, appContext, targetPackage);
     }
 
     @Override
     public Context createDeviceContext(int deviceId) {
-        Context baseContext = super.createDeviceContext(deviceId);
-        return new CustomContextWrapper(gameContext, fusionContext, baseContext, targetPackage);
-    }
-
-    @Override
-    public File getDataDir() {
-        return gameDataDir;
-    }
-
-    @Override
-    public File getFilesDir() {
-        return gameFilesDir;
-    }
-
-    @Override
-    public File getCacheDir() {
-        return gameCacheDir;
-    }
-
-    @Override
-    public File getCodeCacheDir() {
-        return gameCodeCacheDir;
-    }
-
-    @Override
-    public File getNoBackupFilesDir() {
-        return gameNoBackupDir;
-    }
-
-    @Override
-    public File getDatabasePath(String name) {
-        File dbFile = new File(gameDatabasesDir, name);
-        File parent = dbFile.getParentFile();
-        if (parent != null) parent.mkdirs();
-        return dbFile;
-    }
-
-    @Override
-    public File getDir(String name, int mode) {
-        File dir = new File(gameFilesDir, name);
-        dir.mkdirs();
-        return dir;
+        return new CustomContextWrapper(super.createDeviceContext(deviceId), fusionContext, appContext, targetPackage);
     }
 
     @Nullable
     @Override
     public File getExternalCacheDir() {
-        return gameExternalCacheDir;
+        return externalCacheDir;
     }
 
     @Override
     public File[] getExternalCacheDirs() {
-        return gameExternalCacheDir != null ? new File[]{gameExternalCacheDir} : new File[0];
+        return externalCacheDir != null ? new File[]{externalCacheDir} : new File[0];
     }
 
+    @Nullable
     @Override
     public File getExternalFilesDir(String type) {
-        if (type == null || gameExternalFilesDir == null) {
-            return gameExternalFilesDir;
+        if (externalFilesDir == null) {
+            return null;
         }
-        File typedDir = new File(gameExternalFilesDir, type);
-        typedDir.mkdirs();
-        return typedDir;
+        if (type == null) {
+            return externalFilesDir;
+        }
+        File dir = new File(externalFilesDir, type);
+        dir.mkdirs();
+        return dir;
     }
 
     @Override
@@ -202,92 +158,68 @@ public class CustomContextWrapper extends ContextWrapper {
     }
 
     @Override
-    public File getObbDir() {
-        return gameObbDir;
-    }
-
-    @Override
-    public File[] getObbDirs() {
-        return new File[]{gameObbDir};
-    }
-
-    @Override
     public File[] getExternalMediaDirs() {
-        File[] baseDirs = fusionContext.getExternalMediaDirs();
-        if (baseDirs == null) return new File[0];
-        File[] result = new File[baseDirs.length];
-        for (int i = 0; i < baseDirs.length; i++) {
-            result[i] = new File(baseDirs[i], targetPackage);
-            result[i].mkdirs();
+        File[] base = fusionContext.getExternalMediaDirs();
+        if (base == null) {
+            return new File[0];
         }
-        return result;
-    }
-
-
-    @Override
-    public FileInputStream openFileInput(String name) throws FileNotFoundException {
-        return new FileInputStream(new File(gameFilesDir, name));
-    }
-
-    @Override
-    public FileOutputStream openFileOutput(String name, int mode) throws FileNotFoundException {
-        return new FileOutputStream(new File(gameFilesDir, name));
-    }
-
-    @Override
-    public boolean deleteFile(String name) {
-        return new File(gameFilesDir, name).delete();
-    }
-
-    @Override
-    public String[] fileList() {
-        return gameFilesDir.list();
-    }
-
-    @Override
-    public boolean deleteDatabase(String name) {
-        return getDatabasePath(name).delete();
-    }
-
-    
-    @Override
-    public SharedPreferences getSharedPreferences(String name, int mode) {
-        return this.fusionContext.getSharedPreferences(name, mode);
-    }
-
-    public boolean deleteSharedPreferences(String name) {
-        return this.fusionContext.deleteSharedPreferences(name);
-    }
-
-    public boolean moveSharedPreferencesFrom(Context sourceContext, String name) {
-        return this.fusionContext.moveSharedPreferencesFrom(sourceContext, name);
+        File[] out = new File[base.length];
+        for (int i = 0; i < base.length; i++) {
+            out[i] = new File(base[i], targetPackage);
+            out[i].mkdirs();
+        }
+        return out;
     }
 
     @Override
     public Display getDisplay() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return this.fusionContext.getDisplay();
+            return fusionContext.getDisplay();
         }
         return null;
     }
 
     @Override
-    public Object getSystemService(String name) {
-        if (Context.LAYOUT_INFLATER_SERVICE.equals(name)) {
-            LayoutInflater inflater = LayoutInflater.from(fusionContext);
-            return inflater.cloneInContext(this);
+    public Object getSystemService(@NonNull String name) {
+        if (LAYOUT_INFLATER_SERVICE.equals(name)) {
+            return LayoutInflater.from(fusionContext).cloneInContext(this);
         }
-        return this.fusionContext.getSystemService(name);
+        return fusionContext.getSystemService(name);
     }
 
-    
-    private static void ensureDirsExist(File... dirs) {
-        for (File dir : dirs) {
-            if (dir != null && !dir.exists()) {
-                if (!dir.mkdirs()) {
-                    Log.w(TAG, "Failed to create directory: " + dir.getAbsolutePath());
-                }
+    @Override
+    public Context getApplicationContext() {
+        return appContext;
+    }
+
+    @Nullable
+    @Override
+    public File getObbDir() {
+        return obbDir;
+    }
+
+    @Override
+    public File[] getObbDirs() {
+        return obbDir != null ? new File[]{obbDir} : new File[0];
+    }
+
+    private static void ensureDirs(File... dirs) {
+        for (File d : dirs) {
+            if (d != null && !d.exists() && !d.mkdirs()) {
+                Log.w(TAG, "Failed to create dir: " + d.getAbsolutePath());
             }
         }
+    }
+
+    private static Object getField(Class<?> clazz, Object target, String name) throws Exception {
+        Field f = clazz.getDeclaredField(name);
+        f.setAccessible(true);
+        return f.get(target);
+    }
+
+    private static void setField(Class<?> clazz, Object target, String name, Object value) throws Exception {
+        Field f = clazz.getDeclaredField(name);
+        f.setAccessible(true);
+        f.set(target, value);
     }
 }
