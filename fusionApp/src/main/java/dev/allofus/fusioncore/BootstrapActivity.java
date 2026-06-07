@@ -14,6 +14,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -33,6 +36,7 @@ public class BootstrapActivity extends Activity {
     public static final String EXTRA_TARGET_PACKAGE = "target_package";
     public static final String EXTRA_USE_ORIGINAL_LIBUNITY = "og_libunity";
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
+    private static final String GLOBAL_METADATA_FILE = "global-metadata.dat";
 
     private final AtomicBoolean hookInstalled = new AtomicBoolean(false);
     private final AtomicBoolean fusionInitialized = new AtomicBoolean(false);
@@ -308,12 +312,15 @@ public class BootstrapActivity extends Activity {
         String appLibDir = appContext.getApplicationInfo().nativeLibraryDir;
         String targetGameAbi = resolveTargetGameAbi(gameLibDir);
         File appDataDir = new File(appContext.getFilesDir(), targetPackage);
+        File dataOnSdCard = new File(new File(Environment.getExternalStorageDirectory(), "FusionCore"), targetPackage);
 
         setPhaseStatus(getString(R.string.bootstrap_status_copy_assets));
         File copiedData = new File(appDataDir, "Data_copy");
         boolean copied = Utilities.copyAssets(gameContext.getAssets(), "bin/Data", copiedData);
         if (!copied) {
             Log.e(TAG, "Failed to copy Unity Data assets! BepInEx may not work correctly.");
+        } else {
+            applyGlobalMetadataOverride(dataOnSdCard, copiedData);
         }
 
         setPhaseStatus(getString(R.string.bootstrap_status_detecting_version));
@@ -353,8 +360,6 @@ public class BootstrapActivity extends Activity {
         setPhaseStatus(getString(R.string.bootstrap_status_extracting_runtime));
         File dotnetDir = new File(appDataDir, "dotnet");
 
-        File sdCard = Environment.getExternalStorageDirectory();
-        File dataOnSdCard = new File(new File(sdCard, "FusionCore"), targetPackage);
         File bepInExDir = new File(dataOnSdCard, "BepInEx");
 
         Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
@@ -386,6 +391,39 @@ public class BootstrapActivity extends Activity {
         );
 
         return new PreparedFusionState(targetPackage, config);
+    }
+
+    private void applyGlobalMetadataOverride(File dataOnSdCard, File copiedData) {
+        File overrideMetadata = new File(dataOnSdCard, GLOBAL_METADATA_FILE);
+        if (!overrideMetadata.isFile()) {
+            Log.i(TAG, "No global-metadata override found at " + overrideMetadata.getAbsolutePath());
+            return;
+        }
+
+        File targetMetadata = new File(new File(copiedData, "Managed/Metadata"), GLOBAL_METADATA_FILE);
+        try {
+            copyFile(overrideMetadata, targetMetadata);
+            Log.i(TAG, "Applied global-metadata override from " + overrideMetadata.getAbsolutePath());
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to apply global-metadata override from "
+                    + overrideMetadata.getAbsolutePath(), e);
+        }
+    }
+
+    private static void copyFile(File source, File target) throws IOException {
+        File parent = target.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IOException("Failed to create parent directory: " + parent.getAbsolutePath());
+        }
+
+        byte[] buffer = new byte[8192];
+        try (FileInputStream in = new FileInputStream(source);
+             FileOutputStream out = new FileOutputStream(target, false)) {
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                out.write(buffer, 0, count);
+            }
+        }
     }
 
     private static final class PreparedFusionState {
