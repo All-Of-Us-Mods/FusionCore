@@ -30,9 +30,9 @@ public class CustomContextWrapper extends ContextWrapper {
 
     public CustomContextWrapper(Context gameContext, Context fusionContext, Context appContext, String targetPackage) {
         super(gameContext);
-        this.fusionContext = appContext;  // Original was doing activity, activity as fusionContext, appContext, but IG I'll just do it like that and won't touch, I really don't understand why it was like that
+        this.fusionContext = fusionContext;
         this.targetPackage = targetPackage;
-        this.appContext = appContext;  // was the same as fusionContext or appContext cuz Original was doing activity, activity as fusionContext, appContext
+        this.appContext = appContext;
 
         this.dataDir = new File(fusionContext.getFilesDir(), targetPackage);
         ensureDirs(
@@ -205,15 +205,12 @@ public class CustomContextWrapper extends ContextWrapper {
 
     @Override
     public Object getSystemService(@NonNull String name) {
-        if (LAYOUT_INFLATER_SERVICE.equals(name)) {
-            return LayoutInflater.from(fusionContext).cloneInContext(this);
-        }
         return fusionContext.getSystemService(name);
     }
 
-        @Override
+    @Override
     public Context getApplicationContext() {
-        return appContext;
+        return fusionContext;
     }
 
     @Nullable
