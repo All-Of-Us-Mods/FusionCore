@@ -58,6 +58,9 @@ public class BootstrapActivity extends Activity {
             return;
         }
 
+        File logDir = new File(new File(new File(Environment.getExternalStorageDirectory(), "FusionCore"), targetPackage), "logs");
+        LogCapture.start(logDir);
+
         // Let the loading screen render first, then perform initialization work.
         statusView.post(() -> new Thread(() -> runBootstrapFlow(targetPackage), "bootstrap-flow").start());
     }
@@ -86,6 +89,9 @@ public class BootstrapActivity extends Activity {
             failAndFinish("Failed to create package context for target package: " + targetPackage, e);
             return;
         }
+
+        FusionInstrumentation.setGameClassLoader(gameContext.getClassLoader());
+        FusionInstrumentation.install();
 
         boolean useOriginalLibUnity = getIntent().getBooleanExtra(EXTRA_USE_ORIGINAL_LIBUNITY, false);
         try {
