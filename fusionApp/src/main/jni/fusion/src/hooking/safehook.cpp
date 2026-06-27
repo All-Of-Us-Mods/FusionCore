@@ -105,25 +105,34 @@ void *dobby_hook(void *target, void *hook, bool use_near_branch = false)
     else dobby_disable_near_branch_trampoline();
 
     int error = DobbyHook(target, hook, &original);
+    dobby_disable_near_branch_trampoline();
+
     if (error != 0)
     {
-        dobby_disable_near_branch_trampoline();
         void *offset = reinterpret_cast<void *>(
                 reinterpret_cast<uintptr_t>(target) -
                 reinterpret_cast<uintptr_t>(library_base)
         );
-        log_format(LogLevel::ERROR, TAG, "Failed to hook target at offset 0x{:X}, error {}",
-                   reinterpret_cast<uintptr_t>(offset), error);
+        log_format(LogLevel::ERROR, TAG, "Failed to hook target at target 0x{:X} & offset 0x{:X}, error {}",
+                   reinterpret_cast<uintptr_t>(target), reinterpret_cast<uintptr_t>(offset), error);
         return nullptr;
     }
 
-    dobby_disable_near_branch_trampoline();
+    log_format(LogLevel::INFO, TAG, "Successfully hooked target at 0x{:X} to hook at 0x{:X}",
+               reinterpret_cast<uintptr_t>(target),
+               reinterpret_cast<uintptr_t>(hook));
     return original;
 }
 
 
 bool protect_trampoline(void *trampoline, size_t size, int protection)
 {
+    if (!trampoline)
+    {
+        log(LogLevel::ERROR, TAG, "Cannot set memory protection for a null trampoline!");
+        return false;
+    }
+
     auto start = reinterpret_cast<uintptr_t>(trampoline);
     auto start_page = align_down(start, page_size);
     auto end = start + size - 1;
@@ -158,6 +167,13 @@ bool protect_trampoline(void *trampoline, size_t size, int protection)
 // can read it properly.
 void *bridge_hook(void *target_function, void *hook_function)
 {
+    if (!target_function || !hook_function)
+    {
+        log_format(LogLevel::ERROR, TAG, "Invalid parameters for bridge hook! Target: 0x{:X} Hook: 0x{:X}",
+                   reinterpret_cast<uintptr_t>(target_function), reinterpret_cast<uintptr_t>(hook_function));
+        return nullptr;
+    }
+
     log_format(LogLevel::DEBUG, TAG,
                       "Target at offset 0x{:X} requires special return buffer handling, setting up trampoline.",
                       reinterpret_cast<uintptr_t>(target_function));
@@ -277,18 +293,28 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
     if (use_bridge)
     {
         actual_hook = bridge_hook(target_function, hook_function);
-        if (!actual_hook) return nullptr;
+        if (!actual_hook)
+        {
+            log(LogLevel::ERROR, TAG, "Failed to create bridge trampoline for special return buffer hook! Cannot install hook.");
+            return nullptr;
+        }
     }
 
     // TODO: better check if function is actually inside libil2cpp.so
     if (rva < 0)
     {
         // function does not belong to libil2cpp.so
+        log_format(LogLevel::DEBUG, TAG,
+                          "Target at offset 0x{:X} is outside of library bounds, using Dobby directly.",
+                          rva);
         return dobby_hook(target_function, actual_hook, withinLimits);
     }
 
     if (withinLimits)
     {
+            log_format(LogLevel::DEBUG, TAG,
+                            "Target at offset 0x{:X} is within near branch limits, using Dobby with near branch.",
+                            rva);
         // hook is close enough for a near branch.
         return dobby_hook(target_function, actual_hook, true);
     }
@@ -359,6 +385,12 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
 void safehook_destroy_hook(void *target)
 {
     std::lock_guard<std::mutex> guard(hook_mutex);
+
+    if (!target)
+    {
+        log(LogLevel::ERROR, TAG, "Cannot destroy hook for a null target!");
+        return;
+    }
 
     void *offset = reinterpret_cast<void *>(
             reinterpret_cast<uintptr_t>(target) -

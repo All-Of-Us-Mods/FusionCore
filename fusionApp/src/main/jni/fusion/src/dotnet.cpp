@@ -11,7 +11,6 @@ namespace fs = std::filesystem;
 
 void build_tpa(const char *directory, std::string &tpaList);
 
-
 int dotnet_execute_assembly(const DotNetConfig& config)
 {
     log(LogLevel::INFO, TAG, "Preparing CLR properties");

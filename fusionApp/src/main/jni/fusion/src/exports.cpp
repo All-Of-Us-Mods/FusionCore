@@ -28,3 +28,9 @@ void write_log(const char *text)
 {
     log(LogLevel::INFO, "Fusion.NET", text);
 }
+
+void write_log_level(int level, const char *text)
+{
+    LogLevel logLevel = static_cast<LogLevel>(level);
+    log(logLevel, "Fusion.NET", text);
+}

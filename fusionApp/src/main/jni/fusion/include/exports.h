@@ -18,6 +18,8 @@ void create_alert(const char *title, const char *message);
 
 void write_log(const char *text);
 
+void write_log_level(int level, const char *text);
+
 #ifdef __cplusplus
 }
 #endif
