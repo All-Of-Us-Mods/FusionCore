@@ -15,6 +15,8 @@ dependencies {
     implementation("top.canyie.pine:core:0.3.0")
     implementation("io.github.hexhacking:xdl:2.3.0")
     implementation("androidx.annotation:annotation-jvm:1.9.1")
+    // fuck you too vr android yeah thanks
+    implementation("androidx.appcompat:appcompat:1.7.1")
 }
 
 android {

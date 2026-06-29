@@ -104,12 +104,18 @@ public class BootstrapActivity extends Activity {
         try {
             ClassLoaderHooks.installHooks(gameContext.getClassLoader());
             PackageManagerHooks.installHooks(getPackageManager());
-            UnityPlayerHooks.installHooks(gameContext);
+            UnityPlayerHooks.installHooks(gameContext, new File(preparedState.config.unityDataDirectory));
         } catch (Exception e) {
             Log.e(TAG, "Failed to install base hooks", e);
         }
 
         final String launcherClassName = launcher.getClassName();
+        try {
+            AppCompatBypassHooks.installHooks(gameContext.getClassLoader(), launcherClassName);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to install AppCompat bypass hooks", e);
+        }
+
         if (!installLauncherOnCreateHook(gameContext.getClassLoader(), launcherClassName,
                 (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
             failAndFinish("Failed to install launcher hook! See log for details.", null);
