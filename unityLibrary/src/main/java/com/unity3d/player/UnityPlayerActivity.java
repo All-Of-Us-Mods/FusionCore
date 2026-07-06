@@ -41,7 +41,7 @@ import dev.allofus.fusioncore.LibUnityDownloader;
 import dev.allofus.fusioncore.NativeLibraryManager;
 import dev.allofus.fusioncore.VersionLookup;
 
-public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecycleEvents
+public class UnityPlayerActivity extends Activity
 {
     public static final String TAG = "FusionCore";
 
@@ -130,6 +130,8 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             extractZipFromAssets(this, "BepInEx-arm64.zip", bepInExDir);
             extractZipFromAssets(this, "dotnet-arm64.zip", dotnetDir);
 
+            LibUnityDownloader.ensureInteropBaseLibraries(new File(bepInExDir, "unity-libs"), version);
+
             FusionConfig config = new FusionConfig(
                     gameLibDir,
                     appLibDir,
@@ -173,7 +175,8 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
             wrappedContext = this;
         }
 
-        mUnityPlayer = new UnityPlayerForActivityOrService(wrappedContext, this);
+        mUnityPlayer = new UnityPlayerForActivityOrService(wrappedContext,
+                (IUnityPlayerLifecycleEvents) createUnityLifecycleProxy());
         UnityPlayer.currentActivity = this;
         UnityPlayer.currentContext = wrappedContext;
 
@@ -219,21 +222,65 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         }
     }
 
+    private boolean patchFileVersion(File file, String fromVersion, String toVersion) {
+        if (file == null || !file.isFile() || fromVersion.length() != toVersion.length()) {
+            return false;
+        }
+        byte[] from = fromVersion.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        byte[] to = toVersion.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        try {
+            byte[] data = java.nio.file.Files.readAllBytes(file.toPath());
+            boolean patched = false;
+            int idx = indexOf(data, from, 0);
+            while (idx >= 0) {
+                System.arraycopy(to, 0, data, idx, to.length);
+                patched = true;
+                idx = indexOf(data, from, idx + from.length);
+            }
+            if (patched) {
+                java.nio.file.Files.write(file.toPath(), data);
+            }
+            return patched;
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to patch version in " + file.getName() + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static int indexOf(byte[] haystack, byte[] needle, int start) {
+        outer:
+        for (int i = start; i <= haystack.length - needle.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) continue outer;
+            }
+            return i;
+        }
+        return -1;
+    }
+
     private void injectDexPath(ClassLoader loader, String dexPath) {
         try {
             java.lang.reflect.Field pathListField = findField(loader.getClass(), "pathList");
             Object pathList = pathListField.get(loader);
+
+            java.lang.reflect.Field dexElementsField = findField(pathList.getClass(), "dexElements");
 
             java.lang.reflect.Method addDexPathMethod = null;
             try {
                 addDexPathMethod = pathList.getClass().getDeclaredMethod("addDexPath", String.class, File.class);
                 addDexPathMethod.setAccessible(true);
                 addDexPathMethod.invoke(pathList, dexPath, null);
-                Log.i(TAG, "Injected dex via addDexPath: " + dexPath);
+                Object[] elements = (Object[]) dexElementsField.get(pathList);
+                if (elements != null && elements.length > 1) {
+                    Object added = elements[elements.length - 1];
+                    System.arraycopy(elements, 0, elements, 1, elements.length - 1);
+                    elements[0] = added;
+                    dexElementsField.set(pathList, elements);
+                }
+                Log.i(TAG, "Injected dex (prepended via addDexPath): " + dexPath);
                 return;
             } catch (NoSuchMethodException ignored) {}
 
-            java.lang.reflect.Field dexElementsField = findField(pathList.getClass(), "dexElements");
             Object[] oldDexElements = (Object[]) dexElementsField.get(pathList);
 
             Class<?> elementClass = oldDexElements[0].getClass();
@@ -473,13 +520,22 @@ public class UnityPlayerActivity extends Activity implements IUnityPlayerLifecyc
         }
     }
 
-    // When Unity player unloaded move task to background
-    @Override public void onUnityPlayerUnloaded() {
-        moveTaskToBack(true);
-    }
-
-    // Callback before Unity player process is killed
-    @Override public void onUnityPlayerQuitted() {
+    private Object createUnityLifecycleProxy() {
+        try {
+            Class<?> iface = getClassLoader().loadClass("com.unity3d.player.IUnityPlayerLifecycleEvents");
+            return java.lang.reflect.Proxy.newProxyInstance(
+                    iface.getClassLoader(),
+                    new Class<?>[]{iface},
+                    (proxy, method, args) -> {
+                        if ("onUnityPlayerUnloaded".equals(method.getName())) {
+                            runOnUiThread(() -> moveTaskToBack(true));
+                        }
+                        return null;
+                    });
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to create Unity lifecycle proxy", e);
+            return null;
+        }
     }
 
     @Override protected void onNewIntent(Intent intent)

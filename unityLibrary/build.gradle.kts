@@ -11,7 +11,8 @@ repositories {
 }
 
 dependencies {
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+    compileOnly(files("libs/polytopia-unity-classes.jar"))
+    implementation(files("libs/nativeloader-shim.jar"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
     implementation("top.canyie.pine:core:0.3.0")
     implementation("io.github.hexhacking:xdl:2.3.0")

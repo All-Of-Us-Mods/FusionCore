@@ -66,15 +66,23 @@ public final class LibUnityDownloader {
         File cacheMetaFile = new File(outputDir, LIBUNITY_CACHE_META_FILE);
         String currentAbi = Build.SUPPORTED_ABIS[0];
         String trimmedVersion = version.trim();
-        String downloadVersion = normalizeVersionForDownload(trimmedVersion);
+        String requestedVersion = normalizeVersionForDownload(trimmedVersion);
+
+        String downloadVersion = resolveBestAvailableVersion(requestedVersion);
+        if (downloadVersion == null) {
+            downloadVersion = requestedVersion;
+        }
         String cacheKey = downloadVersion + "|" + currentAbi;
 
-        if (!trimmedVersion.equals(downloadVersion)) {
+        if (!downloadVersion.equals(requestedVersion)) {
+            Log.i(TAG, "libunity " + requestedVersion + " not hosted; using nearest available <= detected: " + downloadVersion);
+        } else if (!trimmedVersion.equals(downloadVersion)) {
             Log.i(TAG, "Normalized Unity version for download URL: " + trimmedVersion + " -> " + downloadVersion);
         }
 
         if (isCachedLibUnityValid(outputLibUnity, cacheMetaFile, cacheKey)) {
             Log.i(TAG, "Using cached libunity for " + cacheKey + " at " + outputLibUnity.getAbsolutePath());
+            patchLibUnityVersionIfNeeded(outputLibUnity, downloadVersion, requestedVersion, trimmedVersion);
             return true;
         }
 
@@ -141,6 +149,8 @@ public final class LibUnityDownloader {
                 Log.e(TAG, "Failed to move downloaded libunity into place");
                 return false;
             }
+
+            patchLibUnityVersionIfNeeded(outputLibUnity, downloadVersion, requestedVersion, trimmedVersion);
 
             if (!writeLibUnityCacheMeta(cacheMetaFile, cacheKey, outputLibUnity.length())) {
                 Log.w(TAG, "Downloaded libunity but failed to update cache metadata");
@@ -212,6 +222,215 @@ public final class LibUnityDownloader {
             return matcher.group(1);
         }
         return version;
+    }
+
+    private static final Pattern INDEX_VERSION_PATTERN =
+            Pattern.compile("href=\"\\.?/?(\\d+)\\.(\\d+)\\.(\\d+)/\"");
+
+    private static final String INTEROP_LIBRARIES_URL = "https://unity.bepinex.dev/libraries/";
+
+    public static boolean ensureInteropBaseLibraries(File unityLibsDir, String gameVersion) {
+        if (unityLibsDir == null || gameVersion == null) {
+            return false;
+        }
+        String gameBase = normalizeVersionForDownload(gameVersion.trim());
+        String resolvedBase = resolveBestAvailableVersion(gameVersion);
+        if (resolvedBase == null || resolvedBase.equals(gameBase)) {
+            return false;
+        }
+        File target = new File(unityLibsDir, gameBase + ".zip");
+        if (target.isFile() && target.length() > 0) {
+            Log.i(TAG, "BepInEx interop base libraries already present: " + target.getAbsolutePath());
+            return true;
+        }
+        if (!unityLibsDir.exists() && !unityLibsDir.mkdirs()) {
+            Log.e(TAG, "Failed to create unity-libs directory: " + unityLibsDir.getAbsolutePath());
+            return false;
+        }
+        String url = INTEROP_LIBRARIES_URL + resolvedBase + ".zip";
+        Log.i(TAG, "Providing BepInEx interop base libraries " + url + " as " + target.getName());
+        return downloadToFile(url, target);
+    }
+
+    private static boolean downloadToFile(String urlString, File target) {
+        HttpURLConnection connection = null;
+        File temp = new File(target.getAbsolutePath() + ".download");
+        try {
+            connection = (HttpURLConnection) new URL(urlString).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(60000);
+            connection.setInstanceFollowRedirects(true);
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300) {
+                Log.e(TAG, "Failed to download " + urlString + ", HTTP " + status);
+                return false;
+            }
+            try (InputStream in = new BufferedInputStream(connection.getInputStream());
+                 FileOutputStream out = new FileOutputStream(temp, false)) {
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) != -1) {
+                    out.write(buf, 0, n);
+                }
+            }
+            if (target.exists() && !target.delete()) {
+                Log.e(TAG, "Failed to replace existing file: " + target.getAbsolutePath());
+                return false;
+            }
+            if (!temp.renameTo(target)) {
+                Log.e(TAG, "Failed to move downloaded file into place: " + target.getAbsolutePath());
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error downloading " + urlString + ": " + e.getMessage());
+            return false;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+            if (temp.exists()) {
+                temp.delete();
+            }
+        }
+    }
+
+    private static void patchLibUnityVersionIfNeeded(File libFile, String downloadVersion,
+                                                     String requestedNormalized, String requestedFull) {
+        if (downloadVersion == null || downloadVersion.equals(requestedNormalized)) {
+            return;
+        }
+        if (requestedFull == null || !requestedFull.startsWith(requestedNormalized)) {
+            return;
+        }
+        String suffix = requestedFull.substring(requestedNormalized.length());
+        String downloadFull = downloadVersion + suffix;
+        if (downloadFull.length() != requestedFull.length()) {
+            return;
+        }
+        try {
+            byte[] data = java.nio.file.Files.readAllBytes(libFile.toPath());
+            byte[] from = downloadFull.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+            byte[] to = requestedFull.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+            boolean patched = false;
+            int idx = indexOf(data, from, 0);
+            while (idx >= 0) {
+                System.arraycopy(to, 0, data, idx, to.length);
+                patched = true;
+                idx = indexOf(data, from, idx + from.length);
+            }
+            if (patched) {
+                java.nio.file.Files.write(libFile.toPath(), data);
+                Log.i(TAG, "Patched libunity version " + downloadFull + " -> " + requestedFull);
+            } else {
+                Log.w(TAG, "libunity did not contain version string " + downloadFull + " (already patched?)");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to patch libunity version: " + e.getMessage());
+        }
+    }
+
+    private static int indexOf(byte[] haystack, byte[] needle, int start) {
+        outer:
+        for (int i = start; i <= haystack.length - needle.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) continue outer;
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    public static String resolveBestAvailableVersion(String requestedVersion) {
+        int[] target = parseVersionTriplet(requestedVersion);
+        if (target == null) {
+            return null;
+        }
+
+        String index = fetchText(LIBUNITY_DOWNLOAD_URL);
+        if (index == null) {
+            return null;
+        }
+
+        int[] best = null;
+        String bestStr = null;
+        Matcher m = INDEX_VERSION_PATTERN.matcher(index);
+        while (m.find()) {
+            int[] candidate = {
+                    Integer.parseInt(m.group(1)),
+                    Integer.parseInt(m.group(2)),
+                    Integer.parseInt(m.group(3))
+            };
+            if (compareTriplets(candidate, target) <= 0
+                    && (best == null || compareTriplets(candidate, best) > 0)) {
+                best = candidate;
+                bestStr = m.group(1) + "." + m.group(2) + "." + m.group(3);
+            }
+        }
+
+        if (bestStr == null) {
+            Log.e(TAG, "No hosted libunity version <= " + requestedVersion + " found in index");
+        }
+        return bestStr;
+    }
+
+    private static int[] parseVersionTriplet(String version) {
+        if (version == null) {
+            return null;
+        }
+        Matcher m = Pattern.compile("(\\d+)\\.(\\d+)\\.(\\d+)").matcher(version);
+        if (!m.find()) {
+            return null;
+        }
+        return new int[] {
+                Integer.parseInt(m.group(1)),
+                Integer.parseInt(m.group(2)),
+                Integer.parseInt(m.group(3))
+        };
+    }
+
+    private static int compareTriplets(int[] a, int[] b) {
+        for (int i = 0; i < 3; i++) {
+            if (a[i] != b[i]) {
+                return Integer.compare(a[i], b[i]);
+            }
+        }
+        return 0;
+    }
+
+    private static String fetchText(String urlString) {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(urlString).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(30000);
+            connection.setInstanceFollowRedirects(true);
+
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300) {
+                Log.e(TAG, "Failed to fetch libunity version index, HTTP " + status);
+                return null;
+            }
+
+            InputStream in = connection.getInputStream();
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            in.close();
+            return out.toString("UTF-8");
+        } catch (Exception e) {
+            Log.e(TAG, "Error fetching libunity version index: " + e.getMessage());
+            return null;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
     }
 }
 
