@@ -228,16 +228,30 @@ public final class LibUnityDownloader {
             Pattern.compile("href=\"\\.?/?(\\d+)\\.(\\d+)\\.(\\d+)/\"");
 
     private static final String INTEROP_LIBRARIES_URL = "https://unity.bepinex.dev/libraries/";
+    private static final int INTEROP_MAX_PROBES = 12;
+
+    public static boolean ensureInteropBaseLibrariesSafely(File unityLibsDir, String gameVersion) {
+        FutureTask<Boolean> task = new FutureTask<>(() -> ensureInteropBaseLibraries(unityLibsDir, gameVersion));
+        Thread worker = new Thread(task, "FusionCore-InteropLibs");
+        worker.start();
+
+        try {
+            return task.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            Log.e(TAG, "Interop base libraries thread was interrupted", e);
+            return false;
+        } catch (ExecutionException e) {
+            Log.e(TAG, "Interop base libraries provisioning failed", e.getCause() != null ? e.getCause() : e);
+            return false;
+        }
+    }
 
     public static boolean ensureInteropBaseLibraries(File unityLibsDir, String gameVersion) {
         if (unityLibsDir == null || gameVersion == null) {
             return false;
         }
         String gameBase = normalizeVersionForDownload(gameVersion.trim());
-        String resolvedBase = resolveBestAvailableVersion(gameVersion);
-        if (resolvedBase == null || resolvedBase.equals(gameBase)) {
-            return false;
-        }
         File target = new File(unityLibsDir, gameBase + ".zip");
         if (target.isFile() && target.length() > 0) {
             Log.i(TAG, "BepInEx interop base libraries already present: " + target.getAbsolutePath());
@@ -247,9 +261,50 @@ public final class LibUnityDownloader {
             Log.e(TAG, "Failed to create unity-libs directory: " + unityLibsDir.getAbsolutePath());
             return false;
         }
-        String url = INTEROP_LIBRARIES_URL + resolvedBase + ".zip";
-        Log.i(TAG, "Providing BepInEx interop base libraries " + url + " as " + target.getName());
-        return downloadToFile(url, target);
+
+        java.util.List<String> candidates = new java.util.ArrayList<>();
+        candidates.add(gameBase);
+        int[] triplet = parseVersionTriplet(gameBase);
+        if (triplet != null) {
+            for (int patch = triplet[2] - 1; patch >= 0 && candidates.size() < INTEROP_MAX_PROBES; patch--) {
+                candidates.add(triplet[0] + "." + triplet[1] + "." + patch);
+            }
+        }
+        String indexResolved = resolveBestAvailableVersion(gameVersion);
+        if (indexResolved != null && !candidates.contains(indexResolved)) {
+            candidates.add(indexResolved);
+        }
+
+        for (String candidate : candidates) {
+            String url = INTEROP_LIBRARIES_URL + candidate + ".zip";
+            if (!urlExists(url)) {
+                continue;
+            }
+            Log.i(TAG, "Providing BepInEx interop base libraries " + url + " as " + target.getName());
+            return downloadToFile(url, target);
+        }
+        Log.e(TAG, "No hosted interop base libraries found for " + gameVersion);
+        return false;
+    }
+
+    private static boolean urlExists(String urlString) {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(urlString).openConnection();
+            connection.setRequestMethod("HEAD");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+            connection.setInstanceFollowRedirects(true);
+            int status = connection.getResponseCode();
+            return status >= 200 && status < 300;
+        } catch (Exception e) {
+            Log.w(TAG, "Probe failed for " + urlString, e);
+            return false;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
     }
 
     private static boolean downloadToFile(String urlString, File target) {
@@ -343,19 +398,24 @@ public final class LibUnityDownloader {
     }
 
     public static String resolveBestAvailableVersion(String requestedVersion) {
+        return resolveBestVersionFromIndex(LIBUNITY_DOWNLOAD_URL, INDEX_VERSION_PATTERN, requestedVersion);
+    }
+
+    private static String resolveBestVersionFromIndex(String indexUrl, Pattern entryPattern,
+                                                      String requestedVersion) {
         int[] target = parseVersionTriplet(requestedVersion);
         if (target == null) {
             return null;
         }
 
-        String index = fetchText(LIBUNITY_DOWNLOAD_URL);
+        String index = fetchText(indexUrl);
         if (index == null) {
             return null;
         }
 
         int[] best = null;
         String bestStr = null;
-        Matcher m = INDEX_VERSION_PATTERN.matcher(index);
+        Matcher m = entryPattern.matcher(index);
         while (m.find()) {
             int[] candidate = {
                     Integer.parseInt(m.group(1)),
@@ -370,7 +430,7 @@ public final class LibUnityDownloader {
         }
 
         if (bestStr == null) {
-            Log.e(TAG, "No hosted libunity version <= " + requestedVersion + " found in index");
+            Log.e(TAG, "No hosted version <= " + requestedVersion + " found in " + indexUrl);
         }
         return bestStr;
     }
@@ -424,7 +484,7 @@ public final class LibUnityDownloader {
             in.close();
             return out.toString("UTF-8");
         } catch (Exception e) {
-            Log.e(TAG, "Error fetching libunity version index: " + e.getMessage());
+            Log.e(TAG, "Error fetching version index " + urlString, e);
             return null;
         } finally {
             if (connection != null) {

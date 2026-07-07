@@ -130,7 +130,7 @@ public class UnityPlayerActivity extends Activity
             extractZipFromAssets(this, "BepInEx-arm64.zip", bepInExDir);
             extractZipFromAssets(this, "dotnet-arm64.zip", dotnetDir);
 
-            LibUnityDownloader.ensureInteropBaseLibraries(new File(bepInExDir, "unity-libs"), version);
+            LibUnityDownloader.ensureInteropBaseLibrariesSafely(new File(bepInExDir, "unity-libs"), version);
 
             FusionConfig config = new FusionConfig(
                     gameLibDir,
