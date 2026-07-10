@@ -26,7 +26,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
 import android.content.pm.ApplicationInfo;
@@ -67,6 +72,8 @@ public class UnityPlayerActivity extends Activity
         getIntent().putExtra("unity", cmdLine);
 
         // ---------- FUSION CORE -------------
+
+        logStartupBanner();
 
         Context wrappedContext = null;
         try {
@@ -130,7 +137,11 @@ public class UnityPlayerActivity extends Activity
             extractZipFromAssets(this, "BepInEx-arm64.zip", bepInExDir);
             extractZipFromAssets(this, "dotnet-arm64.zip", dotnetDir);
 
-            LibUnityDownloader.ensureInteropBaseLibrariesSafely(new File(bepInExDir, "unity-libs"), version);
+            seedPreGeneratedInterop(bepInExDir);
+
+            File unityLibsDir = new File(bepInExDir, "unity-libs");
+            LibUnityDownloader.ensureInteropBaseLibrariesSafely(unityLibsDir, version);
+            extractUnityBaseLibsIfNeeded(unityLibsDir);
 
             FusionConfig config = new FusionConfig(
                     gameLibDir,
@@ -145,13 +156,17 @@ public class UnityPlayerActivity extends Activity
             );
 
             // Setup native library hooks
+            HashSet<String> registeredGameLibs = new HashSet<>();
             File[] nativeLibs = new File(gameLibDir).listFiles();
             if (nativeLibs != null) {
                 for (File file : nativeLibs) {
                     String extractedName = file.getName().substring(3).replace(".so", "");
                     NativeLibraryManager.addGameLibrary(extractedName);
+                    registeredGameLibs.add(extractedName);
                 }
-            } else {
+            }
+            registerApkGameLibraries(gameContext.getApplicationInfo(), registeredGameLibs);
+            if (registeredGameLibs.isEmpty()) {
                 Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
             }
 
@@ -187,6 +202,25 @@ public class UnityPlayerActivity extends Activity
         setContentView(unityView);
         unityView.requestFocus();
         applyImmersiveMode();
+    }
+
+    private void logStartupBanner() {
+        Log.i(TAG, "Device: " + Build.MANUFACTURER + " " + Build.MODEL
+                + ", Android " + Build.VERSION.RELEASE + " (SDK " + Build.VERSION.SDK_INT + ")");
+        logPackageVersion("Launcher", getPackageName());
+        logPackageVersion("Game", TARGET_GAME);
+    }
+
+    private void logPackageVersion(String label, String packageName) {
+        try {
+            var info = getPackageManager().getPackageInfo(packageName, 0);
+            long versionCode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                    ? info.getLongVersionCode() : info.versionCode;
+            Log.i(TAG, label + " version: " + info.versionName + " (versionCode " + versionCode
+                    + ", installed/updated " + new java.util.Date(info.lastUpdateTime) + ")");
+        } catch (Exception e) {
+            Log.w(TAG, "Could not determine " + label + " version: " + packageName, e);
+        }
     }
 
     private ClassLoader setupGameClassLoader(Context gameContext) {
@@ -337,6 +371,41 @@ public class UnityPlayerActivity extends Activity
         Log.i(TAG, "Extracted " + extracted + " dex files");
     }
 
+    // Registers game native libraries that were never extracted to disk (extractNativeLibs=false
+    // installs keep them inside base.apk / split_config apks). The Android linker can dlopen
+    // "<apk>!/lib/<abi>/libX.so" directly as long as the entry is stored uncompressed.
+    private static void registerApkGameLibraries(ApplicationInfo gameInfo, HashSet<String> registered) {
+        ArrayList<String> apkPaths = new ArrayList<>();
+        apkPaths.add(gameInfo.sourceDir);
+        if (gameInfo.splitSourceDirs != null) {
+            Collections.addAll(apkPaths, gameInfo.splitSourceDirs);
+        }
+        String prefix = "lib/arm64-v8a/lib";
+        for (String apkPath : apkPaths) {
+            try (ZipFile zip = new ZipFile(apkPath)) {
+                Enumeration<? extends ZipEntry> entries = zip.entries();
+                while (entries.hasMoreElements()) {
+                    ZipEntry entry = entries.nextElement();
+                    String entryName = entry.getName();
+                    if (!entryName.startsWith(prefix) || !entryName.endsWith(".so")) {
+                        continue;
+                    }
+                    String libName = entryName.substring(prefix.length(), entryName.length() - 3);
+                    if (!registered.add(libName)) {
+                        continue;
+                    }
+                    if (entry.getMethod() != ZipEntry.STORED) {
+                        Log.w(TAG, "Game native library is compressed inside the APK and may fail to load: " + entryName);
+                    }
+                    NativeLibraryManager.addGameLibrary(libName, apkPath + "!/" + entryName);
+                    Log.i(TAG, "Registered in-APK game library " + libName);
+                }
+            } catch (IOException e) {
+                Log.w(TAG, "Failed to scan game APK for native libraries: " + apkPath, e);
+            }
+        }
+    }
+
     private static boolean copyAssets(AssetManager gameAssets, String assetPath, File outputFolder) {
         deleteRecursive(outputFolder);
 
@@ -435,9 +504,127 @@ public class UnityPlayerActivity extends Activity
         System.loadLibrary("fusion");
     }
 
+    // BepInEx's interop hash covers the EXTRACTED unity-libs DLLs, but BepInEx itself only
+    // extracts them from the zip while regenerating — on a fresh install they are missing at
+    // check time and the seeded interop assemblies would be wrongly declared outdated. Extract
+    // them up front so the hash check sees the same state as the device that generated the seed.
+    private static void extractUnityBaseLibsIfNeeded(File unityLibsDir) {
+        File[] dlls = unityLibsDir.listFiles((dir, name) -> name.endsWith(".dll"));
+        if (dlls != null && dlls.length > 0) {
+            return;
+        }
+        File[] zips = unityLibsDir.listFiles((dir, name) -> name.endsWith(".zip"));
+        if (zips == null || zips.length == 0) {
+            return;
+        }
+        Log.i(TAG, "Extracting unity base libraries from " + zips[0].getName() + " for the interop hash check");
+        extractZipFile(zips[0], unityLibsDir);
+    }
+
+    // First-run interop generation (Cpp2IL reads the whole game binary + metadata) needs more
+    // RAM than low-end phones have free and takes minutes, so ship pre-generated assemblies
+    // for the known game version instead. BepInEx's own up-to-date check cannot validate them
+    // across devices (its hash covers files in filesystem enumeration order, which varies), so
+    // UpdateInteropAssemblies is disabled in the bundled config and game updates are tracked
+    // here via a version marker: on a version change the interop folder is discarded, which
+    // makes BepInEx regenerate. assembly-hash.txt doubles as a completeness marker — BepInEx
+    // writes it only after a successful generation.
+    private void seedPreGeneratedInterop(File bepInExDir) {
+        String gameVersion;
+        try {
+            gameVersion = getPackageManager().getPackageInfo(TARGET_GAME, 0).versionName;
+        } catch (Exception e) {
+            Log.w(TAG, "Could not determine game version for interop seeding", e);
+            return;
+        }
+
+        File interopDir = new File(bepInExDir, "interop");
+        File markerFile = new File(bepInExDir, "interop.version");
+        String seededVersion = readTextFile(markerFile);
+
+        String[] existing = interopDir.list();
+        if (existing != null && existing.length > 0) {
+            boolean complete = new File(interopDir, "assembly-hash.txt").exists();
+            if (complete && seededVersion == null) {
+                // Set from an install predating the marker; it matched the game back then.
+                writeTextFile(markerFile, gameVersion);
+                return;
+            }
+            if (complete && gameVersion.equals(seededVersion)) {
+                return;
+            }
+            Log.i(TAG, complete
+                    ? "Game updated (" + seededVersion + " -> " + gameVersion + "), discarding old interop assemblies"
+                    : "Interop assemblies incomplete (no assembly-hash.txt), discarding");
+            deleteRecursively(interopDir);
+        } else if (existing != null) {
+            // An existing but empty folder would make BepInEx skip generation entirely now
+            // that UpdateInteropAssemblies is off — remove it so the check sees "missing".
+            interopDir.delete();
+        }
+
+        String assetName = "interop-" + gameVersion + ".zip";
+        try (InputStream probe = getAssets().open(assetName)) {
+            Log.i(TAG, "Seeding pre-generated interop assemblies from " + assetName);
+        } catch (IOException e) {
+            Log.i(TAG, "No pre-generated interop asset " + assetName + "; BepInEx will generate on device.");
+            writeTextFile(markerFile, gameVersion);
+            return;
+        }
+        extractZipFromAssets(this, assetName, interopDir);
+        writeTextFile(markerFile, gameVersion);
+    }
+
+    private static String readTextFile(File file) {
+        try (FileInputStream fis = new FileInputStream(file)) {
+            byte[] bytes = new byte[(int) file.length()];
+            int read = fis.read(bytes);
+            return new String(bytes, 0, Math.max(read, 0)).trim();
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private static void writeTextFile(File file, String content) {
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(content.getBytes());
+        } catch (IOException e) {
+            Log.w(TAG, "Failed to write " + file.getAbsolutePath(), e);
+        }
+    }
+
+    private static void deleteRecursively(File file) {
+        File[] children = file.listFiles();
+        if (children != null) {
+            for (File child : children) {
+                deleteRecursively(child);
+            }
+        }
+        if (!file.delete()) {
+            Log.w(TAG, "Failed to delete " + file.getAbsolutePath());
+        }
+    }
+
     private static void extractZipFromAssets(Context context, String assetName, File outputFolder)
     {
-        try {
+        try (InputStream is = context.getAssets().open(assetName)) {
+            extractZipStream(is, assetName, outputFolder);
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to extract " + assetName + " from assets!", e);
+        }
+    }
+
+    private static void extractZipFile(File zipFile, File outputFolder)
+    {
+        try (InputStream is = new FileInputStream(zipFile)) {
+            extractZipStream(is, zipFile.getName(), outputFolder);
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to extract " + zipFile.getAbsolutePath() + "!", e);
+        }
+    }
+
+    private static void extractZipStream(InputStream is, String assetName, File outputFolder) throws IOException
+    {
             if (!outputFolder.exists() && !outputFolder.mkdirs()) {
                 throw new IOException("Failed to create output directory: " + outputFolder.getAbsolutePath());
             }
@@ -445,8 +632,7 @@ public class UnityPlayerActivity extends Activity
             String outputRoot = outputFolder.getCanonicalPath() + File.separator;
             byte[] buffer = new byte[8192];
 
-            try (InputStream is = context.getAssets().open(assetName);
-                 ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
+            try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
                 ZipEntry ze;
                 while ((ze = zis.getNextEntry()) != null) {
                     String entryName = ze.getName();
@@ -484,9 +670,6 @@ public class UnityPlayerActivity extends Activity
                     zis.closeEntry();
                 }
             }
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to extract " + assetName + " from assets!", e);
-        }
     }
 
     // Apply immersive mode to hide system bars and provide a full-screen experience.

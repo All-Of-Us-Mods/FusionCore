@@ -117,6 +117,8 @@ int dotnet_execute_assembly(const DotNetConfig& config)
         return hr;
     }
 
+    log(LogLevel::INFO, TAG, "Invoking FusionCoreEntrypoint.Start (BepInEx preloader + chainloader)...");
+
     managedDelegate();
 
     log(LogLevel::INFO, TAG, "Executed delegate!");

@@ -16,6 +16,8 @@ public class NativeLibraryManager {
 
     private static final ArrayList<String> GameLibraries = new ArrayList<>();
 
+    private static final HashMap<String, String> GameLibraryPaths = new HashMap<>();
+
     private static final ArrayList<String> FusionLibraries = new ArrayList<>();
 
     private static final ArrayList<String> DataLibraries = new ArrayList<>();
@@ -23,6 +25,11 @@ public class NativeLibraryManager {
     public static void addGameLibrary(String gameLibName)
     {
         GameLibraries.add(gameLibName);
+    }
+
+    public static void addGameLibrary(String gameLibName, String fullPath)
+    {
+        GameLibraryPaths.put(gameLibName, fullPath);
     }
 
     public static void addFusionLibrary(String fusionLibName)
@@ -69,6 +76,11 @@ public class NativeLibraryManager {
                         callFrame.setResult(config.gameLibraryDirectory + "/lib" + libName + ".so");
                         return;
                     }
+                }
+
+                String apkLibPath = GameLibraryPaths.get(libName);
+                if (apkLibPath != null) {
+                    callFrame.setResult(apkLibPath);
                 }
             }
 
