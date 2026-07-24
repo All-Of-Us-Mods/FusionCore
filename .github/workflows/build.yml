@@ -31,3 +31,9 @@ jobs:
 
       - name: Assemble Debug
         run: ./gradlew :fusionApp:assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fusioncore-debug-apk
+          path: fusionApp/build/outputs/apk/debug/*.apk
