@@ -34,6 +34,7 @@ public class SelectorActivity extends Activity {
             "com.innersloth.spacemafia",
             "com.Earthkwak.Platformer",
             "com.abstractsoft.hybridanimals",
+            "com.LanPiaoPiao.PlantsVsZombiesES",
             // "com.abstractsoft.animalsmash",
             // "com.abstractsoft.humansversusai",
             // "com.abstractsoft.mashypets",
