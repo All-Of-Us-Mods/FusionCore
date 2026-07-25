@@ -307,6 +307,12 @@ public class BootstrapActivity extends Activity {
             if (gameContext != null && launcherActivity != null) {
                 installGameResourceHooks(launcherActivity, gameContext);
             }
+
+            // Ensure writable directories exist for Unity's persistentDataPath, cache, etc.
+            // When the game runs in FusionCore's process, Unity resolves paths under
+            // FusionCore's data dir. If these don't exist, statvfs returns 0 and Unity
+            // reports "not enough storage space to install required resource".
+            ensureGameDirectories(config, launcherActivity, targetPackage);
         } catch (Throwable t) {
             Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
         }
@@ -374,6 +380,67 @@ public class BootstrapActivity extends Activity {
         } catch (NoSuchMethodException e2) {
             Log.e(TAG, "Failed to install any resource handling", e2);
         }
+    }
+
+    private void ensureGameDirectories(FusionConfig config, Activity activity, String targetPackage) {
+        // Log key Unity path resolution points for diagnosis
+        try {
+            Log.i(TAG, "Game filesDir: " + activity.getFilesDir().getAbsolutePath());
+            Log.i(TAG, "Game cacheDir: " + activity.getCacheDir().getAbsolutePath());
+            Log.i(TAG, "Game appDataDir: " + config.appDataDirectory);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to log game paths", e);
+        }
+
+        // Create directories Unity expects for persistentDataPath and cache.
+        // If these don't exist, statvfs returns 0 and Unity shows "not enough storage".
+        String[][] dirSets = {
+            {"Unity", "UnityCache", "cache", "tmp", "Download"},
+            {"Unity", "UnityCache"},
+        };
+
+        for (String[] dirs : dirSets) {
+            for (String dir : dirs) {
+                try {
+                    File d = new File(activity.getFilesDir(), dir);
+                    if (d.mkdirs() || d.isDirectory()) {
+                        Log.d(TAG, "Ensured dir: " + d.getAbsolutePath());
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "Could not create dir: " + dir, e);
+                }
+            }
+        }
+
+        // Also ensure subdirs in appDataDirectory
+        try {
+            for (String dir : new String[]{"cache", "tmp", "Download"}) {
+                File d = new File(config.appDataDirectory, dir);
+                if (d.mkdirs() || d.isDirectory()) {
+                    Log.d(TAG, "Ensured data subdir: " + d.getAbsolutePath());
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not create data subdirs", e);
+        }
+
+        // Try external cache dir - Unity may use it for downloads
+        try {
+            File extCache = activity.getExternalCacheDir();
+            if (extCache != null) {
+                Log.i(TAG, "Game externalCacheDir: " + extCache.getAbsolutePath());
+                for (String dir : new String[]{"Unity", "UnityCache"}) {
+                    File d = new File(extCache, dir);
+                    if (d.mkdirs() || d.isDirectory()) {
+                        Log.d(TAG, "Ensured external dir: " + d.getAbsolutePath());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Could not create external cache dirs", e);
+        }
+
+        Log.i(TAG, "Game directories ensured for: " + targetPackage);
     }
 
     private PreparedFusionState prepareFusionState(Context appContext,
