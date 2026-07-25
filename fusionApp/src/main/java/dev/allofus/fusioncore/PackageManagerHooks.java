@@ -64,9 +64,10 @@ public class PackageManagerHooks {
         });
     }
 
-    // temp true for testing, should be replaced with actual component name checks
     private static boolean isKnownExternalComponent(String componentName) {
-        return true; //componentName != null && componentName.startsWith("com.google.android.play.core.assetpacks.");
+        return componentName != null
+                && (componentName.startsWith("com.google.android.play.core.assetpacks.")
+                || componentName.startsWith("com.google.android.gms."));
     }
 
     private static Method findMethodViaReflection(PackageManager manager) {
