@@ -4,10 +4,12 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Looper;
 import android.util.Log;
+import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -111,7 +113,7 @@ public class BootstrapActivity extends Activity {
 
         final String launcherClassName = launcher.getClassName();
         if (!installLauncherOnCreateHook(gameContext.getClassLoader(), launcherClassName,
-                (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
+                (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage, gameContext))) {
             failAndFinish("Failed to install launcher hook! See log for details.", null);
             return;
         }
@@ -271,7 +273,7 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private void initializeFusion(Activity launcherActivity, String targetPackage) {
+    private void initializeFusion(Activity launcherActivity, String targetPackage, Context gameContext) {
         if (!fusionInitialized.compareAndSet(false, true)) {
             return;
         }
@@ -298,8 +300,58 @@ public class BootstrapActivity extends Activity {
 
             File stagedConfig = FusionConfigStore.write(this, config);
             Log.i(TAG, "Fusion config staged at " + stagedConfig.getAbsolutePath());
+
+            // Hook getResources on launcher activity to return game resources.
+            // The game's UnityPlayer runs in FusionCore's process so its Activity
+            // has FusionCore resources, not the game's resources.
+            if (gameContext != null && launcherActivity != null) {
+                installGameResourceHooks(launcherActivity, gameContext);
+            }
         } catch (Throwable t) {
             Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
+        }
+    }
+
+    private void installGameResourceHooks(Activity launcherActivity, Context gameContext) {
+        try {
+            Method getResourcesMethod =
+                    ContextThemeWrapper.class.getDeclaredMethod("getResources");
+            Resources gameResources = gameContext.getResources();
+            Pine.hook(getResourcesMethod, new MethodHook() {
+                @Override
+                public void beforeCall(Pine.CallFrame callFrame) {
+                    if (callFrame.thisObject == launcherActivity) {
+                        callFrame.setResult(gameResources);
+                    }
+                }
+            });
+            Log.i(TAG, "Installed getResources hook for " + launcherActivity.getClass().getName());
+        } catch (NoSuchMethodException e) {
+            Log.e(TAG, "Failed to hook getResources on ContextThemeWrapper", e);
+        }
+
+        // Safety hook: prevent Resources$NotFoundException when Unity calls getString(0).
+        // Unity can pass resource ID 0 if native init is incomplete, which crashes in ANY resources.
+        hookResourceMethodSafety("getString", int.class);
+        hookResourceMethodSafety("getText", int.class);
+    }
+
+    private static void hookResourceMethodSafety(String methodName, Class<?>... paramTypes) {
+        try {
+            Method method = Resources.class.getDeclaredMethod(methodName, paramTypes);
+            Pine.hook(method, new MethodHook() {
+                @Override
+                public void beforeCall(Pine.CallFrame callFrame) {
+                    int id = (int) callFrame.args[0];
+                    if (id == 0) {
+                        Log.w(TAG, "Prevented crash: Resources." + methodName + "(0), returning empty string");
+                        callFrame.setResult("");
+                    }
+                }
+            });
+            Log.i(TAG, "Installed safety hook for Resources." + methodName + "(int)");
+        } catch (NoSuchMethodException e) {
+            Log.w(TAG, "Could not hook Resources." + methodName + "(int) — method not found", e);
         }
     }
 
