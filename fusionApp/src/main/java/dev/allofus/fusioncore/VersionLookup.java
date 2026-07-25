@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 public class VersionLookup {
 
     private static final int MAX_VERSION_LENGTH = 32;
-    private static final Pattern UNITY_VERSION_PATTERN = Pattern.compile("^\\d+\\.\\d+\\.\\d+(?:[abcfp]\\d+|rc\\d+)?$");
+    private static final Pattern UNITY_VERSION_PATTERN = Pattern.compile("^\\d+\\.\\d+\\.\\d+(?:[abcfp]\\d+|rc\\d+)?(?:c\\d+)?$");
 
     private static final HashMap<String, int[]> lookupMap = new HashMap<>() {{
         put("globalgamemanagers", new int[]{0x14, 0x30});

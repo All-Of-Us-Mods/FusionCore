@@ -3,6 +3,7 @@ package dev.allofus.fusioncore;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.os.Build;
 import android.util.Log;
 import android.view.Display;
@@ -15,27 +16,19 @@ import java.io.File;
 public class CustomContextWrapper extends ContextWrapper {
     Context fusionContext;
     Context appContext;
+    Resources gameResources;
 
     public CustomContextWrapper(Context gameContext, Context fusionContext, Context appContext) {
         super(gameContext);
         this.fusionContext = fusionContext;
-        this.getApplicationInfo().dataDir = appContext.getApplicationInfo().dataDir;
-        // this prevents the game from resolving its own libraries
-        // that way we can override them properly with our own versions
-        this.getApplicationInfo().nativeLibraryDir = "";
+        this.gameResources = gameContext.getResources();
         this.appContext = appContext != fusionContext ? new CustomContextWrapper(this, appContext, appContext) : fusionContext;
     }
 
-//    @Override
-//    public Resources getResources() {
-//        return this.appContext.getResources();
-//    }
-
-
-//    @Override
-//    public ApplicationInfo getApplicationInfo() {
-//        return super.getApplicationInfo();
-//    }
+    @Override
+    public Resources getResources() {
+        return gameResources;
+    }
 
     @Override
     public SharedPreferences getSharedPreferences(String name, int mode) {
