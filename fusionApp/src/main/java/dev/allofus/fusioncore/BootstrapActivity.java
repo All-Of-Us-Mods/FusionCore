@@ -312,46 +312,67 @@ public class BootstrapActivity extends Activity {
         }
     }
 
+    // SafeResources: wraps game resources and prevents crash when Unity calls getString(0)/getText(0).
+    // This avoids Pine hooks for getString/getText entirely, eliminating the SIGSEGV in ART
+    // caused by Pine shadow frames interacting with exception stack trace creation.
+    private static class SafeResources extends Resources {
+        private static final String TAG = "FusionCore";
+        private final Resources delegate;
+
+        SafeResources(Resources delegate) {
+            super(delegate.getAssets(), delegate.getDisplayMetrics(), delegate.getConfiguration());
+            this.delegate = delegate;
+        }
+
+        @Override
+        public String getString(int id) throws NotFoundException {
+            if (id == 0) {
+                Log.w(TAG, "SafeResources.getString(0) intercepted, returning empty string");
+                return "";
+            }
+            return delegate.getString(id);
+        }
+
+        @Override
+        public CharSequence getText(int id) throws NotFoundException {
+            if (id == 0) {
+                Log.w(TAG, "SafeResources.getText(0) intercepted, returning empty string");
+                return "";
+            }
+            return delegate.getText(id);
+        }
+    }
+
     private void installGameResourceHooks(Activity launcherActivity, Context gameContext) {
+        Resources gameResources = gameContext.getResources();
+        SafeResources safeResources = new SafeResources(gameResources);
+
+        // Primary approach: set mResources directly on the Activity via reflection.
+        // This avoids ANY Pine hooks for resource handling (no shadow frames on the stack).
         try {
-            Method getResourcesMethod =
-                    ContextThemeWrapper.class.getDeclaredMethod("getResources");
-            Resources gameResources = gameContext.getResources();
+            Field resField = ContextThemeWrapper.class.getDeclaredField("mResources");
+            resField.setAccessible(true);
+            resField.set(launcherActivity, safeResources);
+            Log.i(TAG, "Set SafeResources directly on activity: " + launcherActivity.getClass().getName());
+            return;
+        } catch (Exception e) {
+            Log.w(TAG, "Direct reflection failed, falling back to Pine hook for getResources", e);
+        }
+
+        // Fallback: Pine hook for getResources (still returns SafeResources, still NO getString/getText hooks).
+        try {
+            Method getResourcesMethod = ContextThemeWrapper.class.getDeclaredMethod("getResources");
             Pine.hook(getResourcesMethod, new MethodHook() {
                 @Override
                 public void beforeCall(Pine.CallFrame callFrame) {
                     if (callFrame.thisObject == launcherActivity) {
-                        callFrame.setResult(gameResources);
+                        callFrame.setResult(safeResources);
                     }
                 }
             });
-            Log.i(TAG, "Installed getResources hook for " + launcherActivity.getClass().getName());
-        } catch (NoSuchMethodException e) {
-            Log.e(TAG, "Failed to hook getResources on ContextThemeWrapper", e);
-        }
-
-        // Safety hook: prevent Resources$NotFoundException when Unity calls getString(0).
-        // Unity can pass resource ID 0 if native init is incomplete, which crashes in ANY resources.
-        hookResourceMethodSafety("getString", int.class);
-        hookResourceMethodSafety("getText", int.class);
-    }
-
-    private static void hookResourceMethodSafety(String methodName, Class<?>... paramTypes) {
-        try {
-            Method method = Resources.class.getDeclaredMethod(methodName, paramTypes);
-            Pine.hook(method, new MethodHook() {
-                @Override
-                public void beforeCall(Pine.CallFrame callFrame) {
-                    int id = (int) callFrame.args[0];
-                    if (id == 0) {
-                        Log.w(TAG, "Prevented crash: Resources." + methodName + "(0), returning empty string");
-                        callFrame.setResult("");
-                    }
-                }
-            });
-            Log.i(TAG, "Installed safety hook for Resources." + methodName + "(int)");
-        } catch (NoSuchMethodException e) {
-            Log.w(TAG, "Could not hook Resources." + methodName + "(int) — method not found", e);
+            Log.i(TAG, "Installed getResources Pine hook (fallback) for " + launcherActivity.getClass().getName());
+        } catch (NoSuchMethodException e2) {
+            Log.e(TAG, "Failed to install any resource handling", e2);
         }
     }
 
