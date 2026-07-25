@@ -3,13 +3,11 @@ package dev.allofus.fusioncore;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Looper;
-import android.os.StatFs;
 import android.util.Log;
 import android.view.ContextThemeWrapper;
 import android.view.View;
@@ -21,7 +19,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Locale;
@@ -310,11 +307,6 @@ public class BootstrapActivity extends Activity {
                 installGameResourceHooks(launcherActivity, gameContext, targetPackage);
             }
 
-            // Ensure writable directories exist for Unity's persistentDataPath, cache, etc.
-            // When the game runs in FusionCore's process, Unity resolves paths under
-            // FusionCore's data dir. If these don't exist, statvfs returns 0 and Unity
-            // reports "not enough storage space to install required resource".
-            ensureGameDirectories(config, launcherActivity, targetPackage);
         } catch (Throwable t) {
             Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
         }
@@ -381,142 +373,6 @@ public class BootstrapActivity extends Activity {
             }
         }
 
-        // Hook context methods so Unity resolves the game's package and paths correctly.
-        // When running in FusionCore's process, getPackageName() returns 'dev.allofus.fusioncore',
-        // which causes Unity to look for OBB at the wrong path. We redirect these to the game's values.
-        installGameContextHooks(launcherActivity, targetPackage);
-    }
-
-    private void installGameContextHooks(Activity launcherActivity, String targetPackage) {
-        // Hook getPackageName() on ContextWrapper so Unity constructs the correct OBB path
-        // from the game's package name instead of FusionCore's.
-        try {
-            Method getPkgMethod = ContextWrapper.class.getDeclaredMethod("getPackageName");
-            Pine.hook(getPkgMethod, new MethodHook() {
-                @Override
-                public void beforeCall(Pine.CallFrame callFrame) {
-                    if (callFrame.thisObject == launcherActivity) {
-                        callFrame.setResult(targetPackage);
-                    }
-                }
-            });
-            Log.i(TAG, "Hooked getPackageName() -> " + targetPackage + " for " + launcherActivity.getClass().getName());
-        } catch (NoSuchMethodException e) {
-            Log.w(TAG, "Could not hook getPackageName() on ContextWrapper", e);
-        }
-
-        // Hook getObbDir() to return the game's actual OBB directory on shared storage.
-        try {
-            Method getObbMethod = ContextWrapper.class.getDeclaredMethod("getObbDir");
-            Pine.hook(getObbMethod, new MethodHook() {
-                @Override
-                public void beforeCall(Pine.CallFrame callFrame) {
-                    if (callFrame.thisObject == launcherActivity) {
-                        File gameObb = new File(Environment.getExternalStorageDirectory(),
-                                "Android/obb/" + targetPackage);
-                        callFrame.setResult(gameObb);
-                    }
-                }
-            });
-            Log.i(TAG, "Hooked getObbDir() -> Android/obb/" + targetPackage + " for "
-                    + launcherActivity.getClass().getName());
-        } catch (NoSuchMethodException e) {
-            Log.w(TAG, "Could not hook getObbDir() on ContextWrapper", e);
-        }
-    }
-
-    private void ensureGameDirectories(FusionConfig config, Activity activity, String targetPackage) {
-        // Log key Unity path resolution points for diagnosis
-        try {
-            File filesDir = activity.getFilesDir();
-            Log.i(TAG, "Game filesDir: " + filesDir.getAbsolutePath());
-            Log.i(TAG, "Game cacheDir: " + activity.getCacheDir().getAbsolutePath());
-            File obbDir = activity.getObbDir();
-            Log.i(TAG, "Game obbDir: " + (obbDir != null ? obbDir.getAbsolutePath() : "null"));
-            Log.i(TAG, "Game appDataDir: " + config.appDataDirectory);
-            Log.i(TAG, "Game getPackageName(): " + activity.getPackageName());
-            if (obbDir != null) {
-                File[] obbFiles = obbDir.listFiles();
-                if (obbFiles != null && obbFiles.length > 0) {
-                    for (File f : obbFiles) {
-                        Log.i(TAG, "  OBB entry: " + f.getName() + " (" + f.length() + " bytes)");
-                    }
-                } else {
-                    Log.w(TAG, "OBB directory is empty or inaccessible");
-                }
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to log game paths", e);
-        }
-
-        // Check available storage on key paths
-        try {
-            StatFs stat = new StatFs(activity.getFilesDir().getAbsolutePath());
-            long free = stat.getFreeBytes();
-            long total = stat.getTotalBytes();
-            Log.i(TAG, "FilesDir storage: " + (free / 1048576) + "MB free / " + (total / 1048576) + "MB total");
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to stat filesDir", e);
-        }
-        try {
-            File extCache = activity.getExternalCacheDir();
-            if (extCache != null) {
-                StatFs stat = new StatFs(extCache.getAbsolutePath());
-                Log.i(TAG, "ExternalCacheDir storage: " + (stat.getFreeBytes() / 1048576) + "MB free");
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to stat externalCacheDir", e);
-        }
-
-        // Create directories Unity expects for persistentDataPath and cache.
-        // If these don't exist, statvfs returns 0 and Unity shows "not enough storage".
-        String[][] dirSets = {
-            {"Unity", "UnityCache", "cache", "tmp", "Download"},
-            {"Unity", "UnityCache"},
-        };
-
-        for (String[] dirs : dirSets) {
-            for (String dir : dirs) {
-                try {
-                    File d = new File(activity.getFilesDir(), dir);
-                    if (d.mkdirs() || d.isDirectory()) {
-                        Log.d(TAG, "Ensured dir: " + d.getAbsolutePath());
-                    }
-                } catch (Exception e) {
-                    Log.w(TAG, "Could not create dir: " + dir, e);
-                }
-            }
-        }
-
-        // Also ensure subdirs in appDataDirectory
-        try {
-            for (String dir : new String[]{"cache", "tmp", "Download"}) {
-                File d = new File(config.appDataDirectory, dir);
-                if (d.mkdirs() || d.isDirectory()) {
-                    Log.d(TAG, "Ensured data subdir: " + d.getAbsolutePath());
-                }
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Could not create data subdirs", e);
-        }
-
-        // Try external cache dir - Unity may use it for downloads
-        try {
-            File extCache = activity.getExternalCacheDir();
-            if (extCache != null) {
-                Log.i(TAG, "Game externalCacheDir: " + extCache.getAbsolutePath());
-                for (String dir : new String[]{"Unity", "UnityCache"}) {
-                    File d = new File(extCache, dir);
-                    if (d.mkdirs() || d.isDirectory()) {
-                        Log.d(TAG, "Ensured external dir: " + d.getAbsolutePath());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Could not create external cache dirs", e);
-        }
-
-        Log.i(TAG, "Game directories ensured for: " + targetPackage);
     }
 
     private PreparedFusionState prepareFusionState(Context appContext,
