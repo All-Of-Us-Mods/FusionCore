@@ -423,42 +423,6 @@ public class BootstrapActivity extends Activity {
         } catch (NoSuchMethodException e) {
             Log.w(TAG, "Could not hook getObbDir() on ContextWrapper", e);
         }
-
-        // Also hook getExternalFilesDir and getExternalCacheDir for managed code that
-        // may access the game's external storage paths.
-        try {
-            Method getExtFilesMethod = ContextWrapper.class.getDeclaredMethod("getExternalFilesDir", String.class);
-            Pine.hook(getExtFilesMethod, new MethodHook() {
-                @Override
-                public void beforeCall(Pine.CallFrame callFrame) {
-                    if (callFrame.thisObject == launcherActivity) {
-                        callFrame.setResult(new File(
-                                Environment.getExternalStorageDirectory(),
-                                "Android/data/" + targetPackage + "/files"));
-                    }
-                }
-            });
-            Log.i(TAG, "Hooked getExternalFilesDir() for activity");
-        } catch (NoSuchMethodException e) {
-            Log.w(TAG, "Could not hook getExternalFilesDir() on ContextWrapper", e);
-        }
-
-        try {
-            Method getExtCacheMethod = ContextWrapper.class.getDeclaredMethod("getExternalCacheDir");
-            Pine.hook(getExtCacheMethod, new MethodHook() {
-                @Override
-                public void beforeCall(Pine.CallFrame callFrame) {
-                    if (callFrame.thisObject == launcherActivity) {
-                        callFrame.setResult(new File(
-                                Environment.getExternalStorageDirectory(),
-                                "Android/data/" + targetPackage + "/cache"));
-                    }
-                }
-            });
-            Log.i(TAG, "Hooked getExternalCacheDir() for activity");
-        } catch (NoSuchMethodException e) {
-            Log.w(TAG, "Could not hook getExternalCacheDir() on ContextWrapper", e);
-        }
     }
 
     private void ensureGameDirectories(FusionConfig config, Activity activity, String targetPackage) {
