@@ -2,9 +2,9 @@ name: Android Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, add-plantsvszombies-es-support]
   pull_request:
-    branches: [main]
+    branches: [main, add-plantsvszombies-es-support]
   workflow_dispatch:
 
 jobs:
