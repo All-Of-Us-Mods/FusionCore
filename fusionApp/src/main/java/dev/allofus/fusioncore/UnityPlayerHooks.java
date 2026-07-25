@@ -31,7 +31,7 @@ public class UnityPlayerHooks {
             "com.unity3d.player.UnityPlayerForActivityOrService"
     };
 
-    // this is used to inject CustomContextWrapper into the game activity
+    // hooks UnityPlayer constructors to show loading overlay and fix activity field
     public static void installHooks(Context gameContext) {
         var classLoader = gameContext.getClassLoader();
         if (classLoader == null) {
@@ -88,7 +88,6 @@ public class UnityPlayerHooks {
                                 + callFrame.args[0].getClass().getName());
                         activity = (Activity) callFrame.args[0];
                         loadingOverlay = showLoadingOverlay(activity, "Injecting Fusion hooks...");
-                        callFrame.args[0] = new CustomContextWrapper(gameContext, activity, activity);
                     } catch (Exception e) {
                         Log.i(TAG, "Failed to wrap context!", e);
                     }

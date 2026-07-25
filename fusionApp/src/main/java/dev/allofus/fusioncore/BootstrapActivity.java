@@ -4,10 +4,12 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Looper;
 import android.util.Log;
+import android.view.ContextThemeWrapper;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -17,7 +19,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Locale;
@@ -111,7 +112,7 @@ public class BootstrapActivity extends Activity {
 
         final String launcherClassName = launcher.getClassName();
         if (!installLauncherOnCreateHook(gameContext.getClassLoader(), launcherClassName,
-                (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
+                (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage, gameContext))) {
             failAndFinish("Failed to install launcher hook! See log for details.", null);
             return;
         }
@@ -271,7 +272,7 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private void initializeFusion(Activity launcherActivity, String targetPackage) {
+    private void initializeFusion(Activity launcherActivity, String targetPackage, Context gameContext) {
         if (!fusionInitialized.compareAndSet(false, true)) {
             return;
         }
@@ -298,9 +299,80 @@ public class BootstrapActivity extends Activity {
 
             File stagedConfig = FusionConfigStore.write(this, config);
             Log.i(TAG, "Fusion config staged at " + stagedConfig.getAbsolutePath());
+
+            // Hook getResources on launcher activity to return game resources.
+            // The game's UnityPlayer runs in FusionCore's process so its Activity
+            // has FusionCore resources, not the game's resources.
+            if (gameContext != null && launcherActivity != null) {
+                installGameResourceHooks(launcherActivity, gameContext, targetPackage);
+            }
+
         } catch (Throwable t) {
             Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
         }
+    }
+
+    // SafeResources: wraps game resources and prevents crash when Unity calls getString(0)/getText(0).
+    // This avoids Pine hooks for getString/getText entirely, eliminating the SIGSEGV in ART
+    // caused by Pine shadow frames interacting with exception stack trace creation.
+    private static class SafeResources extends Resources {
+        private static final String TAG = "FusionCore";
+        private final Resources delegate;
+
+        SafeResources(Resources delegate) {
+            super(delegate.getAssets(), delegate.getDisplayMetrics(), delegate.getConfiguration());
+            this.delegate = delegate;
+        }
+
+        @Override
+        public String getString(int id) throws NotFoundException {
+            if (id == 0) {
+                Log.w(TAG, "SafeResources.getString(0) intercepted, returning empty string");
+                return "";
+            }
+            return delegate.getString(id);
+        }
+
+        @Override
+        public CharSequence getText(int id) throws NotFoundException {
+            if (id == 0) {
+                Log.w(TAG, "SafeResources.getText(0) intercepted, returning empty string");
+                return "";
+            }
+            return delegate.getText(id);
+        }
+    }
+
+    private void installGameResourceHooks(Activity launcherActivity, Context gameContext, String targetPackage) {
+        Resources gameResources = gameContext.getResources();
+        SafeResources safeResources = new SafeResources(gameResources);
+
+        // Primary approach: set mResources directly on the Activity via reflection.
+        // This avoids ANY Pine hooks for resource handling (no shadow frames on the stack).
+        try {
+            Field resField = ContextThemeWrapper.class.getDeclaredField("mResources");
+            resField.setAccessible(true);
+            resField.set(launcherActivity, safeResources);
+            Log.i(TAG, "Set SafeResources directly on activity: " + launcherActivity.getClass().getName());
+        } catch (Exception e) {
+            Log.w(TAG, "Direct reflection failed, falling back to Pine hook for getResources", e);
+            // Fallback: Pine hook for getResources (still returns SafeResources, still NO getString/getText hooks).
+            try {
+                Method getResourcesMethod = ContextThemeWrapper.class.getDeclaredMethod("getResources");
+                Pine.hook(getResourcesMethod, new MethodHook() {
+                    @Override
+                    public void beforeCall(Pine.CallFrame callFrame) {
+                        if (callFrame.thisObject == launcherActivity) {
+                            callFrame.setResult(safeResources);
+                        }
+                    }
+                });
+                Log.i(TAG, "Installed getResources Pine hook (fallback) for " + launcherActivity.getClass().getName());
+            } catch (NoSuchMethodException e2) {
+                Log.e(TAG, "Failed to install any resource handling", e2);
+            }
+        }
+
     }
 
     private PreparedFusionState prepareFusionState(Context appContext,
