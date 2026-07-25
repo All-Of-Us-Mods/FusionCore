@@ -3,11 +3,13 @@ package dev.allofus.fusioncore;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Looper;
+import android.os.StatFs;
 import android.util.Log;
 import android.view.ContextThemeWrapper;
 import android.view.View;
@@ -305,7 +307,7 @@ public class BootstrapActivity extends Activity {
             // The game's UnityPlayer runs in FusionCore's process so its Activity
             // has FusionCore resources, not the game's resources.
             if (gameContext != null && launcherActivity != null) {
-                installGameResourceHooks(launcherActivity, gameContext);
+                installGameResourceHooks(launcherActivity, gameContext, targetPackage);
             }
 
             // Ensure writable directories exist for Unity's persistentDataPath, cache, etc.
@@ -349,7 +351,7 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private void installGameResourceHooks(Activity launcherActivity, Context gameContext) {
+    private void installGameResourceHooks(Activity launcherActivity, Context gameContext, String targetPackage) {
         Resources gameResources = gameContext.getResources();
         SafeResources safeResources = new SafeResources(gameResources);
 
@@ -360,36 +362,146 @@ public class BootstrapActivity extends Activity {
             resField.setAccessible(true);
             resField.set(launcherActivity, safeResources);
             Log.i(TAG, "Set SafeResources directly on activity: " + launcherActivity.getClass().getName());
-            return;
         } catch (Exception e) {
             Log.w(TAG, "Direct reflection failed, falling back to Pine hook for getResources", e);
+            // Fallback: Pine hook for getResources (still returns SafeResources, still NO getString/getText hooks).
+            try {
+                Method getResourcesMethod = ContextThemeWrapper.class.getDeclaredMethod("getResources");
+                Pine.hook(getResourcesMethod, new MethodHook() {
+                    @Override
+                    public void beforeCall(Pine.CallFrame callFrame) {
+                        if (callFrame.thisObject == launcherActivity) {
+                            callFrame.setResult(safeResources);
+                        }
+                    }
+                });
+                Log.i(TAG, "Installed getResources Pine hook (fallback) for " + launcherActivity.getClass().getName());
+            } catch (NoSuchMethodException e2) {
+                Log.e(TAG, "Failed to install any resource handling", e2);
+            }
         }
 
-        // Fallback: Pine hook for getResources (still returns SafeResources, still NO getString/getText hooks).
+        // Hook context methods so Unity resolves the game's package and paths correctly.
+        // When running in FusionCore's process, getPackageName() returns 'dev.allofus.fusioncore',
+        // which causes Unity to look for OBB at the wrong path. We redirect these to the game's values.
+        installGameContextHooks(launcherActivity, targetPackage);
+    }
+
+    private void installGameContextHooks(Activity launcherActivity, String targetPackage) {
+        // Hook getPackageName() on ContextWrapper so Unity constructs the correct OBB path
+        // from the game's package name instead of FusionCore's.
         try {
-            Method getResourcesMethod = ContextThemeWrapper.class.getDeclaredMethod("getResources");
-            Pine.hook(getResourcesMethod, new MethodHook() {
+            Method getPkgMethod = ContextWrapper.class.getDeclaredMethod("getPackageName");
+            Pine.hook(getPkgMethod, new MethodHook() {
                 @Override
                 public void beforeCall(Pine.CallFrame callFrame) {
                     if (callFrame.thisObject == launcherActivity) {
-                        callFrame.setResult(safeResources);
+                        callFrame.setResult(targetPackage);
                     }
                 }
             });
-            Log.i(TAG, "Installed getResources Pine hook (fallback) for " + launcherActivity.getClass().getName());
-        } catch (NoSuchMethodException e2) {
-            Log.e(TAG, "Failed to install any resource handling", e2);
+            Log.i(TAG, "Hooked getPackageName() -> " + targetPackage + " for " + launcherActivity.getClass().getName());
+        } catch (NoSuchMethodException e) {
+            Log.w(TAG, "Could not hook getPackageName() on ContextWrapper", e);
+        }
+
+        // Hook getObbDir() to return the game's actual OBB directory on shared storage.
+        try {
+            Method getObbMethod = ContextWrapper.class.getDeclaredMethod("getObbDir");
+            Pine.hook(getObbMethod, new MethodHook() {
+                @Override
+                public void beforeCall(Pine.CallFrame callFrame) {
+                    if (callFrame.thisObject == launcherActivity) {
+                        File gameObb = new File(Environment.getExternalStorageDirectory(),
+                                "Android/obb/" + targetPackage);
+                        callFrame.setResult(gameObb);
+                    }
+                }
+            });
+            Log.i(TAG, "Hooked getObbDir() -> Android/obb/" + targetPackage + " for "
+                    + launcherActivity.getClass().getName());
+        } catch (NoSuchMethodException e) {
+            Log.w(TAG, "Could not hook getObbDir() on ContextWrapper", e);
+        }
+
+        // Also hook getExternalFilesDir and getExternalCacheDir for managed code that
+        // may access the game's external storage paths.
+        try {
+            Method getExtFilesMethod = ContextWrapper.class.getDeclaredMethod("getExternalFilesDir", String.class);
+            Pine.hook(getExtFilesMethod, new MethodHook() {
+                @Override
+                public void beforeCall(Pine.CallFrame callFrame) {
+                    if (callFrame.thisObject == launcherActivity) {
+                        callFrame.setResult(new File(
+                                Environment.getExternalStorageDirectory(),
+                                "Android/data/" + targetPackage + "/files"));
+                    }
+                }
+            });
+            Log.i(TAG, "Hooked getExternalFilesDir() for activity");
+        } catch (NoSuchMethodException e) {
+            Log.w(TAG, "Could not hook getExternalFilesDir() on ContextWrapper", e);
+        }
+
+        try {
+            Method getExtCacheMethod = ContextWrapper.class.getDeclaredMethod("getExternalCacheDir");
+            Pine.hook(getExtCacheMethod, new MethodHook() {
+                @Override
+                public void beforeCall(Pine.CallFrame callFrame) {
+                    if (callFrame.thisObject == launcherActivity) {
+                        callFrame.setResult(new File(
+                                Environment.getExternalStorageDirectory(),
+                                "Android/data/" + targetPackage + "/cache"));
+                    }
+                }
+            });
+            Log.i(TAG, "Hooked getExternalCacheDir() for activity");
+        } catch (NoSuchMethodException e) {
+            Log.w(TAG, "Could not hook getExternalCacheDir() on ContextWrapper", e);
         }
     }
 
     private void ensureGameDirectories(FusionConfig config, Activity activity, String targetPackage) {
         // Log key Unity path resolution points for diagnosis
         try {
-            Log.i(TAG, "Game filesDir: " + activity.getFilesDir().getAbsolutePath());
+            File filesDir = activity.getFilesDir();
+            Log.i(TAG, "Game filesDir: " + filesDir.getAbsolutePath());
             Log.i(TAG, "Game cacheDir: " + activity.getCacheDir().getAbsolutePath());
+            File obbDir = activity.getObbDir();
+            Log.i(TAG, "Game obbDir: " + (obbDir != null ? obbDir.getAbsolutePath() : "null"));
             Log.i(TAG, "Game appDataDir: " + config.appDataDirectory);
+            Log.i(TAG, "Game getPackageName(): " + activity.getPackageName());
+            if (obbDir != null) {
+                File[] obbFiles = obbDir.listFiles();
+                if (obbFiles != null && obbFiles.length > 0) {
+                    for (File f : obbFiles) {
+                        Log.i(TAG, "  OBB entry: " + f.getName() + " (" + f.length() + " bytes)");
+                    }
+                } else {
+                    Log.w(TAG, "OBB directory is empty or inaccessible");
+                }
+            }
         } catch (Exception e) {
             Log.w(TAG, "Failed to log game paths", e);
+        }
+
+        // Check available storage on key paths
+        try {
+            StatFs stat = new StatFs(activity.getFilesDir().getAbsolutePath());
+            long free = stat.getFreeBytes();
+            long total = stat.getTotalBytes();
+            Log.i(TAG, "FilesDir storage: " + (free / 1048576) + "MB free / " + (total / 1048576) + "MB total");
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to stat filesDir", e);
+        }
+        try {
+            File extCache = activity.getExternalCacheDir();
+            if (extCache != null) {
+                StatFs stat = new StatFs(extCache.getAbsolutePath());
+                Log.i(TAG, "ExternalCacheDir storage: " + (stat.getFreeBytes() / 1048576) + "MB free");
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to stat externalCacheDir", e);
         }
 
         // Create directories Unity expects for persistentDataPath and cache.
