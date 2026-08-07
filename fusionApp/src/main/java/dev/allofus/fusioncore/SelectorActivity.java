@@ -24,24 +24,13 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SelectorActivity extends Activity {
     private static final String TAG = "FusionCore";
     private static final int REQUEST_MANAGE_EXTERNAL_STORAGE = 1001;
-    private static final String[] SUPPORTED_PACKAGES = {
-            "com.innersloth.spacemafia",
-            "com.Earthkwak.Platformer",
-            "com.abstractsoft.hybridanimals",
-            // "com.abstractsoft.animalsmash",
-            // "com.abstractsoft.humansversusai",
-            // "com.abstractsoft.mashypets",
-            "com.antiherostudios.misfitz",
-            "com.Radeon.RecRoom",
-            "com.StefMorojna.SpaceflightSimulator",
-            "com.DanVogt.DATAWING"
-    };
 
     private String pendingLaunchPackage;
 
@@ -134,26 +123,35 @@ public class SelectorActivity extends Activity {
     private List<AppEntry> resolveInstalledTargets() {
         PackageManager pm = getPackageManager();
         List<AppEntry> result = new ArrayList<>();
+        List<ApplicationInfo> apps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
 
-        for (String pkg : SUPPORTED_PACKAGES) {
-            if (pm.getLaunchIntentForPackage(pkg) == null) {
+        for (ApplicationInfo app: apps) {
+            File libs = new File(app.nativeLibraryDir);
+            File unity = new File(libs, "libunity.so");
+            File il2cpp = new File(libs, "libil2cpp.so");
+
+            if (!unity.exists() || !il2cpp.exists()) {
                 continue;
             }
 
-            String label = pkg;
+            if (pm.getLaunchIntentForPackage(app.packageName) == null) {
+                continue;
+            }
+
+            String label = app.packageName;
             Drawable icon = pm.getDefaultActivityIcon();
             String versionName = "Unknown";
             long versionCode = 0L;
             try {
-                ApplicationInfo info = pm.getApplicationInfo(pkg, 0);
+                ApplicationInfo info = pm.getApplicationInfo(app.packageName, 0);
                 label = pm.getApplicationLabel(info).toString();
                 icon = pm.getApplicationIcon(info);
 
                 PackageInfo packageInfo;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    packageInfo = pm.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0));
+                    packageInfo = pm.getPackageInfo(app.packageName, PackageManager.PackageInfoFlags.of(0));
                 } else {
-                    packageInfo = pm.getPackageInfo(pkg, 0);
+                    packageInfo = pm.getPackageInfo(app.packageName, 0);
                 }
                 if (packageInfo.versionName != null && !packageInfo.versionName.isEmpty()) {
                     versionName = packageInfo.versionName;
@@ -164,11 +162,11 @@ public class SelectorActivity extends Activity {
                     versionCode = packageInfo.versionCode;
                 }
             } catch (Exception e) {
-                Log.w(TAG, "Failed to resolve metadata for package: " + pkg, e);
+                Log.w(TAG, "Failed to resolve metadata for package: " + app.packageName, e);
             }
 
-            Log.i(TAG, "Found installed target: " + pkg + " (" + label + ")");
-            result.add(new AppEntry(pkg, label, icon, versionName, versionCode));
+            Log.i(TAG, "Found installed target: " + app.packageName + " (" + label + ")");
+            result.add(new AppEntry(app.packageName, label, icon, versionName, versionCode));
         }
 
         return result;
