@@ -17,7 +17,8 @@ import top.canyie.pine.callback.MethodHook;
 public class InstrumentationHooks {
 
     private static final String TAG = "InstrumentationHooks";
-    private static final String EXTRA_DYNAMIC_ACTIVITY_ORIGIN = "fusioncore.dynamic_activity_origin";
+
+    private static final String EXTRA_IS_DYNAMIC_ACTIVITY = "fusioncore.is_dynamic_activity";
     private static final String EXTRA_ORIGINAL_INTENT = "fusioncore.original_intent";
 
     public static boolean areHooksInstalled = false;
@@ -97,17 +98,16 @@ public class InstrumentationHooks {
                 }
 
                 Intent intent = (Intent) callFrame.args[intentIdx];
+                if (intent == null || intent.getComponent() == null) {
+                    Log.e(TAG, "Intent or Intent component was null!");
+                    return;
+                }
+
                 String targetClass = intent.getComponent().getClassName();
 
-                String originKey = getOriginKeyForIntent(intent);
-                if (originKey != null && originKey.startsWith("stub:")) return;
+                if (isDynamicIntent(intent)) return;
 
-                /*if (!isTargetUnregistered(targetClass)) {
-                    Log.d(TAG, "execStartActivity: registered target: " + targetClass);
-                    return;
-                }*/
-
-                callFrame.args[intentIdx] = getInjectedIntent(intent, targetClass);
+                callFrame.args[intentIdx] = getInjectedIntent(intent);
                 Log.d(TAG, "execStartActivity: intercepted unregistered activity: " + targetClass);
             } else {
                 Log.e(TAG, "No arguments to handle execStartActivity!");
@@ -141,20 +141,18 @@ public class InstrumentationHooks {
             }
 
             Intent intent = (Intent) callFrame.args[intentIdx];
-            String dynamicOrigin = getOriginKeyForIntent(intent);
 
-            if (dynamicOrigin != null && dynamicOrigin.startsWith("stub:")) {
-                Intent original = resolveOriginalIntent(intent);
+            if (!isDynamicIntent(intent)) return;
 
-                if (original != null && original.getComponent() != null) {
-                    callFrame.args[intentIdx] = original;
-                    callFrame.args[strIdx] = original.getComponent().getClassName();
-                    Log.d(TAG, "newActivity: intercepted StubActivity for dynamic origin");
-                } else {
-                    Log.e(TAG, "Failed to resolve original intent or component was null!");
-                }
+            Intent original = resolveOriginalIntent(intent);
+
+            if (original != null && original.getComponent() != null) {
+                callFrame.args[intentIdx] = original;
+                callFrame.args[strIdx] = original.getComponent().getClassName();
+                Log.d(TAG, "newActivity: intercepted StubActivity for dynamic origin");
+            } else {
+                Log.e(TAG, "Failed to resolve original intent or component was null!");
             }
-
         } catch (Exception e) {
             Log.e(TAG, "Error in newActivity beforeCall", e);
         }
@@ -176,39 +174,17 @@ public class InstrumentationHooks {
         return null;
     }
 
-    private static Intent getInjectedIntent(Intent intent, String targetClass) {
-        ComponentName componentName = new ComponentName(BootstrapActivity.class.getPackage().getName(), targetClass);
-        String originKey = EXTRA_DYNAMIC_ACTIVITY_ORIGIN + ":" + componentName.flattenToString();
-
+    private static Intent getInjectedIntent(Intent intent) {
         Intent newIntent = new Intent(intent);
-        newIntent.putExtra(EXTRA_DYNAMIC_ACTIVITY_ORIGIN, originKey);
+        newIntent.putExtra(EXTRA_IS_DYNAMIC_ACTIVITY, true);
         newIntent.putExtra(EXTRA_ORIGINAL_INTENT, intent);
-        newIntent.setComponent(new ComponentName(StubActivity.class.getPackage().getName(), StubActivity.class.getName()));
+        newIntent.setComponent(new ComponentName(BuildConfig.APPLICATION_ID, StubActivity.class.getName()));
         return newIntent;
     }
 
-    private static String getOriginKeyForIntent(Intent intent) {
-        if (intent == null) return null;
+    private static boolean isDynamicIntent(Intent intent) {
+        if (intent == null) return false;
 
-        try {
-            String originKey = intent.getStringExtra(EXTRA_DYNAMIC_ACTIVITY_ORIGIN);
-            if (originKey != null && originKey.startsWith(EXTRA_DYNAMIC_ACTIVITY_ORIGIN + ":")) {
-                int colonIndex = originKey.indexOf(":");
-                String componentString = originKey.substring(colonIndex + 1);
-                String[] parts = componentString.split("/", 2);
-                if (parts.length == 2) {
-                    return "stub:" + parts[0] + "/" + parts[1];
-                }
-            }
-        } catch (Exception e) { /* Ignore */ }
-
-        try {
-            String className = intent.getStringExtra("fusioncore.original_component");
-            if (className != null) {
-                return "stub:" + BootstrapActivity.class.getPackage().getName() + "/" + className;
-            }
-        } catch (Exception e) { /* Ignore */ }
-
-        return null;
+        return intent.getBooleanExtra(EXTRA_IS_DYNAMIC_ACTIVITY, false);
     }
 }
