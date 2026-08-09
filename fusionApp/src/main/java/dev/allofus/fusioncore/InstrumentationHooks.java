@@ -2,13 +2,10 @@ package dev.allofus.fusioncore;
 
 import android.app.Instrumentation;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
 import java.lang.reflect.Method;
-import java.util.Map;
-import java.util.HashMap;
 
 import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
@@ -25,9 +22,7 @@ public class InstrumentationHooks {
 
     public static boolean areHooksInstalled = false;
 
-    private static final Map<Integer, Intent> DYNAMIC_INTENT_STASH = new HashMap<>();
-
-    public static void install(Context context) {
+    public static void install() {
         if (areHooksInstalled) {
             Log.d(TAG, "Instrumentation hooks already installed");
             return;
@@ -74,7 +69,7 @@ public class InstrumentationHooks {
                 }
                 Pine.hook(m, new MethodHook() {
                     @Override public void beforeCall(Pine.CallFrame callFrame) { handleNewActivityBeforeCall(callFrame); }
-                    @Override public void afterCall(Pine.CallFrame callFrame) {}
+                    @Override public void afterCall(Pine.CallFrame callFrame) { }
                 });
             }
         } catch (SecurityException e) {
@@ -84,40 +79,39 @@ public class InstrumentationHooks {
 
     private static void handleExecStartBeforeCall(Pine.CallFrame callFrame) {
         try {
-            int index = -1;
-            Intent intent = null;
-            String targetClass = null;
+            int intentIdx = -1;
 
             if (callFrame.args != null) {
-                for (Object arg : callFrame.args) {
-                    index++;
+                for (int i = 0; i < callFrame.args.length; i++) {
+                    Object arg = callFrame.args[i];
                     if (arg == null) continue;
                     if (Intent.class.isAssignableFrom(arg.getClass())) {
-                        intent = (Intent) arg;
+                        intentIdx = i;
                         break;
                     }
                 }
 
-                if (intent != null) {
-                    targetClass = intent.getComponent().getClassName();
+                if (intentIdx < 0) {
+                    Log.e(TAG, "No intent found in arguments for execStartActivity!");
+                    return;
                 }
+
+                Intent intent = (Intent) callFrame.args[intentIdx];
+                String targetClass = intent.getComponent().getClassName();
+
+                String originKey = getOriginKeyForIntent(intent);
+                if (originKey != null && originKey.startsWith("stub:")) return;
+
+                /*if (!isTargetUnregistered(targetClass)) {
+                    Log.d(TAG, "execStartActivity: registered target: " + targetClass);
+                    return;
+                }*/
+
+                callFrame.args[intentIdx] = getInjectedIntent(intent, targetClass);
+                Log.d(TAG, "execStartActivity: intercepted unregistered activity: " + targetClass);
+            } else {
+                Log.e(TAG, "No arguments to handle execStartActivity!");
             }
-
-            if (intent == null || targetClass == null) {
-                Log.e(TAG, "intent or targetClass was null!");
-                return;
-            }
-
-            String originKey = getDynamicActivityOrigin(intent);
-            if (originKey != null && originKey.startsWith("stub:")) return;
-
-            /*if (!isTargetUnregistered(targetClass)) {
-                Log.d(TAG, "execStartActivity: registered target: " + targetClass);
-                return;
-            }*/
-
-            callFrame.args[index] = markAsDynamicLaunch(intent, targetClass);
-            Log.d(TAG, "execStartActivity: intercepted unregistered activity: " + targetClass);
         } catch (Exception e) {
             Log.e(TAG, "Error in execStartActivity beforeCall", e);
         }
@@ -128,13 +122,14 @@ public class InstrumentationHooks {
             if (callFrame.args != null) {
                 int intentIdx = -1;
                 int strIdx = -1;
+
                 for (int i = 0; i < callFrame.args.length; i++) {
                     Object arg = callFrame.args[i];
                     if (arg == null) continue;
                     if (Intent.class.isAssignableFrom(arg.getClass())) {
                         intentIdx = i;
                     }
-                    if (String.class.isAssignableFrom(arg.getClass())) {
+                    else if (String.class.isAssignableFrom(arg.getClass())) {
                         strIdx = i;
                     }
                 }
@@ -144,13 +139,15 @@ public class InstrumentationHooks {
                 }
 
                 Intent intent = (Intent) callFrame.args[intentIdx];
-                String dynamicOrigin = getDynamicActivityOrigin(intent);
+                String dynamicOrigin = getOriginKeyForIntent(intent);
                 if (dynamicOrigin != null && dynamicOrigin.startsWith("stub:")) {
                     Intent original = resolveOriginalIntent(intent);
                     callFrame.args[intentIdx] = original;
                     callFrame.args[strIdx] = original.getComponent().getClassName();
                     Log.d(TAG, "newActivity: intercepted StubActivity for dynamic origin");
                 }
+            } else {
+                Log.e(TAG, "No arguments to handle newActivity for!");
             }
 
         } catch (Exception e) {
@@ -158,7 +155,7 @@ public class InstrumentationHooks {
         }
     }
 
-    private static Intent markAsDynamicLaunch(Intent intent, String targetClass) {
+    private static Intent getInjectedIntent(Intent intent, String targetClass) {
         ComponentName componentName = new ComponentName(BootstrapActivity.class.getPackage().getName(), targetClass);
         String originKey = EXTRA_DYNAMIC_ACTIVITY_ORIGIN + ":" + componentName.flattenToString();
 
@@ -169,7 +166,7 @@ public class InstrumentationHooks {
         return newIntent;
     }
 
-    private static String getDynamicActivityOrigin(Intent intent) {
+    private static String getOriginKeyForIntent(Intent intent) {
         if (intent == null) return null;
 
         try {

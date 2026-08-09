@@ -100,27 +100,28 @@ public class BootstrapActivity extends Activity {
             return;
         }
 
+        final String launcherClassName = launcher.getClassName();
+        Class<?> launcherClass;
+        try {
+            launcherClass = gameContext.getClassLoader().loadClass(launcherClassName);
+        } catch (ClassNotFoundException e) {
+            Log.e(TAG, "Failed to get class for launcher activity!");
+            return;
+        }
+
         setPhaseStatus(getString(R.string.bootstrap_status_installing_hooks));
         try {
             ClassLoaderHooks.installHooks(gameContext.getClassLoader());
             PackageManagerHooks.installHooks(getPackageManager());
-            InstrumentationHooks.install(this);
+            InstrumentationHooks.install();
             UnityPlayerHooks.installHooks(gameContext);
         } catch (Exception e) {
             Log.e(TAG, "Failed to install base hooks", e);
         }
 
-        final String launcherClassName = launcher.getClassName();
-        if (!installLauncherOnCreateHook(gameContext.getClassLoader(), launcherClassName,
-                (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
-            failAndFinish("Failed to install launcher hook! See log for details.", null);
-            return;
-        }
-
         try {
-            var launcherClass = gameContext.getClassLoader().loadClass(launcherClassName);
-
             setPhaseStatus(getString(R.string.bootstrap_status_launching));
+            initializeFusion(launcherClassName, targetPackage);
             runOnMainThread(() -> {
                 try {
                     var intent = new Intent(this, launcherClass);
@@ -225,54 +226,7 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private interface BeforeOnCreateAction {
-
-        void run(Activity launcherActivity, Bundle bundle);
-    }
-
-    private boolean installLauncherOnCreateHook(ClassLoader gameClassLoader,
-            String launcherClassName,
-            BeforeOnCreateAction action) {
-        if (hookInstalled.get()) {
-            return true;
-        }
-
-        try {
-            Class<?> launcherClass = Class.forName(launcherClassName, false, gameClassLoader);
-            Method onCreateMethod = Utilities.findOnCreateMethod(launcherClass);
-            onCreateMethod.setAccessible(true);
-
-            Pine.hook(onCreateMethod, new MethodHook() {
-                @Override
-                public void beforeCall(Pine.CallFrame callFrame) {
-                    if (!(callFrame.thisObject instanceof Activity)) {
-                        Log.w(TAG, "Launcher hook hit but receiver is not an Activity: " + callFrame.thisObject);
-                        return;
-                    }
-
-                    Bundle bundle = null;
-                    if (callFrame.args != null && callFrame.args.length > 0 && callFrame.args[0] instanceof Bundle) {
-                        bundle = (Bundle) callFrame.args[0];
-                    }
-
-                    try {
-                        action.run((Activity) callFrame.thisObject, bundle);
-                    } catch (Throwable t) {
-                        Log.e(TAG, "Fusion pre-onCreate action failed", t);
-                    }
-                }
-            });
-
-            hookInstalled.set(true);
-            Log.i(TAG, "Installed launcher onCreate hook for " + launcherClassName);
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to install launcher onCreate hook for " + launcherClassName, e);
-            return false;
-        }
-    }
-
-    private void initializeFusion(Activity launcherActivity, String targetPackage) {
+    private void initializeFusion(String launcherName, String targetPackage) {
         if (!fusionInitialized.compareAndSet(false, true)) {
             return;
         }
@@ -283,9 +237,6 @@ public class BootstrapActivity extends Activity {
             return;
         }
 
-        String launcherName = launcherActivity != null
-                ? launcherActivity.getClass().getName()
-                : "<unknown launcher>";
         Log.i(TAG, "Initializing Fusion for " + targetPackage + " via " + launcherName);
 
         try {
