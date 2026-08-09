@@ -119,40 +119,61 @@ public class InstrumentationHooks {
 
     private static void handleNewActivityBeforeCall(Pine.CallFrame callFrame) {
         try {
-            if (callFrame.args != null) {
-                int intentIdx = -1;
-                int strIdx = -1;
+            if (callFrame.args == null) return;
 
-                for (int i = 0; i < callFrame.args.length; i++) {
-                    Object arg = callFrame.args[i];
-                    if (arg == null) continue;
-                    if (Intent.class.isAssignableFrom(arg.getClass())) {
-                        intentIdx = i;
-                    }
-                    else if (String.class.isAssignableFrom(arg.getClass())) {
-                        strIdx = i;
-                    }
+            int intentIdx = -1;
+            int strIdx = -1;
+
+            for (int i = 0; i < callFrame.args.length; i++) {
+                Object arg = callFrame.args[i];
+                if (arg == null) continue;
+                if (Intent.class.isAssignableFrom(arg.getClass())) {
+                    intentIdx = i;
                 }
-
-                if (intentIdx < 0 || strIdx < 0) {
-                    Log.e(TAG, "Intent or String not found!");
+                else if (String.class.isAssignableFrom(arg.getClass())) {
+                    strIdx = i;
                 }
+            }
 
-                Intent intent = (Intent) callFrame.args[intentIdx];
-                String dynamicOrigin = getOriginKeyForIntent(intent);
-                if (dynamicOrigin != null && dynamicOrigin.startsWith("stub:")) {
-                    Intent original = resolveOriginalIntent(intent);
+            if (intentIdx < 0 || strIdx < 0) {
+                Log.e(TAG, "Intent or String not found in arguments!");
+                return;
+            }
+
+            Intent intent = (Intent) callFrame.args[intentIdx];
+            String dynamicOrigin = getOriginKeyForIntent(intent);
+
+            if (dynamicOrigin != null && dynamicOrigin.startsWith("stub:")) {
+                Intent original = resolveOriginalIntent(intent);
+
+                if (original != null && original.getComponent() != null) {
                     callFrame.args[intentIdx] = original;
                     callFrame.args[strIdx] = original.getComponent().getClassName();
                     Log.d(TAG, "newActivity: intercepted StubActivity for dynamic origin");
+                } else {
+                    Log.e(TAG, "Failed to resolve original intent or component was null!");
                 }
-            } else {
-                Log.e(TAG, "No arguments to handle newActivity for!");
             }
 
         } catch (Exception e) {
             Log.e(TAG, "Error in newActivity beforeCall", e);
         }
+    }
+
+    private static Intent resolveOriginalIntent(Intent currentIntent) {
+        try {
+            currentIntent.setExtrasClassLoader(InstrumentationHooks.class.getClassLoader());
+
+            Intent originalIntent = currentIntent.getParcelableExtra(EXTRA_ORIGINAL_INTENT);
+
+            if (originalIntent != null && originalIntent.getComponent() != null) {
+                Log.d(TAG, "Resolved original intent for " + originalIntent.getComponent().getClassName());
+                return originalIntent;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error resolving original intent", e);
+        }
+        return null;
     }
 
     private static Intent getInjectedIntent(Intent intent, String targetClass) {
@@ -190,20 +211,4 @@ public class InstrumentationHooks {
 
         return null;
     }
-
-    private static Intent resolveOriginalIntent(Intent currentIntent) {
-        try {
-            Object originalIntentObj = currentIntent.getExtras().get(EXTRA_ORIGINAL_INTENT);
-            if (originalIntentObj instanceof Intent originalIntent) {
-
-                Log.d(TAG, "Resolved original intent for "+ originalIntent.getComponent().getClassName());
-                return originalIntent;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error resolving original intent", e);
-        }
-        return null;
-    }
-
-
 }
