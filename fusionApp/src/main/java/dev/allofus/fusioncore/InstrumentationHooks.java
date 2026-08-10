@@ -18,8 +18,8 @@ public class InstrumentationHooks {
 
     private static final String TAG = "InstrumentationHooks";
 
-    private static final String EXTRA_IS_DYNAMIC_ACTIVITY = "fusioncore.is_dynamic_activity";
-    private static final String EXTRA_ORIGINAL_INTENT = "fusioncore.original_intent";
+    public static final String EXTRA_IS_DYNAMIC_ACTIVITY = "fusioncore.is_dynamic_activity";
+    public static final String EXTRA_ORIGINAL_INTENT = "fusioncore.original_intent";
 
     public static boolean areHooksInstalled = false;
 
@@ -30,8 +30,17 @@ public class InstrumentationHooks {
         }
 
         try {
-            hookExecStartActivity();
-            hookNewActivity();
+            Class<?> instrumentationClass = Instrumentation.class;
+
+            // The execStartActivity hook will replace the unregistered activity with StubActivity.
+            hookAllMethodsByName(instrumentationClass, "execStartActivity", new MethodHook() {
+                @Override public void beforeCall(Pine.CallFrame callFrame) { handleExecStartBeforeCall(callFrame); }
+            });
+
+            // The newActivity hook restores the unregistered activity's intent from the StubActivity intent.
+            hookAllMethodsByName(instrumentationClass, "newActivity", new MethodHook() {
+                @Override public void beforeCall(Pine.CallFrame callFrame) { handleNewActivityBeforeCall(callFrame); }
+            });
 
             areHooksInstalled = true;
             Log.d(TAG, "Successfully installed Instrumentation hooks");
@@ -40,41 +49,17 @@ public class InstrumentationHooks {
         }
     }
 
-    private static void hookExecStartActivity() {
-        Class<?> instrumentationClass = Instrumentation.class;
-
+    private static void hookAllMethodsByName(Class<?> clazz, String methodName, MethodHook hook) {
         try {
-            Method[] methods = instrumentationClass.getDeclaredMethods();
+            Method[] methods = clazz.getDeclaredMethods();
             for (Method m : methods) {
-                if (!m.getName().equals("execStartActivity")) {
+                if (!m.getName().equals(methodName)) {
                     continue;
                 }
-                Pine.hook(m, new MethodHook() {
-                    @Override public void beforeCall(Pine.CallFrame callFrame) { handleExecStartBeforeCall(callFrame); }
-                    @Override public void afterCall(Pine.CallFrame callFrame) {}
-                });
+                Pine.hook(m, hook);
             }
         } catch (SecurityException e) {
-            Log.e(TAG, "Failed to hook newActivity methods");
-        }
-    }
-
-    private static void hookNewActivity() {
-        Class<?> instrumentationClass = Instrumentation.class;
-
-        try {
-            Method[] methods = instrumentationClass.getDeclaredMethods();
-            for (Method m : methods) {
-                if (!m.getName().equals("newActivity")) {
-                    continue;
-                }
-                Pine.hook(m, new MethodHook() {
-                    @Override public void beforeCall(Pine.CallFrame callFrame) { handleNewActivityBeforeCall(callFrame); }
-                    @Override public void afterCall(Pine.CallFrame callFrame) { }
-                });
-            }
-        } catch (SecurityException e) {
-            Log.e(TAG, "Failed to hook newActivity methods");
+            Log.e(TAG, "Failed to hook methods " + methodName + " for class " + clazz.getName());
         }
     }
 

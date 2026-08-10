@@ -17,17 +17,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import dalvik.system.BaseDexClassLoader;
-import dalvik.system.DexClassLoader;
-
-import top.canyie.pine.Pine;
-import top.canyie.pine.callback.MethodHook;
 
 public class BootstrapActivity extends Activity {
 
@@ -38,7 +29,6 @@ public class BootstrapActivity extends Activity {
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
     private static final String GLOBAL_METADATA_FILE = "global-metadata.dat";
 
-    private final AtomicBoolean hookInstalled = new AtomicBoolean(false);
     private final AtomicBoolean fusionInitialized = new AtomicBoolean(false);
 
     private TextView statusView;
@@ -125,7 +115,14 @@ public class BootstrapActivity extends Activity {
             runOnMainThread(() -> {
                 try {
                     var intent = new Intent(this, launcherClass);
-                    startActivity(intent);
+
+                    // Using the stub activity intent here avoids one extra layer of hooks running.
+                    // Its not necessary but could be more performant.
+                    var intentWrapped = new Intent(this, StubActivity.class);
+                    intentWrapped.putExtra(InstrumentationHooks.EXTRA_IS_DYNAMIC_ACTIVITY, true);
+                    intentWrapped.putExtra(InstrumentationHooks.EXTRA_ORIGINAL_INTENT, intent);
+
+                    startActivity(intentWrapped);
                     finish();
                 } catch (Throwable t) {
                     failAndFinish("Failed to launch target app's launcher activity: " + launcherClassName, t);
