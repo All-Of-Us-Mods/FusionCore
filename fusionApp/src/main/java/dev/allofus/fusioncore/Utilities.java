@@ -3,7 +3,6 @@ package dev.allofus.fusioncore;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Build;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
@@ -14,26 +13,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Method;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class Utilities {
     private static final String TAG = "FusionCore";
-
-    public static Method findOnCreateMethod(Class<?> clazz) throws NoSuchMethodException {
-        Class<?> current = clazz;
-        while (current != null) {
-            try {
-                return current.getDeclaredMethod("onCreate", Bundle.class);
-            } catch (NoSuchMethodException ignored) {
-                current = current.getSuperclass();
-            }
-        }
-
-        String className = clazz != null ? clazz.getName() : "<unknown>";
-        throw new NoSuchMethodException("onCreate(Bundle) not found for " + className);
-    }
 
     public static void applyWindowInsets(View root, int basePadding) {
         root.setOnApplyWindowInsetsListener((v, insets) -> {

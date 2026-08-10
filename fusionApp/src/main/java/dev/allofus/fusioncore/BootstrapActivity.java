@@ -279,7 +279,6 @@ public class BootstrapActivity extends Activity {
             useOriginalLibUnity = true;
         } else if (useOriginalLibUnity) {
             Log.i(TAG, "Skipping libunity download");
-            useOriginalLibUnity = true;
         } else {
             Log.i(TAG, "Determined Unity version: " + version);
             if (LibUnityDownloader.downloadAndCacheSafely(appDataDir, version, targetGameAbi, new LibUnityDownloader.DownloadProgressListener() {

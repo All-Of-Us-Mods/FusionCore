@@ -125,7 +125,7 @@ public class SelectorActivity extends Activity {
         List<AppEntry> result = new ArrayList<>();
         List<ApplicationInfo> apps = pm.getInstalledApplications(PackageManager.GET_META_DATA);
 
-        for (ApplicationInfo app: apps) {
+        for (ApplicationInfo app : apps) {
             File libs = new File(app.nativeLibraryDir);
             File unity = new File(libs, "libunity.so");
             File il2cpp = new File(libs, "libil2cpp.so");
@@ -222,20 +222,8 @@ public class SelectorActivity extends Activity {
         }
     }
 
-    private static final class AppEntry {
-        private final String packageName;
-        private final String label;
-        private final Drawable icon;
-        private final String versionName;
-        private final long versionCode;
-
-        private AppEntry(String packageName, String label, Drawable icon, String versionName, long versionCode) {
-            this.packageName = packageName;
-            this.label = label;
-            this.icon = icon;
-            this.versionName = versionName;
-            this.versionCode = versionCode;
-        }
+    private record AppEntry(String packageName, String label, Drawable icon, String versionName,
+                            long versionCode) {
 
         @NonNull
         @Override
@@ -247,17 +235,7 @@ public class SelectorActivity extends Activity {
         }
     }
 
-    private static final class RowHolder {
-        private final ImageView icon;
-        private final TextView name;
-        private final TextView packageName;
-        private final TextView version;
-
-        private RowHolder(ImageView icon, TextView name, TextView packageName, TextView version) {
-            this.icon = icon;
-            this.name = name;
-            this.packageName = packageName;
-            this.version = version;
-        }
+    private record RowHolder(ImageView icon, TextView name, TextView packageName,
+                             TextView version) {
     }
 }
