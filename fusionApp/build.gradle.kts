@@ -11,10 +11,9 @@ repositories {
 }
 
 dependencies {
+    implementation("androidx.annotation:annotation:1.10.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
     implementation("top.canyie.pine:core:0.3.0")
-    implementation("io.github.hexhacking:xdl:2.3.0")
-    implementation("androidx.annotation:annotation-jvm:1.9.1")
 }
 
 android {
