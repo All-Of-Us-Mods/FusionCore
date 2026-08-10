@@ -1,5 +1,6 @@
 package dev.allofus.fusioncore;
 
+import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.ComponentName;
 import android.content.Intent;
@@ -17,7 +18,7 @@ import top.canyie.pine.callback.MethodHook;
 public class InstrumentationHooks {
 
     private static final String TAG = "InstrumentationHooks";
-
+    public static final String EXTRA_ORIENTATION = "fusioncore.target_orientation";
     public static final String EXTRA_IS_DYNAMIC_ACTIVITY = "fusioncore.is_dynamic_activity";
     public static final String EXTRA_ORIGINAL_INTENT = "fusioncore.original_intent";
 
@@ -42,6 +43,10 @@ public class InstrumentationHooks {
                 @Override public void beforeCall(Pine.CallFrame callFrame) { handleNewActivityBeforeCall(callFrame); }
             });
 
+            // Apply orientation if specified in the intent.
+            hookAllMethodsByName(instrumentationClass, "callActivityOnCreate", new MethodHook() {
+                @Override public void beforeCall(Pine.CallFrame callFrame) { handleCallActivityOnCreateBeforeCall(callFrame); }
+            });
             areHooksInstalled = true;
             Log.d(TAG, "Successfully installed Instrumentation hooks");
         } catch (Exception e) {
@@ -60,6 +65,26 @@ public class InstrumentationHooks {
             }
         } catch (SecurityException e) {
             Log.e(TAG, "Failed to hook methods " + methodName + " for class " + clazz.getName());
+        }
+    }
+
+    private static void handleCallActivityOnCreateBeforeCall(Pine.CallFrame callFrame) {
+        try {
+            if (callFrame.args == null || callFrame.args.length == 0) return;
+            Object arg0 = callFrame.args[0];
+            if (!(arg0 instanceof Activity)) return;
+
+            Activity activity = (Activity) arg0;
+            Intent intent = activity.getIntent();
+            if (intent != null && intent.hasExtra(EXTRA_ORIENTATION)) {
+                int orientation = intent.getIntExtra(EXTRA_ORIENTATION, -1);
+                if (orientation != -1) {
+                    activity.setRequestedOrientation(orientation);
+                    Log.d(TAG, "Applied target orientation " + orientation + " to " + activity.getClass().getName());
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error in callActivityOnCreate beforeCall", e);
         }
     }
 

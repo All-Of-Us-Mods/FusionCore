@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Looper;
@@ -112,6 +113,10 @@ public class BootstrapActivity extends Activity {
         try {
             setPhaseStatus(getString(R.string.bootstrap_status_launching));
             initializeFusion(launcherClassName, targetPackage);
+
+            var activityInfo = getPackageManager().getActivityInfo(launcher, 0);
+            int targetOrientation = activityInfo.screenOrientation;
+
             runOnMainThread(() -> {
                 try {
                     var intent = new Intent(this, launcherClass);
@@ -121,7 +126,7 @@ public class BootstrapActivity extends Activity {
                     var intentWrapped = new Intent(this, StubActivity.class);
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_IS_DYNAMIC_ACTIVITY, true);
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_ORIGINAL_INTENT, intent);
-
+                    intentWrapped.putExtra(InstrumentationHooks.EXTRA_ORIENTATION, targetOrientation);
                     startActivity(intentWrapped);
                     finish();
                 } catch (Throwable t) {
