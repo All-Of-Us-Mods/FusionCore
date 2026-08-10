@@ -373,16 +373,7 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private static final class PreparedFusionState {
-
-        private final String targetPackage;
-        private final FusionConfig config;
-
-        private PreparedFusionState(String targetPackage, FusionConfig config) {
-            this.targetPackage = targetPackage;
-            this.config = config;
-        }
-    }
+    private record PreparedFusionState(String targetPackage, FusionConfig config) {    }
 
     private String resolveTargetGameAbi(String gameLibDir) {
         if (gameLibDir == null || gameLibDir.isEmpty()) {
