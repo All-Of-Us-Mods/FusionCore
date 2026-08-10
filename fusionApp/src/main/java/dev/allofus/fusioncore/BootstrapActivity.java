@@ -17,17 +17,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import dalvik.system.BaseDexClassLoader;
-import dalvik.system.DexClassLoader;
-
-import top.canyie.pine.Pine;
-import top.canyie.pine.callback.MethodHook;
 
 public class BootstrapActivity extends Activity {
 
@@ -38,7 +29,6 @@ public class BootstrapActivity extends Activity {
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
     private static final String GLOBAL_METADATA_FILE = "global-metadata.dat";
 
-    private final AtomicBoolean hookInstalled = new AtomicBoolean(false);
     private final AtomicBoolean fusionInitialized = new AtomicBoolean(false);
 
     private TextView statusView;
@@ -100,30 +90,39 @@ public class BootstrapActivity extends Activity {
             return;
         }
 
+        final String launcherClassName = launcher.getClassName();
+        Class<?> launcherClass;
+        try {
+            launcherClass = gameContext.getClassLoader().loadClass(launcherClassName);
+        } catch (ClassNotFoundException e) {
+            Log.e(TAG, "Failed to get class for launcher activity!");
+            return;
+        }
+
         setPhaseStatus(getString(R.string.bootstrap_status_installing_hooks));
         try {
             ClassLoaderHooks.installHooks(gameContext.getClassLoader());
             PackageManagerHooks.installHooks(getPackageManager());
+            InstrumentationHooks.install();
             UnityPlayerHooks.installHooks(gameContext);
         } catch (Exception e) {
             Log.e(TAG, "Failed to install base hooks", e);
         }
 
-        final String launcherClassName = launcher.getClassName();
-        if (!installLauncherOnCreateHook(gameContext.getClassLoader(), launcherClassName,
-                (launcherActivity, bundle) -> initializeFusion(launcherActivity, targetPackage))) {
-            failAndFinish("Failed to install launcher hook! See log for details.", null);
-            return;
-        }
-
         try {
-            var launcherClass = gameContext.getClassLoader().loadClass(launcherClassName);
-
             setPhaseStatus(getString(R.string.bootstrap_status_launching));
+            initializeFusion(launcherClassName, targetPackage);
             runOnMainThread(() -> {
                 try {
                     var intent = new Intent(this, launcherClass);
-                    startActivity(intent);
+
+                    // Using the stub activity intent here avoids one extra layer of hooks running.
+                    // Its not necessary but could be more performant.
+                    var intentWrapped = new Intent(this, StubActivity.class);
+                    intentWrapped.putExtra(InstrumentationHooks.EXTRA_IS_DYNAMIC_ACTIVITY, true);
+                    intentWrapped.putExtra(InstrumentationHooks.EXTRA_ORIGINAL_INTENT, intent);
+
+                    startActivity(intentWrapped);
                     finish();
                 } catch (Throwable t) {
                     failAndFinish("Failed to launch target app's launcher activity: " + launcherClassName, t);
@@ -224,54 +223,7 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private interface BeforeOnCreateAction {
-
-        void run(Activity launcherActivity, Bundle bundle);
-    }
-
-    private boolean installLauncherOnCreateHook(ClassLoader gameClassLoader,
-            String launcherClassName,
-            BeforeOnCreateAction action) {
-        if (hookInstalled.get()) {
-            return true;
-        }
-
-        try {
-            Class<?> launcherClass = Class.forName(launcherClassName, false, gameClassLoader);
-            Method onCreateMethod = Utilities.findOnCreateMethod(launcherClass);
-            onCreateMethod.setAccessible(true);
-
-            Pine.hook(onCreateMethod, new MethodHook() {
-                @Override
-                public void beforeCall(Pine.CallFrame callFrame) {
-                    if (!(callFrame.thisObject instanceof Activity)) {
-                        Log.w(TAG, "Launcher hook hit but receiver is not an Activity: " + callFrame.thisObject);
-                        return;
-                    }
-
-                    Bundle bundle = null;
-                    if (callFrame.args != null && callFrame.args.length > 0 && callFrame.args[0] instanceof Bundle) {
-                        bundle = (Bundle) callFrame.args[0];
-                    }
-
-                    try {
-                        action.run((Activity) callFrame.thisObject, bundle);
-                    } catch (Throwable t) {
-                        Log.e(TAG, "Fusion pre-onCreate action failed", t);
-                    }
-                }
-            });
-
-            hookInstalled.set(true);
-            Log.i(TAG, "Installed launcher onCreate hook for " + launcherClassName);
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to install launcher onCreate hook for " + launcherClassName, e);
-            return false;
-        }
-    }
-
-    private void initializeFusion(Activity launcherActivity, String targetPackage) {
+    private void initializeFusion(String launcherName, String targetPackage) {
         if (!fusionInitialized.compareAndSet(false, true)) {
             return;
         }
@@ -282,9 +234,6 @@ public class BootstrapActivity extends Activity {
             return;
         }
 
-        String launcherName = launcherActivity != null
-                ? launcherActivity.getClass().getName()
-                : "<unknown launcher>";
         Log.i(TAG, "Initializing Fusion for " + targetPackage + " via " + launcherName);
 
         try {
@@ -330,7 +279,6 @@ public class BootstrapActivity extends Activity {
             useOriginalLibUnity = true;
         } else if (useOriginalLibUnity) {
             Log.i(TAG, "Skipping libunity download");
-            useOriginalLibUnity = true;
         } else {
             Log.i(TAG, "Determined Unity version: " + version);
             if (LibUnityDownloader.downloadAndCacheSafely(appDataDir, version, targetGameAbi, new LibUnityDownloader.DownloadProgressListener() {
@@ -425,16 +373,7 @@ public class BootstrapActivity extends Activity {
         }
     }
 
-    private static final class PreparedFusionState {
-
-        private final String targetPackage;
-        private final FusionConfig config;
-
-        private PreparedFusionState(String targetPackage, FusionConfig config) {
-            this.targetPackage = targetPackage;
-            this.config = config;
-        }
-    }
+    private record PreparedFusionState(String targetPackage, FusionConfig config) {    }
 
     private String resolveTargetGameAbi(String gameLibDir) {
         if (gameLibDir == null || gameLibDir.isEmpty()) {

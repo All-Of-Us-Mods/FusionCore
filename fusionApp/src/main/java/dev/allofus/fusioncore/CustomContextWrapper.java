@@ -14,7 +14,6 @@ import java.io.File;
 
 public class CustomContextWrapper extends ContextWrapper {
     Context fusionContext;
-    Context appContext;
 
     public CustomContextWrapper(Context gameContext, Context fusionContext, Context appContext) {
         super(gameContext);
@@ -23,7 +22,6 @@ public class CustomContextWrapper extends ContextWrapper {
         // this prevents the game from resolving its own libraries
         // that way we can override them properly with our own versions
         this.getApplicationInfo().nativeLibraryDir = "";
-        this.appContext = appContext != fusionContext ? new CustomContextWrapper(this, appContext, appContext) : fusionContext;
     }
 
 //    @Override
@@ -97,7 +95,7 @@ public class CustomContextWrapper extends ContextWrapper {
 
     @Override
     public Context getApplicationContext() {
-        return appContext;
+        return fusionContext.getApplicationContext();
     }
 
     @Override
