@@ -14,7 +14,6 @@
 #include <hooking/libunity.h>
 #include <dotnet.h>
 #include <external/dobby.h>
-#include <external/xdl.h>
 
 #define TAG "FusionCore"
 

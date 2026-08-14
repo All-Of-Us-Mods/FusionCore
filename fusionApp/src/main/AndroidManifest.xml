@@ -22,7 +22,11 @@
     <meta-data android:name="notch.config" android:value="portrait|landscape" />
     <meta-data android:name="unity.auto-report-fully-drawn" android:value="true" />
     <meta-data android:name="com.google.android.gms.version" android:value="12451000" />
-    <activity android:name="dev.allofus.fusioncore.SelectorActivity" android:theme="@style/UnityThemeSelector" android:exported="true">
+    <activity
+        android:name="dev.allofus.fusioncore.SelectorActivity"
+        android:theme="@style/UnityThemeSelector" android:exported="true"
+        android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+        >
       <intent-filter>
         <category android:name="android.intent.category.LAUNCHER" />
         <action android:name="android.intent.action.MAIN" />
@@ -31,11 +35,14 @@
     <activity
         android:name="dev.allofus.fusioncore.BootstrapActivity"
         android:theme="@style/UnityThemeSelector"
+        android:screenOrientation="locked"
+        android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
         android:launchMode="singleTask"
         android:exported="false" />
     <activity
         android:name="dev.allofus.fusioncore.SettingsActivity"
         android:theme="@style/UnityThemeSelector"
+        android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
         android:exported="false" />
     <!-- StubActivity for dynamic loading of unregistered activities -->
     <activity
