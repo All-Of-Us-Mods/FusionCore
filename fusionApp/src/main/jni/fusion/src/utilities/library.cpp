@@ -8,6 +8,26 @@
 
 #define TAG "LibraryUtils"
 
+uintptr_t get_module_base(const char* lib_name, const char* known_export_symbol) {
+    void* handle = dlopen(lib_name, RTLD_NOLOAD | RTLD_LAZY);
+    if (!handle) {
+        handle = dlopen(lib_name, RTLD_NOW);
+    }
+    if (!handle) return 0;
+
+    void* symbol_addr = dlsym(handle, known_export_symbol);
+    dlclose(handle);
+
+    if (!symbol_addr) return 0;
+
+    Dl_info info;
+    if (dladdr(symbol_addr, &info) && info.dli_fbase) {
+        return reinterpret_cast<uintptr_t>(info.dli_fbase);
+    }
+
+    return 0;
+}
+
 PaddedOpenResult padded_dlopen(const char *library_name,
                                const char *temp_path,
                                size_t pool_size)

@@ -29,5 +29,6 @@ PaddedOpenResult padded_dlopen(const char *library_name,
                                const char *temp_path,
                                size_t pool_size);
 
+uintptr_t get_module_base(const char* lib_name, const char* known_export_symbol);
 
 #endif //FUSIONCORE_LIBRARY_H

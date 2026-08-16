@@ -6,6 +6,7 @@ import android.util.Log;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 
 import top.canyie.pine.Pine;
@@ -51,12 +52,14 @@ public class UnityPlayerHooks {
 
         Log.i(TAG, "Found UnityPlayer class: " + unityPlayerClass.getName());
 
+        // Collect all Activity-typed fields across the hierarchy (incl. static currentActivity).
         ArrayList<Field> activityFields = new ArrayList<>();
-        for (Field field : unityPlayerClass.getFields()) {
-            if (Activity.class.isAssignableFrom(field.getType())) {
-                field.setAccessible(true);
-                activityFields.add(field);
-                break;
+        for (Class<?> cls = unityPlayerClass; cls != null; cls = cls.getSuperclass()) {
+            for (Field field : cls.getDeclaredFields()) {
+                if (Activity.class.isAssignableFrom(field.getType())) {
+                    field.setAccessible(true);
+                    activityFields.add(field);
+                }
             }
         }
 
@@ -90,8 +93,17 @@ public class UnityPlayerHooks {
 
                     for (Field field : activityFields) {
                         try {
-                            Log.i(TAG, "Setting activity field: " + field.getName());
-                            field.set(callFrame.thisObject, activity);
+                            if (!field.getType().isAssignableFrom(activity.getClass())) {
+                                Log.i(TAG, "Skipping activity field " + field.getName()
+                                        + ": type " + field.getType().getName()
+                                        + " not assignable from " + activity.getClass().getName());
+                                continue;
+                            }
+
+                            boolean isStatic = Modifier.isStatic(field.getModifiers());
+                            Log.i(TAG, "Setting activity field: " + field.getName()
+                                    + (isStatic ? " (static)" : ""));
+                            field.set(isStatic ? null : callFrame.thisObject, activity);
                         } catch (IllegalAccessException e) {
                             throw new RuntimeException("Failed to set activity field: " + field.getName(), e);
                         }
