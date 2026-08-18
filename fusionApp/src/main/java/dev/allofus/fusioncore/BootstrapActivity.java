@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Looper;
@@ -74,6 +76,8 @@ public class BootstrapActivity extends Activity {
             return;
         }
 
+        final int targetOrientation = resolveTargetOrientation(launcher);
+
         Context gameContext;
         try {
             gameContext = createPackageContext(targetPackage, CONTEXT_IGNORE_SECURITY | CONTEXT_INCLUDE_CODE);
@@ -115,12 +119,14 @@ public class BootstrapActivity extends Activity {
             runOnMainThread(() -> {
                 try {
                     var intent = new Intent(this, launcherClass);
+                    intent.putExtra(InstrumentationHooks.EXTRA_TARGET_ORIENTATION, targetOrientation);
 
                     // Using the stub activity intent here avoids one extra layer of hooks running.
                     // Its not necessary but could be more performant.
                     var intentWrapped = new Intent(this, StubActivity.class);
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_IS_DYNAMIC_ACTIVITY, true);
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_ORIGINAL_INTENT, intent);
+                    intentWrapped.putExtra(InstrumentationHooks.EXTRA_TARGET_ORIENTATION, targetOrientation);
 
                     startActivity(intentWrapped);
                     finish();
@@ -374,6 +380,19 @@ public class BootstrapActivity extends Activity {
     }
 
     private record PreparedFusionState(String targetPackage, FusionConfig config) {    }
+
+    private int resolveTargetOrientation(ComponentName launcher) {
+        try {
+            ActivityInfo info = getPackageManager().getActivityInfo(launcher, 0);
+            if (info.screenOrientation == ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) {
+                Log.i(TAG, "Target orientation unspecified; defaulting to landscape");
+                return ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+            }
+            return info.screenOrientation;
+        } catch (NameNotFoundException e) {
+            return ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE;
+        }
+    }
 
     private String resolveTargetGameAbi(String gameLibDir) {
         if (gameLibDir == null || gameLibDir.isEmpty()) {
