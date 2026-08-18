@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.os.Bundle;
 import android.util.Log;
 
 import java.lang.reflect.Method;
@@ -21,6 +23,7 @@ public class InstrumentationHooks {
     public static final String EXTRA_ORIENTATION = "fusioncore.target_orientation";
     public static final String EXTRA_IS_DYNAMIC_ACTIVITY = "fusioncore.is_dynamic_activity";
     public static final String EXTRA_ORIGINAL_INTENT = "fusioncore.original_intent";
+    public static final String EXTRA_TARGET_ORIENTATION = "fusioncore.target_orientation";
 
     public static boolean areHooksInstalled = false;
 
