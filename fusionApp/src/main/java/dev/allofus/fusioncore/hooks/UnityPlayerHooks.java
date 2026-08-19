@@ -60,7 +60,7 @@ public class UnityPlayerHooks {
         while (clazz.getSuperclass() != null) {
             Log.i(TAG, "Checking class for activity fields: " + clazz.getName());
             for (Field field : clazz.getDeclaredFields()) {
-                if (Activity.class.isAssignableFrom(field.getType())) {
+                if (field.getType().equals(Activity.class)) {
                     Log.i(TAG, "Found activity field " + field.getName() + " in class " + clazz.getName());
                     field.setAccessible(true);
                     activityFields.add(field);
