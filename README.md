@@ -30,13 +30,9 @@ We will try to add support, but there are no guarantees. If you want to help, yo
 
 ## Configuration
 
-1. Add the target package to the `SelectorActivity`'s package list.
+Previous versions of FusionCore required adding the game activity to the manifest and modifying the list of supported games. This is no longer required as FusionCore scans installed apps for IL2CPP unity games and can launch them without manifest requirements.
 
-2. Add/update `<queries><package ... /></queries>` in `unityLibrary/src/main/AndroidManifest.xml` for your target package.
-   - Android package visibility rules require this for package context lookup.
-
-3. If the game uses a custom UnityPlayerActivity, add that to the `AndroidManifest.xml`.
-   - You can clone the existing activity declaration and change the name to match the game's custom activity.
+Just download the APK (or build the app, if not available), and run!
 
 ## Build
 
