@@ -34,7 +34,7 @@
     </activity>
     <activity
         android:name="dev.allofus.fusioncore.BootstrapActivity"
-        android:theme="@style/UnityThemeSelector"
+        android:theme="@style/Theme.Material3.Dark.NoActionBar"
         android:screenOrientation="locked"
         android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
         android:launchMode="singleTask"

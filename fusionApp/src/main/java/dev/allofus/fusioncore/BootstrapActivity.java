@@ -15,6 +15,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -33,7 +35,7 @@ import dev.allofus.fusioncore.tools.NativeLibraryManager;
 import dev.allofus.fusioncore.tools.Utilities;
 import dev.allofus.fusioncore.tools.VersionLookup;
 
-public class BootstrapActivity extends Activity {
+public class BootstrapActivity extends AppCompatActivity {
 
     private static final String TAG = "FusionCore";
 

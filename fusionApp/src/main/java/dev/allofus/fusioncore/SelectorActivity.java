@@ -93,16 +93,14 @@ public class SelectorActivity extends AppCompatActivity {
                         intent.putExtra(GameSettingsActivity.EXTRA_PACKAGE_NAME, entry.packageName);
                         startActivity(intent);
                     });
+
+                    convertView.setOnClickListener((v) -> maybeLaunchBootstrap(entry.packageName));
                 }
 
                 return convertView;
             }
         };
         listView.setAdapter(adapter);
-        listView.setOnItemClickListener((parent, view, position, id) -> {
-            AppEntry selected = installedTargets.get(position);
-            maybeLaunchBootstrap(selected.packageName);
-        });
     }
 
     @Override
