@@ -24,6 +24,10 @@ public class CustomContextWrapper extends ContextWrapper {
         this.getApplicationInfo().nativeLibraryDir = "";
     }
 
+    public Context getOriginalActivity() {
+        return fusionContext;
+    }
+
 //    @Override
 //    public Resources getResources() {
 //        return this.appContext.getResources();
