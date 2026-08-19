@@ -1,4 +1,4 @@
-package dev.allofus.fusioncore;
+package dev.allofus.fusioncore.hooks;
 import android.content.pm.PackageManager;
 import android.util.Log;
 import java.lang.reflect.Method;

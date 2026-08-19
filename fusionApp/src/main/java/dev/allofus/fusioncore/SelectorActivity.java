@@ -1,6 +1,5 @@
 package dev.allofus.fusioncore;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
@@ -24,15 +23,19 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.zip.ZipFile;
 
-public class SelectorActivity extends Activity {
+import dev.allofus.fusioncore.tools.Utilities;
+
+public class SelectorActivity extends AppCompatActivity {
     private static final String TAG = "FusionCore";
     private static final int REQUEST_MANAGE_EXTERNAL_STORAGE = 1001;
     private static final String[] UNITY_ABIS = {"arm64-v8a", "armeabi-v7a", "x86_64", "x86"};
@@ -83,7 +86,15 @@ public class SelectorActivity extends Activity {
                     holder.name.setText(entry.label);
                     holder.packageName.setText(entry.packageName);
                     holder.version.setText(Utilities.formatVersionText(entry.versionName, entry.versionCode));
+
+                    ImageButton settingsButton = convertView.findViewById(R.id.selector_action_settings);
+                    settingsButton.setOnClickListener(v -> {
+                        var intent = new Intent(getContext(), GameSettingsActivity.class);
+                        intent.putExtra(GameSettingsActivity.EXTRA_PACKAGE_NAME, entry.packageName);
+                        startActivity(intent);
+                    });
                 }
+
                 return convertView;
             }
         };
@@ -92,9 +103,6 @@ public class SelectorActivity extends Activity {
             AppEntry selected = installedTargets.get(position);
             maybeLaunchBootstrap(selected.packageName);
         });
-
-        ImageButton settingsButton = findViewById(R.id.selector_action_settings);
-        settingsButton.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
     }
 
     @Override
@@ -179,6 +187,7 @@ public class SelectorActivity extends Activity {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     versionCode = packageInfo.getLongVersionCode();
                 } else {
+                    //noinspection deprecation
                     versionCode = packageInfo.versionCode;
                 }
             } catch (Exception e) {
@@ -198,9 +207,7 @@ public class SelectorActivity extends Activity {
             apkPaths.add(info.sourceDir);
         }
         if (info.splitSourceDirs != null) {
-            for (String split : info.splitSourceDirs) {
-                apkPaths.add(split);
-            }
+            Collections.addAll(apkPaths, info.splitSourceDirs);
         }
         for (String apk : apkPaths) {
             if (apkContainsIl2Cpp(apk)) {
@@ -229,15 +236,12 @@ public class SelectorActivity extends Activity {
 
     private static boolean apkContainsIl2Cpp(String apkPath) {
         try {
-            ZipFile zip = new ZipFile(apkPath);
-            try {
+            try (ZipFile zip = new ZipFile(apkPath)) {
                 for (String abi : UNITY_ABIS) {
                     if (zip.getEntry("lib/" + abi + "/libil2cpp.so") != null) {
                         return true;
                     }
                 }
-            } finally {
-                zip.close();
             }
         } catch (Exception e) {
             // Unreadable APK; fall through to the nativeLibraryDir check.
@@ -249,11 +253,13 @@ public class SelectorActivity extends Activity {
         Intent intent = new Intent(this, BootstrapActivity.class);
         intent.putExtra(BootstrapActivity.EXTRA_TARGET_PACKAGE, packageName);
         intent.putExtra(BootstrapActivity.EXTRA_USE_ORIGINAL_LIBUNITY,
-                !FusionSettings.isDownloadUnstrippedLibUnity(this));
+                !FusionSettings.getUseUnstrippedLibUnityForGame(this, packageName));
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
         startActivity(intent);
+        //noinspection deprecation
         overridePendingTransition(0, 0);
         finish();
+        //noinspection deprecation
         overridePendingTransition(0, 0);
     }
 

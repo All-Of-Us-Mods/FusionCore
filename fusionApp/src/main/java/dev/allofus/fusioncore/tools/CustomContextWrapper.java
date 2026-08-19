@@ -1,4 +1,4 @@
-package dev.allofus.fusioncore;
+package dev.allofus.fusioncore.tools;
 
 import android.content.Context;
 import android.content.ContextWrapper;

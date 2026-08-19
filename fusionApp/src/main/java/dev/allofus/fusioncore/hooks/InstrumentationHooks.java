@@ -1,4 +1,4 @@
-package dev.allofus.fusioncore;
+package dev.allofus.fusioncore.hooks;
 
 import android.app.Activity;
 import android.app.Instrumentation;
@@ -10,6 +10,8 @@ import android.util.Log;
 
 import java.lang.reflect.Method;
 
+import dev.allofus.fusioncore.BuildConfig;
+import dev.allofus.fusioncore.StubActivity;
 import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
 

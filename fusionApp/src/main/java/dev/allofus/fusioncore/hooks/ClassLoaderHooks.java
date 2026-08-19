@@ -1,10 +1,11 @@
-package dev.allofus.fusioncore;
+package dev.allofus.fusioncore.hooks;
 
 import android.util.Log;
 
 import java.lang.reflect.Method;
 import java.util.Objects;
 
+import dev.allofus.fusioncore.BootstrapActivity;
 import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
 

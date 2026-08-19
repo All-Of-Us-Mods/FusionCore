@@ -12,6 +12,10 @@ repositories {
 
 dependencies {
     implementation("androidx.annotation:annotation:1.10.0")
+    implementation("androidx.appcompat:appcompat:1.8.0")
+    implementation ("androidx.coordinatorlayout:coordinatorlayout:1.3.0")
+    implementation("com.google.android.material:material:1.14.0")
+    implementation("androidx.core:core:1.18.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
     implementation("top.canyie.pine:core:0.3.0")
 }

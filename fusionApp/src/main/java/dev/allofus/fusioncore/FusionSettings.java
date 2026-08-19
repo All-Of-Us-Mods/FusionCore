@@ -14,12 +14,11 @@ public final class FusionSettings {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
-    // use when non-f1 unity build
-    public static boolean isDownloadUnstrippedLibUnity(Context context) {
-        return prefs(context).getBoolean(KEY_DOWNLOAD_UNSTRIPPED_LIBUNITY, true);
+    public static boolean getUseUnstrippedLibUnityForGame(Context context, String targetPackage) {
+        return prefs(context).getBoolean(targetPackage + ":" + KEY_DOWNLOAD_UNSTRIPPED_LIBUNITY, true);
     }
 
-    public static void setDownloadUnstrippedLibUnity(Context context, boolean enabled) {
-        prefs(context).edit().putBoolean(KEY_DOWNLOAD_UNSTRIPPED_LIBUNITY, enabled).apply();
+    public static void setUseUnstrippedLibUnityForGame(Context context, String targetPackage, boolean enabled) {
+        prefs(context).edit().putBoolean(targetPackage + ":" + KEY_DOWNLOAD_UNSTRIPPED_LIBUNITY, enabled).apply();
     }
 }

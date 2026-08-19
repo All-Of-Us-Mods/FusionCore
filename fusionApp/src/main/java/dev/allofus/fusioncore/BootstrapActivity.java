@@ -22,6 +22,17 @@ import java.io.IOException;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import dev.allofus.fusioncore.hooks.ClassLoaderHooks;
+import dev.allofus.fusioncore.hooks.InstrumentationHooks;
+import dev.allofus.fusioncore.hooks.PackageManagerHooks;
+import dev.allofus.fusioncore.hooks.UnityPlayerHooks;
+import dev.allofus.fusioncore.tools.FusionConfig;
+import dev.allofus.fusioncore.tools.FusionConfigStore;
+import dev.allofus.fusioncore.tools.LibUnityDownloader;
+import dev.allofus.fusioncore.tools.NativeLibraryManager;
+import dev.allofus.fusioncore.tools.Utilities;
+import dev.allofus.fusioncore.tools.VersionLookup;
+
 public class BootstrapActivity extends Activity {
 
     private static final String TAG = "FusionCore";
