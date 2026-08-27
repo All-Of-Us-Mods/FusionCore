@@ -120,7 +120,7 @@ public class BootstrapActivity extends AppCompatActivity {
         try {
             ClassLoaderHooks.installHooks(gameContext.getClassLoader());
             PackageManagerHooks.installHooks(getPackageManager());
-            InstrumentationHooks.install();
+            InstrumentationHooks.install(getApplicationContext());
             UnityPlayerHooks.installHooks(gameContext);
         } catch (Exception e) {
             Log.e(TAG, "Failed to install base hooks", e);

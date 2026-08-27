@@ -22,6 +22,7 @@ using JNI_OnLoad_t = jint (*)(JavaVM *vm, void *reserved);
 using JNI_Unload_t = void (*)(JavaVM *vm, void *reserved);
 using FusionStageFromConfigPath_t = bool (*)(const char *configPath);
 using FusionBootstrapFromLibMain_t = bool (*)(JNIEnv *env);
+using FusionJvmInit_t = void (*)(JavaVM *vm);
 
 static FILE *logFile = nullptr;
 static std::string log_path;
@@ -30,6 +31,8 @@ static std::string override_il2cpp_path;
 
 static void *unityLibHandle = nullptr;
 static void *il2cppLibHandle = nullptr;
+
+static JavaVM *g_vm;
 
 static std::string build_sibling_library_path(const char *libraryFileName)
 {
@@ -182,7 +185,7 @@ static void *resolve_or_load_fusion_handle()
     }
 
     dlerror();
-    fusionHandle = dlopen("libfusion.so", RTLD_NOW | RTLD_NOLOAD);
+    fusionHandle = dlopen("libfusion.so", RTLD_NOW | RTLD_GLOBAL);
     if (!fusionHandle) {
         const char *noLoadErr = dlerror();
         LOGE("resolve_or_load_fusion_handle: libfusion.so still not visible after preload: %s",
@@ -207,7 +210,7 @@ static bool resolve_fusion_symbols(FusionStageFromConfigPath_t *stageFromConfig,
     if (!*stageFromConfig) {
         const char *symErr = dlerror();
         LOGE("resolve_fusion_symbols: dlsym failed for fusion_stage_from_config_path: %s",
-             symErr ? symErr : "(no dlerror)");
+             symErr ? symErr : "(no dlerror)")
         return false;
     }
 
@@ -216,8 +219,16 @@ static bool resolve_fusion_symbols(FusionStageFromConfigPath_t *stageFromConfig,
     if (!*bootstrap) {
         const char *symErr = dlerror();
         LOGE("resolve_fusion_symbols: dlsym failed for fusion_bootstrap_from_libmain: %s",
-             symErr ? symErr : "(no dlerror)");
+             symErr ? symErr : "(no dlerror)")
         return false;
+    }
+
+    FusionJvmInit_t loadJni = reinterpret_cast<FusionJvmInit_t>(dlsym(fusionHandle, "init_java"));
+    if (loadJni) {
+        loadJni(g_vm);
+        LOGI("initialized fusion java")
+    } else {
+        LOGE("failed to init fusion java")
     }
 
     return true;
@@ -385,7 +396,6 @@ load(JNIEnv *env, jobject activityObject, jstring path)
     const char *il2cppPath = override_il2cpp_path.c_str();
     LOGI("load: unityPath=%s, il2cppPath=%s", unityPath ? unityPath : "(null)", il2cppPath ? il2cppPath : "(null)");
 
-
     if (!unityPath || !il2cppPath)
     {
         LOGE("load: paths not set");
@@ -456,6 +466,8 @@ unload(JNIEnv *env, jclass activityObject)
 JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM *vm, void *reserved)
 {
+    g_vm = vm;
+
     JNIEnv *globalEnv;
     if (vm->GetEnv(reinterpret_cast<void **>(&globalEnv), JNI_VERSION_1_6) != JNI_OK)
     {

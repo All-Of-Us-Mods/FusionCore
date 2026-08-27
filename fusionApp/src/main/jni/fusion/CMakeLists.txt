@@ -19,6 +19,7 @@ add_library(fusion SHARED
         src/utilities/asm.cpp
         src/utilities/elf.cpp
         src/utilities/library.cpp
+        src/utilities/java.cpp
 )
 
 target_include_directories(fusion PUBLIC include)

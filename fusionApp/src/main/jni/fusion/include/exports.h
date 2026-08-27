@@ -16,6 +16,10 @@ void unhook(void *target);
 
 void create_alert(const char *title, const char *message);
 
+void set_loader_stage(uint8_t stage);
+
+void set_loader_message(const char *text);
+
 void write_log(const char *text);
 
 void write_log_level(int level, const char *text);

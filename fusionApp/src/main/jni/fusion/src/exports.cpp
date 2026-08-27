@@ -1,8 +1,9 @@
 // Copyright (c) 2026 XtraCube
-#include <android/log.h>
 #include <exports.h>
+#include <android/log.h>
 #include <hooking/safehook.h>
 #include <logger.h>
+#include <utilities/java.h>
 
 void init_bridge_helper(const char *libraryPath)
 {
@@ -22,6 +23,16 @@ void unhook(void *target)
 void create_alert(const char *title, const char *message)
 {
 
+}
+
+void set_loader_stage(uint8_t stage)
+{
+    setLoadingState(stage < 2);
+}
+
+void set_loader_message(const char *text)
+{
+    setLoadingText(text);
 }
 
 void write_log(const char *text)

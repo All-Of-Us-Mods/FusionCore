@@ -72,7 +72,6 @@ public class UnityPlayerHooks {
         for (Constructor<?> constructor : constructors) {
             Log.i(TAG, "Hooking constructor: " + constructor);
             Pine.hook(constructor, new MethodHook() {
-
                 @Override
                 public void beforeCall(Pine.CallFrame callFrame) {
                     try {
@@ -83,7 +82,6 @@ public class UnityPlayerHooks {
 
                         pendingActivity.set(activity);
 
-                        // In UnityPlayerHooks beforeCall:
                         Log.i(TAG, "Constructor firing, context class: "
                                 + callFrame.args[0].getClass().getName());
                         callFrame.args[0] = new CustomContextWrapper(gameContext, activity, activity);
