@@ -10,19 +10,21 @@ repositories {
     maven("https://jitpack.io")
 }
 
+// we have a custom pine build that fixes 16KB library problem.
+val pineAar = file("../libs/canyie-pine.aar")
 dependencies {
     implementation("androidx.annotation:annotation:1.10.0")
     implementation("androidx.appcompat:appcompat:1.8.0")
     implementation ("androidx.coordinatorlayout:coordinatorlayout:1.3.0")
     implementation("com.google.android.material:material:1.14.0")
-    implementation("androidx.core:core:1.18.0")
+    implementation("androidx.core:core:1.19.0")
     implementation("org.jetbrains.kotlin:kotlin-stdlib:2.3.20")
-    implementation("top.canyie.pine:core:0.3.0")
+    implementation(files(pineAar))
 }
 
 android {
     namespace = "dev.allofus.fusioncore"
-    compileSdk = 36
+    compileSdk = 37
 
     buildFeatures {
         prefab = true
