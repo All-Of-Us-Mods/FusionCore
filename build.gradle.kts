@@ -3,14 +3,6 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.4.10" apply false
 }
 
-repositories {
-    google()
-    mavenCentral()
-    gradlePluginPortal()
-    maven("${rootProject.projectDir}/local-repo")
-    maven("https://jitpack.io")
-}
-
 tasks.register("clean", Delete::class) {
     description = "clean build files"
     delete(rootProject.layout.buildDirectory)
