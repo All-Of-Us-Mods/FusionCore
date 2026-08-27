@@ -27,23 +27,29 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        if: "!startsWith(github.ref, 'refs/tags/')"
+        if: github.ref_type != 'tag'
         run: ./gradlew assembleDebug
 
       - name: Build Release APK
-        if: "startsWith(github.ref, 'refs/tags/')"
+        if: github.ref_type == 'tag'
         run: ./gradlew assembleRelease
 
       - name: Upload Debug APK
-        if: "!startsWith(github.ref, 'refs/tags/')"
+        if: github.ref_type != 'tag'
         uses: actions/upload-artifact@v4
         with:
           name: fusionApp-debug
           path: fusionApp/build/outputs/apk/debug/*.apk
 
       - name: Upload Release APK
-        if: "startsWith(github.ref, 'refs/tags/')"
+        if: github.ref_type == 'tag'
         uses: actions/upload-artifact@v4
         with:
           name: fusionApp-release-${{ github.ref_name }}
           path: fusionApp/build/outputs/apk/release/*.apk
+
+      - uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          draft: true
+          files: fusionApp/build/outputs/apk/release/*.apk
