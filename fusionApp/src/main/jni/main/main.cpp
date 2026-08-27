@@ -172,10 +172,6 @@ static void *resolve_or_load_fusion_handle()
         LOGI("resolve_or_load_fusion_handle: libfusion.so missing from namespace: %s", defaultScopeError);
     }
 
-    if (!preload_sibling_library("libxdl.so")) {
-        return nullptr;
-    }
-
     preload_sibling_library("libdobby.so");
     if (!preload_dotnet_runtime_libraries()) {
         return nullptr;
