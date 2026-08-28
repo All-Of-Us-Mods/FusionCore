@@ -24,8 +24,11 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
@@ -33,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipFile;
 
@@ -302,12 +306,52 @@ public class SelectorActivity extends AppCompatActivity {
         overridePendingTransition(0, 0);
     }
 
+    private final ActivityResultLauncher<String[]> requestPermissionsLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), isGrantedMap -> {
+                for (Map.Entry<String, Boolean> entry : isGrantedMap.entrySet()) {
+                    String permission = entry.getKey();
+                    boolean isGranted = entry.getValue();
+
+                    if (isGranted) {
+                        Log.i(TAG, "Got permission: " +permission);
+                    } else {
+                        Log.e(TAG, "Permission denied: " +permission);
+                    }
+
+                    String packageName = pendingLaunchPackage;
+                    pendingLaunchPackage = null;
+                    launchBootstrap(packageName);
+                }
+            });
+
     private void maybeLaunchBootstrap(String packageName) {
         if (!hasExternalStorageManagerAccess()) {
             pendingLaunchPackage = packageName;
             requestExternalStorageManagerAccess();
             return;
         }
+
+        try {
+            var packageInfo = getPackageManager().getPackageInfo(packageName, PackageManager.GET_PERMISSIONS);
+            var perms = packageInfo.requestedPermissions;
+            if (perms != null) {
+                ArrayList<String> newPerms = new ArrayList<>();
+                for (var p : perms) {
+                    if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED) {
+                        newPerms.add(p);
+                    }
+                }
+
+                if (!newPerms.isEmpty()) {
+                    pendingLaunchPackage = packageName;
+                    requestPermissionsLauncher.launch(newPerms.toArray(new String[0]));
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failure getting package info for " + packageName, e);
+        }
+
         launchBootstrap(packageName);
     }
 

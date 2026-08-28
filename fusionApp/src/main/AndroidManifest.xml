@@ -10,6 +10,9 @@
       tools:ignore="AllFilesAccessPolicy,ScopedStorage" />
   <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
       tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <uses-feature android:glEsVersion="0x00030000" />
   <uses-feature android:name="android.hardware.vulkan.version" android:required="false" />
   <uses-feature android:name="android.software.home_screen" android:required="true" />
