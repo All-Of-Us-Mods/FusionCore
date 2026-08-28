@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 public final class FusionSettings {
     private static final String PREFS_NAME = "fusion_settings";
     private static final String KEY_DOWNLOAD_UNSTRIPPED_LIBUNITY = "download_unstripped_libunity";
+    private static final String KEY_ACTIVITY_OVERRIDE = "activity_override";
 
     private FusionSettings() {
     }
@@ -20,5 +21,13 @@ public final class FusionSettings {
 
     public static void setUseUnstrippedLibUnityForGame(Context context, String targetPackage, boolean enabled) {
         prefs(context).edit().putBoolean(targetPackage + ":" + KEY_DOWNLOAD_UNSTRIPPED_LIBUNITY, enabled).apply();
+    }
+
+    public static String getActivityOverrideForGame(Context context, String targetPackage) {
+        return prefs(context).getString(targetPackage + ":" + KEY_ACTIVITY_OVERRIDE, "Automatic");
+    }
+
+    public static void setActivityOverrideForGame(Context context, String targetPackage, String activityName) {
+        prefs(context).edit().putString(targetPackage + ":" + KEY_ACTIVITY_OVERRIDE, activityName).apply();
     }
 }

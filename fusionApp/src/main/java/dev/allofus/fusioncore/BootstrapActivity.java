@@ -73,6 +73,14 @@ public class BootstrapActivity extends AppCompatActivity {
     }
 
     private void runBootstrapFlow(String targetPackage) {
+        Context gameContext;
+        try {
+            gameContext = createPackageContext(targetPackage, CONTEXT_IGNORE_SECURITY | CONTEXT_INCLUDE_CODE);
+        } catch (Exception e) {
+            failAndFinish("Failed to create package context for target package: " + targetPackage, e);
+            return;
+        }
+
         Intent launchIntent = getPackageManager().getLaunchIntentForPackage(targetPackage);
         if (launchIntent == null) {
             failAndFinish("No launch intent for target package: " + targetPackage, null);
@@ -84,20 +92,28 @@ public class BootstrapActivity extends AppCompatActivity {
             launcher = launchIntent.resolveActivity(getPackageManager());
         }
 
+        var overrideActivity = FusionSettings.getActivityOverrideForGame(this, targetPackage);
+        try {
+            var overrideClass = gameContext.getClassLoader().loadClass(overrideActivity);
+            if (!overrideActivity.equals("Automatic") && overrideClass != null) {
+                launcher = new ComponentName(targetPackage, overrideActivity);
+                Log.i(TAG, "Using override activity " + overrideActivity);
+                runOnUiThread(()-> Toast.makeText(this, "Using override activity " + overrideActivity, Toast.LENGTH_LONG));
+            } else if (overrideClass == null) {
+                Log.i(TAG, "Failed to find override activity " + overrideActivity);
+                runOnUiThread(()-> Toast.makeText(this, "Failed to find override activity.", Toast.LENGTH_LONG));
+            }
+        } catch (Exception e) {
+            runOnUiThread(()-> Toast.makeText(this, "Exception when finding override activity.", Toast.LENGTH_LONG));
+            Log.e(TAG, "Failed to get override activity "+ overrideActivity, e);
+        }
+
         if (launcher == null) {
             failAndFinish("Failed to resolve launcher activity for target package: " + targetPackage, null);
             return;
         }
 
         final int targetOrientation = resolveTargetOrientation(launcher);
-
-        Context gameContext;
-        try {
-            gameContext = createPackageContext(targetPackage, CONTEXT_IGNORE_SECURITY | CONTEXT_INCLUDE_CODE);
-        } catch (Exception e) {
-            failAndFinish("Failed to create package context for target package: " + targetPackage, e);
-            return;
-        }
 
         boolean useOriginalLibUnity = getIntent().getBooleanExtra(EXTRA_USE_ORIGINAL_LIBUNITY, false);
         try {

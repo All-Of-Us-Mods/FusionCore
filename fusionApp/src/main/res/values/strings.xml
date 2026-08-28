@@ -28,4 +28,6 @@
     <string name="low_level">Low Level</string>
     <string name="selector_action_folder">Open Mod Folder</string>
     <string name="loading">Loading...</string>
+    <string name="settings_activity_override">Launch Activity</string>
+    <string name="settings_activity_override_desc">Manually specify the activity to launch.</string>
 </resources>
