@@ -35,8 +35,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- App Info Header Card -->
-            <com.google.android.material.card.MaterialCardView
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
@@ -57,7 +56,7 @@
                         android:id="@+id/ivAppIcon"
                         android:layout_width="64dp"
                         android:layout_height="64dp"
-                        android:contentDescription="Game Icon"
+                        android:contentDescription="@string/game_icon"
                         tools:src="@tools:sample/avatars" />
 
                     <LinearLayout
@@ -94,19 +93,18 @@
                             tools:text="Version 1.0.0 (100)" />
                     </LinearLayout>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </androidx.cardview.widget.CardView>
 
-            <!-- Section: Performance Settings -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_marginBottom="8dp"
-                android:text="Performance"
+                android:text="@string/low_level"
                 android:textAppearance="?attr/textAppearanceLabelLarge"
                 android:textColor="?attr/colorPrimary" />
 
-            <com.google.android.material.card.MaterialCardView
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
@@ -149,7 +147,7 @@
                                 android:textColor="?attr/colorOnSurfaceVariant" />
                         </LinearLayout>
 
-                        <com.google.android.material.materialswitch.MaterialSwitch
+                        <androidx.appcompat.widget.SwitchCompat
                             android:id="@+id/switchLibUnity"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -157,7 +155,7 @@
                             android:layout_centerVertical="true" />
                     </RelativeLayout>
                 </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+            </androidx.cardview.widget.CardView>
 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

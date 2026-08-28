@@ -9,12 +9,16 @@ import android.text.TextUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.Toolbar;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.pm.PackageInfoCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.materialswitch.MaterialSwitch;
+
+import java.util.Locale;
 
 public class GameSettingsActivity extends AppCompatActivity {
 
@@ -25,7 +29,7 @@ public class GameSettingsActivity extends AppCompatActivity {
     private TextView tvPackageName;
     private TextView tvVersionInfo;
 
-    private MaterialSwitch switchLibUnity;
+    private SwitchCompat switchLibUnity;
 
     private String targetPackageName;
 
@@ -75,15 +79,22 @@ public class GameSettingsActivity extends AppCompatActivity {
                 packageInfo = pm.getPackageInfo(packageName, 0);
             }
 
-            CharSequence appLabel = pm.getApplicationLabel(packageInfo.applicationInfo);
-            Drawable appIcon = pm.getApplicationIcon(packageInfo.applicationInfo);
+            CharSequence appLabel;
+            Drawable appIcon;
+            if (packageInfo.applicationInfo != null) {
+                appLabel = pm.getApplicationLabel(packageInfo.applicationInfo);
+                appIcon = pm.getApplicationIcon(packageInfo.applicationInfo);
+            } else {
+                appLabel = packageName;
+                appIcon = AppCompatResources.getDrawable(this, R.drawable.android_48px);
+            }
 
             String versionName = packageInfo.versionName != null ? packageInfo.versionName : "N/A";
             long versionCode = PackageInfoCompat.getLongVersionCode(packageInfo);
 
             tvAppName.setText(appLabel);
             tvPackageName.setText(packageName);
-            tvVersionInfo.setText(String.format("Version %s (%d)", versionName, versionCode));
+            tvVersionInfo.setText(String.format(Locale.getDefault(), "Version %s (%d)", versionName, versionCode));
             ivAppIcon.setImageDrawable(appIcon);
 
         } catch (PackageManager.NameNotFoundException e) {
@@ -93,8 +104,7 @@ public class GameSettingsActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        switchLibUnity.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            FusionSettings.setUseUnstrippedLibUnityForGame(this, targetPackageName, isChecked);
-        });
+        switchLibUnity.setOnCheckedChangeListener((buttonView, isChecked) ->
+                FusionSettings.setUseUnstrippedLibUnityForGame(this, targetPackageName, isChecked));
     }
 }

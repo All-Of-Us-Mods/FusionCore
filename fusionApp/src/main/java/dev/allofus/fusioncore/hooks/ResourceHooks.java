@@ -18,7 +18,7 @@ public class ResourceHooks {
             Method getIdentifierMethod = Resources.class.getMethod("getIdentifier", String.class, String.class, String.class);
             Pine.hook(getIdentifierMethod, new MethodHook() {
                 @Override
-                public void afterCall(Pine.CallFrame callFrame) throws Throwable {
+                public void afterCall(Pine.CallFrame callFrame) {
                     if ((int)callFrame.getResult() != 0) {
                         return;
                     }
@@ -66,7 +66,7 @@ public class ResourceHooks {
                 Log.i(TAG, "Hooking " + method.getName());
                 Pine.hook(method, new MethodHook() {
                     @Override
-                    public void afterCall(Pine.CallFrame callFrame) throws Throwable {
+                    public void afterCall(Pine.CallFrame callFrame) {
                         if (!callFrame.hasThrowable() && callFrame.getResult() == null) {
                             return;
                         }
