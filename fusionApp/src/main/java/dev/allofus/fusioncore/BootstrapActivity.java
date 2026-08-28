@@ -94,17 +94,19 @@ public class BootstrapActivity extends AppCompatActivity {
 
         var overrideActivity = FusionSettings.getActivityOverrideForGame(this, targetPackage);
         try {
-            var overrideClass = gameContext.getClassLoader().loadClass(overrideActivity);
-            if (!overrideActivity.equals("Automatic") && overrideClass != null) {
-                launcher = new ComponentName(targetPackage, overrideActivity);
-                Log.i(TAG, "Using override activity " + overrideActivity);
-                runOnUiThread(()-> Toast.makeText(this, "Using override activity " + overrideActivity, Toast.LENGTH_LONG));
-            } else if (overrideClass == null) {
-                Log.i(TAG, "Failed to find override activity " + overrideActivity);
-                runOnUiThread(()-> Toast.makeText(this, "Failed to find override activity.", Toast.LENGTH_LONG));
+            if (!overrideActivity.equals("Automatic")) {
+                var overrideClass = gameContext.getClassLoader().loadClass(overrideActivity);
+                if (overrideClass != null) {
+                    launcher = new ComponentName(targetPackage, overrideActivity);
+                    Log.i(TAG, "Using override activity " + overrideActivity);
+                    runOnUiThread(() -> Toast.makeText(this, "Using override activity " + overrideActivity, Toast.LENGTH_LONG).show());
+                } else {
+                    Log.i(TAG, "Failed to find override activity " + overrideActivity);
+                    runOnUiThread(()-> Toast.makeText(this, "Failed to find override activity.", Toast.LENGTH_LONG).show());
+                }
             }
         } catch (Exception e) {
-            runOnUiThread(()-> Toast.makeText(this, "Exception when finding override activity.", Toast.LENGTH_LONG));
+            runOnUiThread(()-> Toast.makeText(this, "Exception when finding override activity.", Toast.LENGTH_LONG).show());
             Log.e(TAG, "Failed to get override activity "+ overrideActivity, e);
         }
 

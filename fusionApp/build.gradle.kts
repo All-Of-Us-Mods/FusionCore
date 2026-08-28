@@ -37,7 +37,6 @@ android {
             abiFilters.add("arm64-v8a")
             // abiFilters.add("armeabi-v7a")
         }
-        proguardFile("proguard-unity.txt")
     }
 
     externalNativeBuild {
@@ -60,7 +59,8 @@ android {
         release {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            isShrinkResources = true
+            proguardFiles("proguard-unity.txt", getDefaultProguardFile("proguard-android-optimize.txt"))
         }
     }
 
