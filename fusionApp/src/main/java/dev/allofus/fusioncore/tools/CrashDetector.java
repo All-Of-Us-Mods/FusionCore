@@ -35,6 +35,14 @@ public class CrashDetector {
 
         var exitInfos = activityManager.getHistoricalProcessExitReasons(context.getPackageName(), 0, 1);
         for (var exitInfo : exitInfos) {
+            if (exitInfo.getReason() != ApplicationExitInfo.REASON_CRASH &&
+                    exitInfo.getReason() != ApplicationExitInfo.REASON_CRASH_NATIVE &&
+                    exitInfo.getReason() != ApplicationExitInfo.REASON_ANR
+            ) {
+                Log.i(TAG, "skipping exit info with reason " + exitInfo.getReason());
+                continue;
+            }
+
             var outputFile = new File(fusionFolder, "crash_" + System.currentTimeMillis() + ".txt");
             writeExitInfo(context, exitInfo, outputFile);
             Log.i(TAG, "wrote crash log to " + outputFile.getAbsolutePath());
@@ -77,8 +85,8 @@ public class CrashDetector {
         try(var writer = new FileWriter(outputFile, false)) {
             writer.write("FusionCore Crash Log:\n");
             writer.write(buildDeviceData(context));
-            writer.write("=".repeat(50));
-            writer.write(exitInfo.toString());
+            writer.write("=".repeat(50)+"\n");
+            writer.write(exitInfo.toString()+"\n");
 
             var inputStream = exitInfo.getTraceInputStream();
             if (inputStream == null) {
