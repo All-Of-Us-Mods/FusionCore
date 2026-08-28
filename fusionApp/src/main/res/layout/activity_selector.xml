@@ -34,6 +34,22 @@
         android:textSize="14sp"
         android:paddingBottom="14dp" />
 
+    <LinearLayout
+        android:id="@+id/selector_loading"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        >
+        <ProgressBar
+            android:layout_width="48dp"
+            android:layout_height="48dp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="@string/loading"
+            android:autoSizeTextType="uniform"
+            />
+    </LinearLayout>
+
     <ListView
         android:id="@+id/selector_list"
         android:layout_width="match_parent"
@@ -43,7 +59,8 @@
         android:dividerHeight="0dp"
         android:clipToPadding="false"
         android:paddingTop="2dp"
-        android:paddingBottom="6dp" />
+        android:paddingBottom="6dp" >
+    </ListView>
 
     <TextView
         android:id="@+id/selector_empty"

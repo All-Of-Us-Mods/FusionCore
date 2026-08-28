@@ -10,6 +10,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.provider.DocumentsContract;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -24,6 +26,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -51,6 +54,16 @@ public class SelectorActivity extends AppCompatActivity {
         int basePadding = Math.round(getResources().getDisplayMetrics().density * 16f);
         Utilities.applyWindowInsets(root, basePadding);
 
+        var handler = new Handler(getMainLooper());
+        handler.postDelayed(()->{
+            populateList();
+            if (!hasExternalStorageManagerAccess()) {
+                requestExternalStorageManagerAccess();
+            }
+        }, 100);
+    }
+
+    private void populateList() {
         ListView listView = findViewById(R.id.selector_list);
         TextView emptyView = findViewById(R.id.selector_empty);
         listView.setEmptyView(emptyView);
@@ -94,6 +107,33 @@ public class SelectorActivity extends AppCompatActivity {
                         startActivity(intent);
                     });
 
+                    ImageButton folderButton = convertView.findViewById(R.id.selector_action_folder);
+                    folderButton.setOnClickListener(v -> {
+                        File baseDir = new File(Environment.getExternalStorageDirectory(), "FusionCore");
+                        File folder = new File(baseDir, entry.packageName);
+
+                        if (!folder.exists() && !folder.mkdirs()) {
+                            String message = "Failed to make folder: " + folder.getAbsolutePath();
+                            Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+                            Log.e(TAG, message);
+                            return;
+                        }
+
+                        try {
+                            String relativePath = "FusionCore/" + entry.packageName;
+                            Uri directoryUri = Uri.parse("content://com.android.externalstorage.documents/document/primary%3A" + Uri.encode(relativePath));
+
+                            Intent intent = new Intent(Intent.ACTION_VIEW);
+                            intent.setDataAndType(directoryUri, "vnd.android.document/directory");
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Unable to open folder", e);
+                            Toast.makeText(getContext(), "No file manager found capable of opening this directory", Toast.LENGTH_LONG).show();
+                        }
+                    });
+
                     convertView.setOnClickListener((v) -> maybeLaunchBootstrap(entry.packageName));
                 }
 
@@ -101,6 +141,7 @@ public class SelectorActivity extends AppCompatActivity {
             }
         };
         listView.setAdapter(adapter);
+        findViewById(R.id.selector_loading).setVisibility(View.GONE);
     }
 
     @Override
@@ -252,7 +293,7 @@ public class SelectorActivity extends AppCompatActivity {
         intent.putExtra(BootstrapActivity.EXTRA_TARGET_PACKAGE, packageName);
         intent.putExtra(BootstrapActivity.EXTRA_USE_ORIGINAL_LIBUNITY,
                 !FusionSettings.getUseUnstrippedLibUnityForGame(this, packageName));
-        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
         //noinspection deprecation
         overridePendingTransition(0, 0);
