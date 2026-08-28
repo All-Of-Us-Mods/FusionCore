@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fusion Core</string>
+    <string name="selector_title">選擇遊戲</string>
+    <string name="selector_subtitle">下方列出支援的遊戲套件。</string>
+    <string name="selector_action_settings">設定</string>
+    <string name="settings_title">設定</string>
+    <string name="settings_action_back">返回</string>
+    <string name="settings_libunity_title">下載未剝離的 libunity</string>
+    <string name="settings_libunity_desc">如果使用的遊戲因 Unity 問題而崩潰，請開啟此選項。</string>
+    <string name="selector_empty_not_configured">未設定任何支援的遊戲套件。</string>
+    <string name="selector_empty_not_installed">目前未安裝任何支援的遊戲。</string>
+    <string name="selector_storage_permission_prompt">授予「所有檔案存取權限」，以便 Fusion Core 將 BepInEx 檔案寫入 Documents 目錄。</string>
+    <string name="selector_storage_permission_required">需要「所有檔案存取權限」才能繼續。</string>
+    <string name="selector_storage_permission_open_failed">無法開啟儲存權限設定。</string>
+    <string name="bootstrap_title">正在啟動所選遊戲</string>
+    <string name="bootstrap_status_preparing">正在準備目標套件…</string>
+    <string name="bootstrap_status_copy_assets">正在複製 Unity 資料…</string>
+    <string name="bootstrap_status_detecting_version">正在偵測 Unity 版本…</string>
+    <string name="bootstrap_status_downloading_libunity">正在下載未剝離的 libunity…</string>
+    <string name="bootstrap_status_extracting_runtime">正在解壓縮執行時檔案…</string>
+    <string name="bootstrap_status_registering_libraries">正在註冊原生函式庫…</string>
+    <string name="bootstrap_status_installing_hooks">正在安裝鉤子…</string>
+    <string name="bootstrap_status_launching">正在啟動遊戲…</string>
+    <string name="bootstrap_status_error">啟動失敗</string>
+    <string name="bootstrap_download_progress">%1$d%% (%2$s / %3$s)</string>
+    <string name="game_icon">遊戲圖示</string>
+    <string name="low_level">進階設定</string>
+    <string name="selector_action_folder">開啟 Mod 資料夾</string>
+    <string name="loading">載入中…</string>
+    <string name="settings_activity_override">啟動 Activity</string>
+    <string name="settings_activity_override_desc">手動指定要啟動的 Activity。</string>
+    <string name="game_settings_title">遊戲設定</string>
+    <string name="settings_no_target">未提供目標套件</string>
+    <string name="settings_cannot_read_activities">無法讀取 Activity 列表！</string>
+    <string name="settings_version_format">版本 %1$s (%2$d)</string>
+    <string name="settings_package_not_found">未找到套件：%1$s</string>
+    <string name="selector_no_file_manager">未找到可以開啟此目錄的檔案管理器</string>
+    <string name="selector_folder_create_failed">建立資料夾失敗：%1$s</string>
+    <string name="settings_automatic">自動</string>
+</resources>

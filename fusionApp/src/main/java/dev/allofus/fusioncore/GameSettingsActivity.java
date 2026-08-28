@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 import dalvik.system.DexFile;
@@ -58,7 +57,7 @@ public class GameSettingsActivity extends AppCompatActivity {
         targetPackageName = getIntent().getStringExtra(EXTRA_PACKAGE_NAME);
 
         if (TextUtils.isEmpty(targetPackageName)) {
-            Toast.makeText(this, "No target package provided", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.settings_no_target), Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
@@ -105,17 +104,17 @@ public class GameSettingsActivity extends AppCompatActivity {
 
             tvAppName.setText(appLabel);
             tvPackageName.setText(packageName);
-            tvVersionInfo.setText(String.format(Locale.getDefault(), "Version %s (%d)", versionName, versionCode));
+            tvVersionInfo.setText(getString(R.string.settings_version_format, versionName, versionCode));
             ivAppIcon.setImageDrawable(appIcon);
 
             Set<String> activities = new HashSet<>();
-            activities.add("Automatic");
+            activities.add(getString(R.string.settings_automatic));
             if (packageInfo.activities != null) {
                 for (ActivityInfo activity : packageInfo.activities) {
                     activities.add(activity.name);
                 }
             } else {
-                Toast.makeText(this, "Could not read activity list!", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, getString(R.string.settings_cannot_read_activities), Toast.LENGTH_LONG).show();
             }
 
             var arrayAdapter = new ArrayAdapter<>(this, R.layout.item_dropdown, activities.toArray());
@@ -125,7 +124,7 @@ public class GameSettingsActivity extends AppCompatActivity {
                 FusionSettings.setActivityOverrideForGame(this, targetPackageName, selectedItem);
             });
         } catch (PackageManager.NameNotFoundException e) {
-            Toast.makeText(this, "Package not found: " + packageName, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.settings_package_not_found, packageName), Toast.LENGTH_SHORT).show();
             finish();
         }
     }

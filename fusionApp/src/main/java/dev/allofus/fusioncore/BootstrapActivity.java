@@ -94,7 +94,7 @@ public class BootstrapActivity extends AppCompatActivity {
 
         var overrideActivity = FusionSettings.getActivityOverrideForGame(this, targetPackage);
         try {
-            if (!overrideActivity.equals("Automatic")) {
+            if (!overrideActivity.equals(getString(R.string.settings_automatic))) {
                 var overrideClass = gameContext.getClassLoader().loadClass(overrideActivity);
                 if (overrideClass != null) {
                     launcher = new ComponentName(targetPackage, overrideActivity);

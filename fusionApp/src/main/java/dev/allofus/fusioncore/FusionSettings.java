@@ -24,7 +24,7 @@ public final class FusionSettings {
     }
 
     public static String getActivityOverrideForGame(Context context, String targetPackage) {
-        return prefs(context).getString(targetPackage + ":" + KEY_ACTIVITY_OVERRIDE, "Automatic");
+        return prefs(context).getString(targetPackage + ":" + KEY_ACTIVITY_OVERRIDE, context.getString(R.string.settings_automatic));
     }
 
     public static void setActivityOverrideForGame(Context context, String targetPackage, String activityName) {
