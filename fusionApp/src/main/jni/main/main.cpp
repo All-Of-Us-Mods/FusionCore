@@ -54,7 +54,7 @@ static bool preload_sibling_library(const char *libraryFileName)
 {
     const std::string siblingPath = build_sibling_library_path(libraryFileName);
     if (siblingPath.empty()) {
-        LOGE("preload_sibling_library: failed to build sibling path for %s", libraryFileName);
+        LOGE("preload_sibling_library: failed to build sibling path for %s", libraryFileName)
         return false;
     }
 
@@ -63,11 +63,11 @@ static bool preload_sibling_library(const char *libraryFileName)
     if (!handle) {
         const char *err = dlerror();
         LOGE("preload_sibling_library: dlopen failed for %s at %s: %s",
-             libraryFileName, siblingPath.c_str(), err ? err : "(no dlerror)");
+             libraryFileName, siblingPath.c_str(), err ? err : "(no dlerror)")
         return false;
     }
 
-    LOGI("preload_sibling_library: loaded %s from %s", libraryFileName, siblingPath.c_str());
+    LOGI("preload_sibling_library: loaded %s from %s", libraryFileName, siblingPath.c_str())
     return true;
 }
 
@@ -86,7 +86,7 @@ static bool preload_dotnet_runtime_libraries()
 
     for (const char *libraryName : required) {
         if (!preload_sibling_library(libraryName)) {
-            LOGE("preload_dotnet_runtime_libraries: failed to load required runtime library %s", libraryName);
+            LOGE("preload_dotnet_runtime_libraries: failed to load required runtime library %s", libraryName)
             return false;
         }
     }
@@ -100,12 +100,12 @@ static bool preload_dotnet_runtime_libraries()
 static std::string jstring_to_string(JNIEnv *env, jstring value)
 {
     if (!value) {
-        return std::string();
+        return {};
     }
 
     const char *chars = env->GetStringUTFChars(value, nullptr);
     if (!chars) {
-        return std::string();
+        return {};
     }
 
     std::string result(chars);
@@ -117,7 +117,7 @@ static std::string resolve_files_dir_path(JNIEnv *env)
 {
     jclass activityThreadClass = env->FindClass("android/app/ActivityThread");
     if (!activityThreadClass) {
-        LOGE("resolve_files_dir_path: failed to find ActivityThread class");
+        LOGE("resolve_files_dir_path: failed to find ActivityThread class")
         return {};
     }
 
@@ -126,13 +126,13 @@ static std::string resolve_files_dir_path(JNIEnv *env)
             "currentApplication",
             "()Landroid/app/Application;");
     if (!currentApplicationMethod) {
-        LOGE("resolve_files_dir_path: failed to find ActivityThread.currentApplication");
+        LOGE("resolve_files_dir_path: failed to find ActivityThread.currentApplication")
         return {};
     }
 
     jobject applicationObject = env->CallStaticObjectMethod(activityThreadClass, currentApplicationMethod);
     if (!applicationObject) {
-        LOGE("resolve_files_dir_path: ActivityThread.currentApplication returned null");
+        LOGE("resolve_files_dir_path: ActivityThread.currentApplication returned null")
         return {};
     }
 
@@ -141,7 +141,7 @@ static std::string resolve_files_dir_path(JNIEnv *env)
     jobject filesDirObject = env->CallObjectMethod(applicationObject, getFilesDirMethod);
 
     if (!filesDirObject) {
-        LOGE("resolve_files_dir_path: getFilesDir returned null");
+        LOGE("resolve_files_dir_path: getFilesDir returned null")
         return {};
     }
 
@@ -172,7 +172,7 @@ static void *resolve_or_load_fusion_handle()
 
     const char *defaultScopeError = dlerror();
     if (defaultScopeError) {
-        LOGI("resolve_or_load_fusion_handle: libfusion.so missing from namespace: %s", defaultScopeError);
+        LOGI("resolve_or_load_fusion_handle: libfusion.so missing from namespace: %s", defaultScopeError)
     }
 
     preload_sibling_library("libdobby.so");
@@ -189,11 +189,11 @@ static void *resolve_or_load_fusion_handle()
     if (!fusionHandle) {
         const char *noLoadErr = dlerror();
         LOGE("resolve_or_load_fusion_handle: libfusion.so still not visible after preload: %s",
-             noLoadErr ? noLoadErr : "(no dlerror)");
+             noLoadErr ? noLoadErr : "(no dlerror)")
         return nullptr;
     }
 
-    LOGI("resolve_or_load_fusion_handle: loaded libfusion.so into current namespace via sibling preload");
+    LOGI("resolve_or_load_fusion_handle: loaded libfusion.so into current namespace via sibling preload")
     return fusionHandle;
 }
 
@@ -237,18 +237,18 @@ static bool resolve_fusion_symbols(FusionStageFromConfigPath_t *stageFromConfig,
 jboolean internal_load(JNIEnv *env, const char *libraryPath, void **libHandle)
 {
     if (!libraryPath) {
-        LOGE("internal_load: libraryPath is null");
+        LOGE("internal_load: libraryPath is null")
         return JNI_FALSE;
     }
 
-    LOGI("internal_load: attempting to load '%s'", libraryPath);
+    LOGI("internal_load: attempting to load '%s'", libraryPath)
 
     void *handle = dlopen(libraryPath, RTLD_LAZY | RTLD_LOCAL);
 
     if (!handle)
     {
         const char *err = dlerror();
-        LOGE("dlopen failed for '%s': %s", libraryPath, err ? err : "(no dlerror)");
+        LOGE("dlopen failed for '%s': %s", libraryPath, err ? err : "(no dlerror)")
         return JNI_FALSE; // Failed to load Unity library
     }
 
@@ -256,7 +256,7 @@ jboolean internal_load(JNIEnv *env, const char *libraryPath, void **libHandle)
     if (!jniOnLoad)
     {
         const char *err = dlerror();
-        LOGE("dlsym JNI_OnLoad not found in '%s': %s", libraryPath, err ? err : "(no dlerror)");
+        LOGE("dlsym JNI_OnLoad not found in '%s': %s", libraryPath, err ? err : "(no dlerror)")
         // some libil2cpp.so do not have JNI_OnLoad, so we will not treat this as an error. Just log and continue.
     }
     else
@@ -264,7 +264,7 @@ jboolean internal_load(JNIEnv *env, const char *libraryPath, void **libHandle)
         JavaVM *vm = nullptr;
         if (env->GetJavaVM(&vm) != JNI_OK)
         {
-            LOGE("internal_load: GetJavaVM failed for '%s'", libraryPath);
+            LOGE("internal_load: GetJavaVM failed for '%s'", libraryPath)
             dlclose(handle);
             handle = nullptr;
             return JNI_FALSE; // Failed to obtain Java VM
@@ -273,7 +273,7 @@ jboolean internal_load(JNIEnv *env, const char *libraryPath, void **libHandle)
         jint result = jniOnLoad(vm, nullptr);
         if (result < JNI_VERSION_1_6)
         {
-            LOGE("JNI_OnLoad in '%s' returned version %d (expected >= %d)", libraryPath, result, JNI_VERSION_1_6);
+            LOGE("JNI_OnLoad in '%s' returned version %d (expected >= %d)", libraryPath, result, JNI_VERSION_1_6)
             dlclose(handle);
             handle = nullptr;
             return JNI_FALSE; // JNI version mismatch
@@ -281,7 +281,7 @@ jboolean internal_load(JNIEnv *env, const char *libraryPath, void **libHandle)
     }
 
     *libHandle = handle;
-    LOGI("internal_load: successfully loaded '%s'", libraryPath);
+    LOGI("internal_load: successfully loaded '%s'", libraryPath)
     return JNI_TRUE; // Successfully loaded Unity library
 }
 
@@ -289,14 +289,14 @@ jboolean internal_unload(JNIEnv *env, void **libHandle)
 {
     if (!*libHandle)
     {
-        LOGI("internal_unload: libHandle is null, nothing to unload");
+        LOGI("internal_unload: libHandle is null, nothing to unload")
         return JNI_FALSE; // Library not loaded
     }
 
     JavaVM *vm = nullptr;
     if (env->GetJavaVM(&vm) != JNI_OK)
     {
-        LOGE("internal_unload: GetJavaVM failed");
+        LOGE("internal_unload: GetJavaVM failed")
         return JNI_FALSE; // Failed to obtain Java VM
     }
 
@@ -307,17 +307,17 @@ jboolean internal_unload(JNIEnv *env, void **libHandle)
     if (unload)
     {
         JNI_Unload_t jniUnload = reinterpret_cast<JNI_Unload_t>(unload);
-        LOGI("internal_unload: calling JNI_Unload");
+        LOGI("internal_unload: calling JNI_Unload")
         jniUnload(vm, nullptr);
     }
     else
     {
         const char *err = dlerror();
-        LOGI("internal_unload: JNI_Unload not found: %s", err ? err : "(no dlerror)");
+        LOGI("internal_unload: JNI_Unload not found: %s", err ? err : "(no dlerror)")
     }
 
     dlclose(handle);
-    LOGI("internal_unload: successfully unloaded library");
+    LOGI("internal_unload: successfully unloaded library")
     return JNI_TRUE; // Successfully unloaded library
 }
 
@@ -326,13 +326,13 @@ extern "C" {
 void libmain_set_override_unity_path(const char *path)
 {
     override_unity_path = path;
-    LOGI("set_override_unity_path: %s", path ? path : "(null)");
+    LOGI("set_override_unity_path: %s", path ? path : "(null)")
 }
 
 void libmain_set_override_il2cpp_path(const char *path)
 {
     override_il2cpp_path = path;
-    LOGI("set_override_il2cpp_path: %s", path ? path : "(null)");
+    LOGI("set_override_il2cpp_path: %s", path ? path : "(null)")
 }
 
 const char *libmain_get_override_unity_path()
@@ -359,11 +359,11 @@ void libmain_set_log_path(const char *path)
         logFile = fopen(log_path.c_str(), "w");
         if (logFile)
         {
-            LOGI("Logging initialized at %s", log_path.c_str());
+            LOGI("Logging initialized at %s", log_path.c_str())
         }
         else
         {
-            LOGE("Failed to open log file at %s", log_path.c_str());
+            LOGE("Failed to open log file at %s", log_path.c_str())
         }
     }
 }
@@ -381,30 +381,30 @@ load(JNIEnv *env, jobject activityObject, jstring path)
 
     std::string configPath = resolve_staged_config_path(env, activityObject);
     if (configPath.empty()) {
-        LOGE("load: failed to resolve staged Fusion config path");
+        LOGE("load: failed to resolve staged Fusion config path")
         return JNI_FALSE;
     }
 
-    LOGI("load: resolved staged config path=%s", configPath.c_str());
+    LOGI("load: resolved staged config path=%s", configPath.c_str())
     if (!stageFromConfig(configPath.c_str())) {
-        LOGE("load: fusion_stage_from_config_path failed");
+        LOGE("load: fusion_stage_from_config_path failed")
         return JNI_FALSE;
     }
 
     // stageFromConfig sets libmain overrides for unity and il2cpp paths.
     const char *unityPath = override_unity_path.c_str();
     const char *il2cppPath = override_il2cpp_path.c_str();
-    LOGI("load: unityPath=%s, il2cppPath=%s", unityPath ? unityPath : "(null)", il2cppPath ? il2cppPath : "(null)");
+    LOGI("load: unityPath=%s, il2cppPath=%s", unityPath ? unityPath : "(null)", il2cppPath ? il2cppPath : "(null)")
 
     if (!unityPath || !il2cppPath)
     {
-        LOGE("load: paths not set");
+        LOGE("load: paths not set")
         return JNI_FALSE; // Paths not set
     }
 
     if (!internal_load(env, unityPath, &unityLibHandle))
     {
-        LOGE("load: failed to load Unity library from %s", unityPath);
+        LOGE("load: failed to load Unity library from %s", unityPath)
         return JNI_FALSE; // Failed to load Unity library
     }
 
@@ -413,21 +413,21 @@ load(JNIEnv *env, jobject activityObject, jstring path)
         // Unload previously loaded Unity library
         if (unityLibHandle)
         {
-            LOGI("load: unloading previously loaded Unity library due to IL2CPP load failure");
+            LOGI("load: unloading previously loaded Unity library due to IL2CPP load failure")
             internal_unload(env, &unityLibHandle);
         }
 
-        LOGE("load: failed to load IL2CPP library from %s", il2cppPath);
+        LOGE("load: failed to load IL2CPP library from %s", il2cppPath)
         return JNI_FALSE; // Failed to load IL2CPP library
     }
 
     if (!bootstrap(env))
     {
-        LOGE("load: fusion_bootstrap_from_libmain failed");
+        LOGE("load: fusion_bootstrap_from_libmain failed")
         return JNI_FALSE;
     }
 
-    LOGI("load: successfully loaded Unity and IL2CPP libraries");
+    LOGI("load: successfully loaded Unity and IL2CPP libraries")
     return JNI_TRUE;
 }
 
@@ -437,19 +437,19 @@ unload(JNIEnv *env, jclass activityObject)
     JavaVM *vm = nullptr;
     if (env->GetJavaVM(&vm) != JNI_OK)
     {
-        LOGE("unload: GetJavaVM failed");
+        LOGE("unload: GetJavaVM failed")
         return JNI_FALSE; // Failed to obtain Java VM
     }
 
     if (unityLibHandle && !internal_unload(env, &unityLibHandle))
     {
-        LOGE("unload: failed to unload Unity library");
+        LOGE("unload: failed to unload Unity library")
         return JNI_FALSE; // Failed to unload Unity library
     }
 
     if (il2cppLibHandle && !internal_unload(env, &il2cppLibHandle))
     {
-        LOGE("unload: failed to unload IL2CPP library");
+        LOGE("unload: failed to unload IL2CPP library")
         return JNI_FALSE; // Failed to unload IL2CPP library
     }
 
@@ -459,7 +459,7 @@ unload(JNIEnv *env, jclass activityObject)
         logFile = nullptr;
     }
 
-    LOGI("unload: successfully unloaded all libraries");
+    LOGI("unload: successfully unloaded all libraries")
     return JNI_TRUE;
 }
 
@@ -471,14 +471,14 @@ JNI_OnLoad(JavaVM *vm, void *reserved)
     JNIEnv *globalEnv;
     if (vm->GetEnv(reinterpret_cast<void **>(&globalEnv), JNI_VERSION_1_6) != JNI_OK)
     {
-        LOGE("JNI_OnLoad: GetEnv failed");
+        LOGE("JNI_OnLoad: GetEnv failed")
         return JNI_ERR; // Failed to obtain JNIEnv
     }
 
     jclass clazz = globalEnv->FindClass("com/unity3d/player/NativeLoader");
     if (!clazz)
     {
-        LOGE("JNI_OnLoad: FindClass com/unity3d/player/NativeLoader failed");
+        LOGE("JNI_OnLoad: FindClass com/unity3d/player/NativeLoader failed")
         return JNI_ERR; // Class not found
     }
 
