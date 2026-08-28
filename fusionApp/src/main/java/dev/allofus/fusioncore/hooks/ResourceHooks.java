@@ -5,6 +5,7 @@ import android.util.Log;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
@@ -22,7 +23,6 @@ public class ResourceHooks {
                     if ((int)callFrame.getResult() != 0) {
                         return;
                     }
-
 
                     try {
                         Log.i(TAG, "getIdentifer returned 0!");
@@ -43,7 +43,7 @@ public class ResourceHooks {
                         Log.e(TAG, "Exception in in getIdentifier: " + e);
                     }
 
-                    Log.e(TAG, "Could not find identifier in game or our resources!!");
+                    Log.e(TAG, "Could not find identifier in game or our resources!!\nArguments: " + Arrays.toString(callFrame.args));
                 }
             });
 
@@ -95,7 +95,7 @@ public class ResourceHooks {
                             Log.e(TAG, "Exception when invoking original methods! " + e);
                         }
 
-                        Log.e(TAG, "Could not find resource in game or our resources!!");
+                        Log.e(TAG, "Could not find resource in game or our resources!!\nArguments: " + Arrays.toString(callFrame.args));
                     }
                 });
             }
