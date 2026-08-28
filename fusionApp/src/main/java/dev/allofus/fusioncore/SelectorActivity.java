@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipFile;
 
+import dev.allofus.fusioncore.tools.CrashDetector;
 import dev.allofus.fusioncore.tools.Utilities;
 
 public class SelectorActivity extends AppCompatActivity {
@@ -61,6 +62,8 @@ public class SelectorActivity extends AppCompatActivity {
             populateList();
             if (!hasExternalStorageManagerAccess()) {
                 requestExternalStorageManagerAccess();
+            } else {
+                CrashDetector.init(this);
             }
         }, 100);
     }
@@ -165,9 +168,12 @@ public class SelectorActivity extends AppCompatActivity {
         }
 
         if (hasExternalStorageManagerAccess()) {
-            String packageName = pendingLaunchPackage;
-            pendingLaunchPackage = null;
-            launchBootstrap(packageName);
+            CrashDetector.init(this);
+            if (pendingLaunchPackage != null) {
+                String packageName = pendingLaunchPackage;
+                pendingLaunchPackage = null;
+                launchBootstrap(packageName);
+            }
             return;
         }
 
