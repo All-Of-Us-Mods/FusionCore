@@ -115,7 +115,7 @@ public class SelectorActivity extends AppCompatActivity {
                         File folder = new File(baseDir, entry.packageName);
 
                         if (!folder.exists() && !folder.mkdirs()) {
-                            String message = "Failed to make folder: " + folder.getAbsolutePath();
+                            String message = getString(R.string.selector_folder_create_failed, folder.getAbsolutePath());
                             Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
                             Log.e(TAG, message);
                             return;
@@ -132,7 +132,7 @@ public class SelectorActivity extends AppCompatActivity {
                             startActivity(intent);
                         } catch (Exception e) {
                             Log.e(TAG, "Unable to open folder", e);
-                            Toast.makeText(getContext(), "No file manager found capable of opening this directory", Toast.LENGTH_LONG).show();
+                            Toast.makeText(getContext(), getString(R.string.selector_no_file_manager), Toast.LENGTH_LONG).show();
                         }
                     });
 
