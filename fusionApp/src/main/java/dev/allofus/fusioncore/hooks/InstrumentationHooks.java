@@ -14,6 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 import dev.allofus.fusioncore.BuildConfig;
 import dev.allofus.fusioncore.R;
@@ -144,6 +145,7 @@ public class InstrumentationHooks {
 
     private static void handleExecStartBeforeCall(Pine.CallFrame callFrame) {
         try {
+            Log.i(TAG, "handling exec start for " + Arrays.toString(callFrame.args));
             int intentIdx = -1;
 
             if (callFrame.args != null) {
@@ -162,8 +164,13 @@ public class InstrumentationHooks {
                 }
 
                 Intent intent = (Intent) callFrame.args[intentIdx];
-                if (intent == null || intent.getComponent() == null) {
-                    Log.e(TAG, "Intent or Intent component was null!");
+                if (intent == null) {
+                    Log.e(TAG, "Intent was null!");
+                    return;
+                }
+
+                if (intent.getComponent() == null) {
+                    Log.d(TAG, "execStartActivity: Passing through implicit intent (action=" + intent.getAction() + ")");
                     return;
                 }
 

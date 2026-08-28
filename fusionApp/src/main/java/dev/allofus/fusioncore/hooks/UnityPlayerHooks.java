@@ -84,7 +84,7 @@ public class UnityPlayerHooks {
 
                         Log.i(TAG, "Constructor firing, context class: "
                                 + callFrame.args[0].getClass().getName());
-                        callFrame.args[0] = new CustomContextWrapper(gameContext, activity, activity);
+                        callFrame.args[0] = new CustomContextWrapper(gameContext, activity);
 
                         Log.i(TAG, "Setting activity fields in before hook!");
                         for (Field field : activityFields) {

@@ -15,10 +15,10 @@ import java.io.File;
 public class CustomContextWrapper extends ContextWrapper {
     Context fusionContext;
 
-    public CustomContextWrapper(Context gameContext, Context fusionContext, Context appContext) {
+    public CustomContextWrapper(Context gameContext, Context fusionContext) {
         super(gameContext);
         this.fusionContext = fusionContext;
-        this.getApplicationInfo().dataDir = appContext.getApplicationInfo().dataDir;
+        this.getApplicationInfo().dataDir = fusionContext.getApplicationInfo().dataDir;
         // this prevents the game from resolving its own libraries
         // that way we can override them properly with our own versions
         this.getApplicationInfo().nativeLibraryDir = "";

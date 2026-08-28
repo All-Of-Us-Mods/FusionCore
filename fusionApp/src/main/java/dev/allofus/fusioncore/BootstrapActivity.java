@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import dev.allofus.fusioncore.hooks.ClassLoaderHooks;
 import dev.allofus.fusioncore.hooks.InstrumentationHooks;
 import dev.allofus.fusioncore.hooks.PackageManagerHooks;
+import dev.allofus.fusioncore.hooks.ResourceHooks;
 import dev.allofus.fusioncore.hooks.UnityPlayerHooks;
 import dev.allofus.fusioncore.tools.FusionConfig;
 import dev.allofus.fusioncore.tools.FusionConfigStore;
@@ -122,6 +123,7 @@ public class BootstrapActivity extends AppCompatActivity {
             PackageManagerHooks.installHooks(getPackageManager());
             InstrumentationHooks.install(getApplicationContext());
             UnityPlayerHooks.installHooks(gameContext);
+            ResourceHooks.installHooks(gameContext.getResources(), getApplicationContext().getResources());
         } catch (Exception e) {
             Log.e(TAG, "Failed to install base hooks", e);
         }
