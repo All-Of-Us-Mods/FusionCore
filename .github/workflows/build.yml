@@ -30,9 +30,19 @@ jobs:
         if: github.ref_type != 'tag'
         run: ./gradlew assembleDebug
 
+      - name: Decode keystore
+        if: github.ref_type == 'tag'
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ${{ runner.temp }}/keystore.jks
+
       - name: Build Release APK
         if: github.ref_type == 'tag'
         run: ./gradlew assembleRelease
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload Debug APK
         if: github.ref_type != 'tag'
