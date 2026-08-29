@@ -13,7 +13,6 @@ import androidx.navigation3.ui.NavDisplay
 import dev.allofus.fusioncore.ui.icons.arrow_back
 import dev.allofus.fusioncore.viewmodels.GameSettingsViewModel
 
-
 @Composable
 fun BackButton(onClick: () -> Unit) {
     IconButton(onClick) {
@@ -24,7 +23,6 @@ fun BackButton(onClick: () -> Unit) {
 @Composable
 fun RootScreen(onLaunchApp: (String) -> Unit) {
     val backStack = rememberNavBackStack(SelectorRoute)
-
     Surface {
         NavDisplay(
             backStack = backStack,
@@ -56,7 +54,7 @@ fun RootScreen(onLaunchApp: (String) -> Unit) {
                     )
                 }
                 entry<AppSettingsRoute> { key ->
-
+                    AppSettingsScreen { backStack.removeLastOrNull() }
                 }
             }
         )

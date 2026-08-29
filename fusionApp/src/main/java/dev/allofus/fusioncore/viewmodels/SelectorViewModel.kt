@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.allofus.fusioncore.BuildConfig
 import dev.allofus.fusioncore.data.AppInfo
+import dev.allofus.fusioncore.data.GameSettingsRepo
 import dev.allofus.fusioncore.data.SelectorUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +20,9 @@ import java.util.zip.ZipFile
 import javax.inject.Inject
 
 @HiltViewModel
-class SelectorViewModel @Inject constructor(private val packageManager: PackageManager) : ViewModel() {
+class SelectorViewModel @Inject constructor(
+    private val packageManager: PackageManager
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SelectorUiState>(SelectorUiState.Loading)
     val uiState: StateFlow<SelectorUiState> = _uiState.asStateFlow()

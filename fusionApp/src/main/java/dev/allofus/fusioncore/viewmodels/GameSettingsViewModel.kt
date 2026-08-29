@@ -33,7 +33,6 @@ sealed interface GameSettingsUiState {
     data class Error(val message: String) : GameSettingsUiState
 }
 
-
 @HiltViewModel(assistedFactory = GameSettingsViewModel.Factory::class)
 class GameSettingsViewModel @AssistedInject constructor(
     private val repository: GameSettingsRepo,
@@ -52,7 +51,7 @@ class GameSettingsViewModel @AssistedInject constructor(
             if (appInfoResult == null) {
                 flowOf(GameSettingsUiState.Error("Package not found: $packageId"))
             } else {
-                repository.getSettingsForPackage(packageId).map { savedSettings ->
+                repository.getSettingsFlowForPackage(packageId).map { savedSettings ->
                     GameSettingsUiState.Success(
                         appInfo = appInfoResult,
                         settings = savedSettings ?: GameSettingsData(packageId)
