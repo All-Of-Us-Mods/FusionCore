@@ -5,7 +5,6 @@ import android.util.Log;
 import java.lang.reflect.Method;
 import java.util.Objects;
 
-import dev.allofus.fusioncore.BootstrapActivity;
 import top.canyie.pine.Pine;
 import top.canyie.pine.callback.MethodHook;
 
@@ -15,12 +14,12 @@ public class ClassLoaderHooks {
 
     private static Method loadClassMethodViaReflection() {
         Method loadClassMethod = null;
-        Class<?> clazz = Objects.requireNonNull(BootstrapActivity.class.getClassLoader()).getClass();
+        Class<?> clazz = Objects.requireNonNull(ClassLoaderHooks.class.getClassLoader()).getClass();
 
         while (loadClassMethod == null && clazz != null) {
             try {
                 try {
-                    Class.forName(clazz.getName(), true, BootstrapActivity.class.getClassLoader());
+                    Class.forName(clazz.getName(), true, ClassLoaderHooks.class.getClassLoader());
                 } catch (ClassNotFoundException e) {
                     Log.wtf(TAG, "Class not found: " + clazz.getName(), e);
                 }

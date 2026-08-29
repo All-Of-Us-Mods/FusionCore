@@ -8,7 +8,7 @@ public class StubActivity extends android.app.Activity {
     @Override
     protected void onCreate(Bundle bundle) {
         super.onCreate(null);
-        Intent intent = new Intent(this, SelectorActivity.class);
+        Intent intent = new Intent(this, MainActivity.class);
         startActivity(intent);
     }
 

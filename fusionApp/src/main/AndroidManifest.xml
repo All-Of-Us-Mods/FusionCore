@@ -1,67 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" android:installLocation="preferExternal">
-  <supports-screens android:smallScreens="true" android:normalScreens="true" android:largeScreens="true" android:xlargeScreens="true" android:anyDensity="true" />
-  <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
-  <uses-permission android:name="android.permission.INTERNET"/>
-  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
-  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-  <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-      tools:ignore="AllFilesAccessPolicy,ScopedStorage" />
-  <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
-      tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />
-  <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"
-      tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />
-  <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
-      tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
-  <uses-permission android:name="android.permission.CAMERA" />
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-  <uses-feature android:glEsVersion="0x00030000" />
-  <uses-feature android:name="android.hardware.vulkan.version" android:required="false" />
-  <uses-feature android:name="android.software.home_screen" android:required="true" />
-  <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:installLocation="preferExternal">
+
+    <supports-screens
+        android:anyDensity="true"
+        android:largeScreens="true"
+        android:normalScreens="true"
+        android:smallScreens="true"
+        android:xlargeScreens="true" />
+
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="AllFilesAccessPolicy,ScopedStorage" />
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_IMAGES"
+        tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_VIDEO"
+        tools:ignore="PhotoAndVideoPolicy,SelectedPhotoAccess" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <uses-feature android:glEsVersion="0x00030000" />
+    <uses-feature
+        android:name="android.hardware.vulkan.version"
+        android:required="false" />
+    <uses-feature
+        android:name="android.software.home_screen"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
-    <application android:label="@string/app_name" android:icon="@mipmap/app_icon" android:enableOnBackInvokedCallback="true" android:extractNativeLibs="true">
-    <meta-data android:name="unity.splash-mode" android:value="0" />
-    <meta-data android:name="unity.splash-enable" android:value="False" />
-    <meta-data android:name="unity.launch-fullscreen" android:value="True" />
-    <meta-data android:name="unity.render-outside-safearea" android:value="True" />
-    <meta-data android:name="notch.config" android:value="portrait|landscape" />
-    <meta-data android:name="unity.auto-report-fully-drawn" android:value="true" />
-    <meta-data android:name="com.google.android.gms.version" android:value="12451000" />
-    <activity
-        android:name="dev.allofus.fusioncore.SelectorActivity"
-        android:theme="@style/Theme.Material3.Dark.NoActionBar" android:exported="true"
-        android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+
+    <application
+        android:enableOnBackInvokedCallback="true"
+        android:extractNativeLibs="true"
+        android:icon="@mipmap/app_icon"
+        android:label="@string/app_name"
+        android:name=".FusionApplication"
         >
-      <intent-filter>
-        <category android:name="android.intent.category.LAUNCHER" />
-        <action android:name="android.intent.action.MAIN" />
-      </intent-filter>
-    </activity>
-    <activity
-        android:name="dev.allofus.fusioncore.BootstrapActivity"
-        android:theme="@style/Theme.Material3.Dark.NoActionBar"
-        android:screenOrientation="locked"
-        android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
-        android:launchMode="singleTask"
-        android:exported="false" />
-    <activity
-        android:name="dev.allofus.fusioncore.GameSettingsActivity"
-        android:theme="@style/Theme.Material3.Dark.NoActionBar"
-        android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
-        android:exported="false" />
-    <!-- StubActivity for dynamic loading of unregistered activities -->
-    <activity
-        android:name="dev.allofus.fusioncore.StubActivity"
-        android:theme="@style/UnityThemeSelector"
-        android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
-        android:hardwareAccelerated="true"
-        android:launchMode="singleTask"
-        android:exported="false" />
-  </application>
+        <meta-data
+            android:name="unity.splash-mode"
+            android:value="0" />
+        <meta-data
+            android:name="unity.splash-enable"
+            android:value="False" />
+        <meta-data
+            android:name="unity.launch-fullscreen"
+            android:value="True" />
+        <meta-data
+            android:name="unity.render-outside-safearea"
+            android:value="True" />
+        <meta-data
+            android:name="notch.config"
+            android:value="portrait|landscape" />
+        <meta-data
+            android:name="unity.auto-report-fully-drawn"
+            android:value="true" />
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="12451000" />
+
+        <!-- StubActivity for dynamic loading of unregistered activities -->
+        <activity
+            android:name=".StubActivity"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+            android:exported="false"
+            android:hardwareAccelerated="true"
+            android:launchMode="singleTask"
+            android:theme="@style/UnityThemeSelector" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.FusionCore"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="dev.allofus.fusioncore.BootstrapActivity"
+            android:theme="@style/Theme.Material3.Dark.NoActionBar"
+            android:screenOrientation="locked"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+            android:launchMode="singleTask"
+            android:exported="false" />
+    </application>
+
 </manifest>
