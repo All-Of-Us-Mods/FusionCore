@@ -8,7 +8,6 @@ jclass jniBridge = nullptr;
 jmethodID setLoadingStateID = nullptr;
 jmethodID setLoadingTextID = nullptr;
 
-#define SEARCH_NUM 3
 #define TAG "Fusion.JNI"
 
 jclass find_class_in_app_classloader(JNIEnv *env, const char *className) {
@@ -154,15 +153,15 @@ JNIEnv* getJNIEnv() {
 
 jobject getUnityActivity(JNIEnv* env)
 {
-    constexpr const char *unityClasses[SEARCH_NUM]{
+    constexpr const char *unityClasses[]{
             "com/unity3d/player/UnityPlayer",
             "com/unity3d/player/UnityPlayerForGameActivity",
             "com/unity3d/player/UnityPlayerForActivityOrService",
     };
 
     jclass unityPlayerClass = nullptr;
-    for (int i = 0; i < SEARCH_NUM; ++i) {
-        unityPlayerClass = env->FindClass(unityClasses[i]);
+    for (auto unityClass : unityClasses) {
+        unityPlayerClass = env->FindClass(unityClass);
         if (unityPlayerClass) {
             break;
         }
