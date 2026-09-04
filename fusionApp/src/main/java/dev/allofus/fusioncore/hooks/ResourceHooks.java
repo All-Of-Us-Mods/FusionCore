@@ -16,34 +16,36 @@ public class ResourceHooks {
     public static void installHooks(Resources gameResources, Resources ourResources) {
 
         try {
+            // getIdentifier needs a separate hook because null values get converted to integer 0
             Method getIdentifierMethod = Resources.class.getMethod("getIdentifier", String.class, String.class, String.class);
             Pine.hook(getIdentifierMethod, new MethodHook() {
                 @Override
                 public void afterCall(Pine.CallFrame callFrame) {
-                    if ((int)callFrame.getResult() != 0) {
+                    if ((int) callFrame.getResult() != 0) {
                         return;
                     }
 
+                    // try game resources
                     try {
-                        Log.i(TAG, "getIdentifer returned 0!");
                         Object gameResResult = callFrame.invokeOriginalMethod(gameResources, callFrame.args);
-                        if (gameResResult != null) {
-                            Log.i(TAG, "Found result in game resources!");
+                        if (gameResResult instanceof Integer && (int) gameResResult != 0) {
+                            Log.i(TAG, "Found identifier in game resources!");
                             callFrame.setResult(gameResResult);
                             return;
                         }
+                    } catch (Throwable ignored) {}
 
+                    // try fusion resources
+                    try {
                         Object ourResResult = callFrame.invokeOriginalMethod(ourResources, callFrame.args);
-                        if (ourResResult != null) {
-                            Log.i(TAG, "Found result in our resources!");
+                        if (ourResResult instanceof Integer && (int) ourResResult != 0) {
+                            Log.i(TAG, "Found identifier in our resources!");
                             callFrame.setResult(ourResResult);
                             return;
                         }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Exception in in getIdentifier: " + e);
-                    }
+                    } catch (Throwable ignored) {}
 
-                    Log.e(TAG, "Could not find identifier in game or our resources!!\nArguments: " + Arrays.toString(callFrame.args));
+                    Log.e(TAG, "Could not find identifier in game or our resources! Args: " + Arrays.toString(callFrame.args));
                 }
             });
 
@@ -53,54 +55,45 @@ public class ResourceHooks {
             blacklist.add(Resources.class.getMethod("getDisplayMetrics").toString());
 
             for (Method method : Resources.class.getDeclaredMethods()) {
-                if (blacklist.contains(method.toString())) {
-                    Log.i(TAG, "Skipping method (blacklisted): " + method.getName());
+                if (blacklist.contains(method.toString()) || method.getReturnType().equals(Void.TYPE)) {
                     continue;
                 }
 
-                if (method.getReturnType().equals(Void.TYPE)) {
-                    Log.i(TAG, "Skipping method (doesn't return anything): " + method.getName());
-                    continue;
-                }
-
-                Log.i(TAG, "Hooking " + method.getName());
                 Pine.hook(method, new MethodHook() {
                     @Override
                     public void afterCall(Pine.CallFrame callFrame) {
-                        if (!callFrame.hasThrowable() && callFrame.getResult() == null) {
+                        if (!callFrame.hasThrowable() && callFrame.getResult() != null) {
                             return;
                         }
 
-                        if (callFrame.hasThrowable()) {
-                            Log.i(TAG, method.getName() + " threw " + callFrame.getThrowable().getMessage());
-                        } else {
-                            Log.i(TAG, method.getName() + " returned null!");
-                        }
-
+                        // try game resources
                         try {
                             Object gameResResult = callFrame.invokeOriginalMethod(gameResources, callFrame.args);
                             if (gameResResult != null) {
-                                Log.i(TAG, "Found result in game resources!");
+                                Log.i(TAG, method.getName() + " found in game resources!");
+                                callFrame.setThrowable(null);
                                 callFrame.setResult(gameResResult);
                                 return;
                             }
+                        } catch (Throwable ignored) {}
 
+                        // try our resources
+                        try {
                             Object ourResResult = callFrame.invokeOriginalMethod(ourResources, callFrame.args);
                             if (ourResResult != null) {
-                                Log.i(TAG, "Found result in our resources!");
+                                Log.i(TAG, method.getName() + " found in our resources!");
+                                callFrame.setThrowable(null);
                                 callFrame.setResult(ourResResult);
                                 return;
                             }
-                        } catch (Exception e) {
-                            Log.e(TAG, "Exception when invoking original methods! " + e);
-                        }
+                        } catch (Throwable ignored) {}
 
-                        Log.e(TAG, "Could not find resource in game or our resources!!\nArguments: " + Arrays.toString(callFrame.args));
+                        Log.e(TAG, "Could not resolve " + method.getName() + " across resources! Args: " + Arrays.toString(callFrame.args));
                     }
                 });
             }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to hook Resources!!");
+            Log.e(TAG, "Failed to hook Resources: " + e.getMessage());
         }
     }
 }

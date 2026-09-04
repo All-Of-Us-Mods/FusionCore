@@ -60,8 +60,11 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            isShrinkResources = true
+            // we don't need minify tbh
+            isMinifyEnabled = false
+            // this can mess up ResourceHooks
+            //noinspection NotShrinkingResources
+            isShrinkResources = false
             proguardFiles("proguard-unity.txt", getDefaultProguardFile("proguard-android-optimize.txt"))
         }
     }
