@@ -11,7 +11,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.8.0")
     implementation("androidx.coordinatorlayout:coordinatorlayout:1.3.0")
     implementation("com.google.android.material:material:1.14.0")
-    implementation("com.google.protobuf:protobuf-javalite:4.35.1")
+    implementation("com.google.protobuf:protobuf-javalite:4.36.1")
     implementation(files(pineAar))
 }
 

@@ -8,25 +8,49 @@ jclass jniBridge = nullptr;
 jmethodID setLoadingStateID = nullptr;
 jmethodID setLoadingTextID = nullptr;
 
+jobject appClassLoader = nullptr;
+jmethodID loadClassMethod = nullptr;
+
 #define TAG "Fusion.JNI"
 
 jclass find_class_in_app_classloader(JNIEnv *env, const char *className) {
-    jclass activityThreadClass = env->FindClass("android/app/ActivityThread");
-    jmethodID currentActivityThreadMethod = env->GetStaticMethodID(activityThreadClass, "currentActivityThread", "()Landroid/app/ActivityThread;");
-    jobject activityThread = env->CallStaticObjectMethod(activityThreadClass, currentActivityThreadMethod);
+    if (!appClassLoader)
+    {
+        jclass activityThreadClass = env->FindClass("android/app/ActivityThread");
+        jmethodID currentActivityThreadMethod = env->GetStaticMethodID(activityThreadClass,
+                                                                       "currentActivityThread",
+                                                                       "()Landroid/app/ActivityThread;");
+        jobject activityThread = env->CallStaticObjectMethod(activityThreadClass,
+                                                             currentActivityThreadMethod);
 
-    jmethodID getApplicationMethod = env->GetMethodID(activityThreadClass, "getApplication", "()Landroid/app/Application;");
-    jobject application = env->CallObjectMethod(activityThread, getApplicationMethod);
+        jmethodID getApplicationMethod = env->GetMethodID(activityThreadClass, "getApplication",
+                                                          "()Landroid/app/Application;");
+        jobject application = env->CallObjectMethod(activityThread, getApplicationMethod);
 
-    jclass applicationClass = env->GetObjectClass(application);
-    jmethodID getClassLoaderMethod = env->GetMethodID(applicationClass, "getClassLoader", "()Ljava/lang/ClassLoader;");
-    jobject classLoader = env->CallObjectMethod(application, getClassLoaderMethod);
+        jclass applicationClass = env->GetObjectClass(application);
+        jmethodID getClassLoaderMethod = env->GetMethodID(applicationClass, "getClassLoader",
+                                                          "()Ljava/lang/ClassLoader;");
+        jobject classLoader = env->CallObjectMethod(application, getClassLoaderMethod);
+        appClassLoader = env->NewGlobalRef(classLoader);
 
-    jclass classLoaderClass = env->GetObjectClass(classLoader);
-    jmethodID loadClassMethod = env->GetMethodID(classLoaderClass, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+        env->DeleteLocalRef(activityThreadClass);
+        env->DeleteLocalRef(activityThread);
+        env->DeleteLocalRef(application);
+        env->DeleteLocalRef(applicationClass);
+        env->DeleteLocalRef(classLoader);
+    }
+
+
+    if (!loadClassMethod)
+    {
+        jclass classLoaderClass = env->GetObjectClass(appClassLoader);
+        loadClassMethod = env->GetMethodID(classLoaderClass, "loadClass",
+                                           "(Ljava/lang/String;)Ljava/lang/Class;");
+        env->DeleteLocalRef(classLoaderClass);
+    }
 
     jstring classNameUtf = env->NewStringUTF(className);
-    jclass clazz = (jclass) env->CallObjectMethod(classLoader, loadClassMethod, classNameUtf);
+    jclass clazz = (jclass) env->CallObjectMethod(appClassLoader, loadClassMethod, classNameUtf);
 
     if (!clazz) {
         log(LogLevel::ERROR, TAG, "Failed to find JniBridge class via explicit ClassLoader!");
