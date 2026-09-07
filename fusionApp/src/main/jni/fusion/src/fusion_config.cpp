@@ -26,7 +26,6 @@ FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
     jclass configClass = env->GetObjectClass(jFusionConfig);
 
     GET_JBOOLEAN_FIELD(useOriginalLibUnity);
-
     GET_JSTRING_FIELD(gameLibraryDirectory);
     GET_JSTRING_FIELD(appLibraryDirectory);
     GET_JSTRING_FIELD(appDataDirectory);

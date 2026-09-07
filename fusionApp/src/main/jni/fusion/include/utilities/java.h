@@ -13,6 +13,8 @@
 
 JNIEnv* getJNIEnv();
 
+jobject get_fusion_config(JNIEnv *env);
+
 jint getStaticResourceId(JNIEnv* env, const char *name);
 
 jobject getUnityActivity(JNIEnv* env);

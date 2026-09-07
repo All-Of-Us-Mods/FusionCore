@@ -40,7 +40,6 @@ jclass find_class_in_app_classloader(JNIEnv *env, const char *className) {
         env->DeleteLocalRef(classLoader);
     }
 
-
     if (!loadClassMethod)
     {
         jclass classLoaderClass = env->GetObjectClass(appClassLoader);
@@ -53,7 +52,7 @@ jclass find_class_in_app_classloader(JNIEnv *env, const char *className) {
     jclass clazz = (jclass) env->CallObjectMethod(appClassLoader, loadClassMethod, classNameUtf);
 
     if (!clazz) {
-        log(LogLevel::ERROR, TAG, "Failed to find JniBridge class via explicit ClassLoader!");
+        log(LogLevel::ERROR, TAG, "Failed to find class via explicit ClassLoader!");
         env->ExceptionClear();
         return nullptr;
     }
@@ -61,6 +60,55 @@ jclass find_class_in_app_classloader(JNIEnv *env, const char *className) {
     return clazz;
 }
 
+jobject get_fusion_config(JNIEnv *env) {
+    jobject activity = getUnityActivity(env);
+    if (!activity) {
+        log(LogLevel::ERROR, TAG, "Failed to get UnityActivity!");
+        return nullptr;
+    }
+
+    jclass activityClass = env->FindClass("android/app/Activity");
+    if (!activityClass) {
+        log(LogLevel::ERROR, TAG, "Failed to find Activity class!");
+        return nullptr;
+    }
+
+    jmethodID getIntentMethod = env->GetMethodID(activityClass, "getIntent", "()Landroid/content/Intent;");
+    if (!getIntentMethod) {
+        log(LogLevel::ERROR, TAG, "Failed to find getIntent method!");
+        return nullptr;
+    }
+
+    jobject intent = env->CallObjectMethod(activity, getIntentMethod);
+    if (!intent) {
+        log(LogLevel::ERROR, TAG, "Failed to get intent!");
+        return nullptr;
+    }
+
+    jclass intentClass = env->GetObjectClass(intent);
+    if (!intentClass) {
+        log(LogLevel::ERROR, TAG, "Failed to find Intent class!");
+        return nullptr;
+    }
+
+    jmethodID getExtraMethod = env->GetMethodID(intentClass, "getParcelableExtra", "(Ljava/lang/String;)Landroid/os/Parcelable;");
+    if (!getExtraMethod) {
+        log(LogLevel::ERROR, TAG, "Failed to find getExtra method!");
+        return nullptr;
+    }
+
+    jobject config = env->CallObjectMethod(intent, getExtraMethod, env->NewStringUTF("fusioncore.config"));
+    if (!config) {
+        log(LogLevel::ERROR, TAG, "Failed to get FusionConfig!");
+        return nullptr;
+    }
+
+    env->DeleteLocalRef(activity);
+    env->DeleteLocalRef(activityClass);
+    env->DeleteLocalRef(intent);
+    env->DeleteLocalRef(intentClass);
+    return config;
+}
 
 extern "C" void init_java(JavaVM *vm) {
     if (g_vm != nullptr) {

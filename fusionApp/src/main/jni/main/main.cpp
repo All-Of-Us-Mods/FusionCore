@@ -20,7 +20,6 @@ if (logFile) { \
 
 using JNI_OnLoad_t = jint (*)(JavaVM *vm, void *reserved);
 using JNI_Unload_t = void (*)(JavaVM *vm, void *reserved);
-using FusionStageFromConfigPath_t = bool (*)(const char *configPath);
 using FusionBootstrapFromLibMain_t = bool (*)(JNIEnv *env);
 using FusionJvmInit_t = void (*)(JavaVM *vm);
 
@@ -97,71 +96,6 @@ static bool preload_dotnet_runtime_libraries()
     return true;
 }
 
-static std::string jstring_to_string(JNIEnv *env, jstring value)
-{
-    if (!value) {
-        return {};
-    }
-
-    const char *chars = env->GetStringUTFChars(value, nullptr);
-    if (!chars) {
-        return {};
-    }
-
-    std::string result(chars);
-    env->ReleaseStringUTFChars(value, chars);
-    return result;
-}
-
-static std::string resolve_files_dir_path(JNIEnv *env)
-{
-    jclass activityThreadClass = env->FindClass("android/app/ActivityThread");
-    if (!activityThreadClass) {
-        LOGE("resolve_files_dir_path: failed to find ActivityThread class")
-        return {};
-    }
-
-    jmethodID currentApplicationMethod = env->GetStaticMethodID(
-            activityThreadClass,
-            "currentApplication",
-            "()Landroid/app/Application;");
-    if (!currentApplicationMethod) {
-        LOGE("resolve_files_dir_path: failed to find ActivityThread.currentApplication")
-        return {};
-    }
-
-    jobject applicationObject = env->CallStaticObjectMethod(activityThreadClass, currentApplicationMethod);
-    if (!applicationObject) {
-        LOGE("resolve_files_dir_path: ActivityThread.currentApplication returned null")
-        return {};
-    }
-
-    jclass contextClass = env->FindClass("android/content/Context");
-    jmethodID getFilesDirMethod = env->GetMethodID(contextClass, "getFilesDir", "()Ljava/io/File;");
-    jobject filesDirObject = env->CallObjectMethod(applicationObject, getFilesDirMethod);
-
-    if (!filesDirObject) {
-        LOGE("resolve_files_dir_path: getFilesDir returned null")
-        return {};
-    }
-
-    jclass fileClass = env->FindClass("java/io/File");
-    jmethodID getAbsolutePathMethod = env->GetMethodID(fileClass, "getAbsolutePath", "()Ljava/lang/String;");
-    jstring filesDirPath = (jstring) env->CallObjectMethod(filesDirObject, getAbsolutePathMethod);
-    return jstring_to_string(env, filesDirPath);
-}
-
-static std::string resolve_staged_config_path(JNIEnv *env, jobject activityObject)
-{
-    (void) activityObject;
-    std::string filesDir = resolve_files_dir_path(env);
-    if (filesDir.empty()) {
-        return {};
-    }
-
-    return filesDir + "/bootstrap/active.cfg";
-}
-
 static void *resolve_or_load_fusion_handle()
 {
     dlerror();
@@ -197,20 +131,10 @@ static void *resolve_or_load_fusion_handle()
     return fusionHandle;
 }
 
-static bool resolve_fusion_symbols(FusionStageFromConfigPath_t *stageFromConfig,
-                                   FusionBootstrapFromLibMain_t *bootstrap)
+static bool resolve_fusion_symbols(FusionBootstrapFromLibMain_t *bootstrap)
 {
     void *fusionHandle = resolve_or_load_fusion_handle();
     if (!fusionHandle) {
-        return false;
-    }
-
-    dlerror();
-    *stageFromConfig = reinterpret_cast<FusionStageFromConfigPath_t>(dlsym(fusionHandle, "fusion_stage_from_config_path"));
-    if (!*stageFromConfig) {
-        const char *symErr = dlerror();
-        LOGE("resolve_fusion_symbols: dlsym failed for fusion_stage_from_config_path: %s",
-             symErr ? symErr : "(no dlerror)")
         return false;
     }
 
@@ -373,25 +297,17 @@ load(JNIEnv *env, jobject activityObject, jstring path)
 {
     (void) path;
 
-    FusionStageFromConfigPath_t stageFromConfig = nullptr;
     FusionBootstrapFromLibMain_t bootstrap = nullptr;
-    if (!resolve_fusion_symbols(&stageFromConfig, &bootstrap)) {
+    if (!resolve_fusion_symbols(&bootstrap)) {
         return JNI_FALSE;
     }
 
-    std::string configPath = resolve_staged_config_path(env, activityObject);
-    if (configPath.empty()) {
-        LOGE("load: failed to resolve staged Fusion config path")
+    if (!bootstrap(env))
+    {
+        LOGE("load: fusion_bootstrap_from_libmain failed")
         return JNI_FALSE;
     }
 
-    LOGI("load: resolved staged config path=%s", configPath.c_str())
-    if (!stageFromConfig(configPath.c_str())) {
-        LOGE("load: fusion_stage_from_config_path failed")
-        return JNI_FALSE;
-    }
-
-    // stageFromConfig sets libmain overrides for unity and il2cpp paths.
     const char *unityPath = override_unity_path.c_str();
     const char *il2cppPath = override_il2cpp_path.c_str();
     LOGI("load: unityPath=%s, il2cppPath=%s", unityPath ? unityPath : "(null)", il2cppPath ? il2cppPath : "(null)")
@@ -419,12 +335,6 @@ load(JNIEnv *env, jobject activityObject, jstring path)
 
         LOGE("load: failed to load IL2CPP library from %s", il2cppPath)
         return JNI_FALSE; // Failed to load IL2CPP library
-    }
-
-    if (!bootstrap(env))
-    {
-        LOGE("load: fusion_bootstrap_from_libmain failed")
-        return JNI_FALSE;
     }
 
     LOGI("load: successfully loaded Unity and IL2CPP libraries")

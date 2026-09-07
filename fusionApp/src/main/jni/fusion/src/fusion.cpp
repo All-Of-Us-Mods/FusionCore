@@ -2,9 +2,6 @@
 #include <unistd.h>
 #include <jni.h>
 #include <filesystem>
-#include <fstream>
-#include <mutex>
-#include <unordered_map>
 #include <logger.h>
 #include <libmain.h>
 #include <fusion_config.h>
@@ -14,83 +11,25 @@
 #include <hooking/libunity.h>
 #include <dotnet.h>
 #include <external/dobby.h>
+#include <utilities/java.h>
 
 #define TAG "FusionCore"
 
 namespace fs = std::filesystem;
 
 static FusionConfig runtimeConfig;
-static FusionConfig stagedConfig;
-static std::string stagedPatchedIl2CppPath;
-static std::mutex stageMutex;
-static bool hasStagedConfig = false;
 
-static std::unordered_map<std::string, std::string> read_key_value_file(const char *configPath)
+static bool execute_fusion_config(const FusionConfig &config)
 {
-    std::unordered_map<std::string, std::string> values;
-    std::ifstream input(configPath);
-    std::string line;
+    fusion_print_config(config);
 
-    while (std::getline(input, line)) {
-        if (line.empty()) {
-            continue;
-        }
-
-        size_t split = line.find('=');
-        if (split == std::string::npos) {
-            continue;
-        }
-
-        std::string key = line.substr(0, split);
-        std::string value = line.substr(split + 1);
-        values[key] = value;
-    }
-
-    return values;
-}
-
-static bool parse_bool_value(const std::string &value)
-{
-    return value == "1" || value == "true" || value == "TRUE";
-}
-
-static bool parse_fusion_config_from_file(const char *configPath, FusionConfig *config)
-{
-    auto values = read_key_value_file(configPath);
-    if (values.empty()) {
-        log_format(LogLevel::ERROR, TAG, "Config file is empty or unreadable: {}", configPath);
-        return false;
-    }
-
-    config->gameLibraryDirectory = values["gameLibraryDirectory"];
-    config->appLibraryDirectory = values["appLibraryDirectory"];
-    config->appDataDirectory = values["appDataDirectory"];
-    config->bepInExDirectory = values["bepInExDirectory"];
-    config->dotnetDirectory = values["dotnetDirectory"];
-    config->unityDataDirectory = values["unityDataDirectory"];
-    config->unityVersion = values["unityVersion"];
-    config->useOriginalLibUnity = parse_bool_value(values["useOriginalLibUnity"]);
-
-    if (config->gameLibraryDirectory.empty() || config->appDataDirectory.empty()) {
-        log_format(LogLevel::ERROR, TAG, "Invalid config file (missing required fields): {}", configPath);
-        return false;
-    }
-
-    config->initialized = true;
-    return true;
-}
-
-static bool stage_fusion_config(const FusionConfig &parsedConfig)
-{
-    fusion_print_config(parsedConfig);
-
-    fs::path gameLibsPath(parsedConfig.gameLibraryDirectory);
-    fs::path appDataPath(parsedConfig.appDataDirectory);
+    fs::path gameLibsPath(config.gameLibraryDirectory);
+    fs::path appDataPath(config.appDataDirectory);
 
     fs::path libIl2Cpp = gameLibsPath / "libil2cpp.so";
     fs::path libUnity;
 
-    if (parsedConfig.useOriginalLibUnity)
+    if (config.useOriginalLibUnity)
     {
         libUnity = gameLibsPath / "libunity.so";
     }
@@ -109,14 +48,7 @@ static bool stage_fusion_config(const FusionConfig &parsedConfig)
     libmain_set_override_il2cpp_path(patchedPath.c_str());
     libmain_set_override_unity_path(libUnityPath.c_str());
 
-    {
-        std::lock_guard<std::mutex> guard(stageMutex);
-        stagedConfig = parsedConfig;
-        stagedPatchedIl2CppPath = patchedPath;
-        hasStagedConfig = true;
-    }
-
-    log(LogLevel::INFO, TAG, "FusionCore config staged successfully.");
+    log(LogLevel::INFO, TAG, "FusionCore bootstrap finished successfully.");
     return true;
 }
 
@@ -173,47 +105,27 @@ int il2cpp_init_hook(char *domain_name)
     return result;
 }
 
-extern "C" bool fusion_stage_from_config_path(const char *configPath)
-{
-    if (!configPath) {
-        log(LogLevel::ERROR, TAG, "fusion_stage_from_config_path called with null path");
-        return false;
-    }
-
-    log_format(LogLevel::INFO, TAG, "Staging FusionCore config from {}", configPath);
-    FusionConfig parsedConfig{};
-    if (!parse_fusion_config_from_file(configPath, &parsedConfig)) {
-        return false;
-    }
-
-    return stage_fusion_config(parsedConfig);
-}
-
 extern "C" bool fusion_bootstrap_from_libmain(JNIEnv *env)
 {
     (void) env;
 
-    FusionConfig configToRun;
-    std::string patchedIl2CppPath;
-    {
-        std::lock_guard<std::mutex> guard(stageMutex);
-        if (!hasStagedConfig)
-        {
-            log(LogLevel::ERROR, TAG, "No staged FusionConfig available; cannot bootstrap from libmain namespace.");
-            return false;
-        }
-
-        configToRun = stagedConfig;
-        patchedIl2CppPath = stagedPatchedIl2CppPath;
-    }
-
-    runtimeConfig = configToRun;
+    log(LogLevel::INFO, TAG, "FusionCore bootstrap starting...");
+    jobject javaConfig = get_fusion_config(env);
+    FusionConfig config = fusion_parse_config(env, javaConfig);
+    env->DeleteLocalRef(javaConfig);
 
     log(LogLevel::INFO, TAG, "Executing Fusion bootstrap from libmain namespace...");
+    if (!execute_fusion_config(config)) {
+        log(LogLevel::ERROR, TAG, "Failed to execute Fusion bootstrap.");
+        return false;
+    }
 
-    if (!il2cpp_initialize(patchedIl2CppPath.c_str()))
+    runtimeConfig = config;
+
+    auto il2cpp_path = libmain_get_override_il2cpp_path();
+    if (!il2cpp_initialize(il2cpp_path))
     {
-        log_format(LogLevel::ERROR, TAG, "Failed to initialize il2cpp with path: {}", patchedIl2CppPath);
+        log_format(LogLevel::ERROR, TAG, "Failed to initialize il2cpp with path: {}", il2cpp_path);
         return false;
     }
 

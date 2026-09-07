@@ -21,7 +21,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Locale;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import dev.allofus.fusioncore.hooks.ClassLoaderHooks;
 import dev.allofus.fusioncore.hooks.InstrumentationHooks;
@@ -29,7 +28,6 @@ import dev.allofus.fusioncore.hooks.PackageManagerHooks;
 import dev.allofus.fusioncore.hooks.ResourceHooks;
 import dev.allofus.fusioncore.hooks.UnityPlayerHooks;
 import dev.allofus.fusioncore.tools.FusionConfig;
-import dev.allofus.fusioncore.tools.FusionConfigStore;
 import dev.allofus.fusioncore.tools.LibUnityDownloader;
 import dev.allofus.fusioncore.tools.NativeLibraryManager;
 import dev.allofus.fusioncore.tools.Utilities;
@@ -44,13 +42,10 @@ public class BootstrapActivity extends AppCompatActivity {
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
     private static final String GLOBAL_METADATA_FILE = "global-metadata.dat";
 
-    private final AtomicBoolean fusionInitialized = new AtomicBoolean(false);
-
     private TextView statusView;
     private TextView progressDetailsView;
     private ProgressBar spinnerProgress;
     private ProgressBar downloadProgress;
-    private volatile PreparedFusionState preparedState;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,9 +82,9 @@ public class BootstrapActivity extends AppCompatActivity {
             return;
         }
 
-        ComponentName launcher = launchIntent.getComponent();
-        if (launcher == null) {
-            launcher = launchIntent.resolveActivity(getPackageManager());
+        ComponentName launcherComponent = launchIntent.getComponent();
+        if (launcherComponent == null) {
+            launcherComponent = launchIntent.resolveActivity(getPackageManager());
         }
 
         var overrideActivity = FusionSettings.getActivityOverrideForGame(this, targetPackage);
@@ -97,7 +92,7 @@ public class BootstrapActivity extends AppCompatActivity {
             if (!overrideActivity.equals(getString(R.string.settings_automatic))) {
                 var overrideClass = gameContext.getClassLoader().loadClass(overrideActivity);
                 if (overrideClass != null) {
-                    launcher = new ComponentName(targetPackage, overrideActivity);
+                    launcherComponent = new ComponentName(targetPackage, overrideActivity);
                     Log.i(TAG, "Using override activity " + overrideActivity);
                     runOnUiThread(() -> Toast.makeText(this, "Using override activity " + overrideActivity, Toast.LENGTH_LONG).show());
                 } else {
@@ -110,25 +105,32 @@ public class BootstrapActivity extends AppCompatActivity {
             Log.e(TAG, "Failed to get override activity "+ overrideActivity, e);
         }
 
-        if (launcher == null) {
+        if (launcherComponent == null) {
             failAndFinish("Failed to resolve launcher activity for target package: " + targetPackage, null);
             return;
         }
 
-        final int targetOrientation = resolveTargetOrientation(launcher);
+        final int targetOrientation = resolveTargetOrientation(launcherComponent);
 
         boolean useOriginalLibUnity = getIntent().getBooleanExtra(EXTRA_USE_ORIGINAL_LIBUNITY, false);
+        FusionConfig config;
+
         try {
-            preparedState = prepareFusionState(this, gameContext, targetPackage, useOriginalLibUnity);
+            config = prepareConfig(
+                    getApplicationContext(),
+                    gameContext,
+                    launcherComponent,
+                    targetPackage,
+                    useOriginalLibUnity
+            );
         } catch (Throwable t) {
             failAndFinish("Failed while preparing Fusion runtime.", t);
             return;
         }
 
-        final String launcherClassName = launcher.getClassName();
         Class<?> launcherClass;
         try {
-            launcherClass = gameContext.getClassLoader().loadClass(launcherClassName);
+            launcherClass = gameContext.getClassLoader().loadClass(launcherComponent.getClassName());
         } catch (ClassNotFoundException e) {
             Log.e(TAG, "Failed to get class for launcher activity!");
             return;
@@ -145,29 +147,31 @@ public class BootstrapActivity extends AppCompatActivity {
             Log.e(TAG, "Failed to install base hooks", e);
         }
 
+        var className = launcherComponent.getClassName();
+
         try {
             setPhaseStatus(getString(R.string.bootstrap_status_launching));
-            initializeFusion(launcherClassName, targetPackage);
+            initializeFusion(config);
             runOnMainThread(() -> {
                 try {
                     var intent = new Intent(this, launcherClass);
-                    intent.putExtra(InstrumentationHooks.EXTRA_TARGET_ORIENTATION, targetOrientation);
 
                     // Using the stub activity intent here avoids one extra layer of hooks running.
                     // Its not necessary but could be more performant.
                     var intentWrapped = new Intent(this, StubActivity.class);
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_IS_DYNAMIC_ACTIVITY, true);
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_ORIGINAL_INTENT, intent);
+                    intentWrapped.putExtra(InstrumentationHooks.EXTRA_FUSION_CONFIG, config);
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_TARGET_ORIENTATION, targetOrientation);
 
                     startActivity(intentWrapped);
                     finish();
                 } catch (Throwable t) {
-                    failAndFinish("Failed to launch target app's launcher activity: " + launcherClassName, t);
+                    failAndFinish("Failed to launch target app's launcher activity: " + className, t);
                 }
             });
         } catch (Exception e) {
-            failAndFinish("Failed to launch target app's launcher activity: " + launcherClassName, e);
+            failAndFinish("Failed to launch target app's launcher activity: " + className, e);
         }
     }
 
@@ -261,43 +265,32 @@ public class BootstrapActivity extends AppCompatActivity {
         }
     }
 
-    private void initializeFusion(String launcherName, String targetPackage) {
-        if (!fusionInitialized.compareAndSet(false, true)) {
-            return;
-        }
-
-        PreparedFusionState prepared = preparedState;
-        if (prepared == null || !targetPackage.equals(prepared.targetPackage)) {
-            Log.e(TAG, "Fusion config was not prepared for target package: " + targetPackage);
-            return;
-        }
-
-        Log.i(TAG, "Initializing Fusion for " + targetPackage + " via " + launcherName);
+    private void initializeFusion(FusionConfig config) {
+        Log.i(TAG, "Initializing Fusion for " + config.gamePackageId + " via " + config.gameLauncherName);
 
         try {
-            FusionConfig config = prepared.config;
-
             NativeLibraryManager.addFusionLibrary("main");
             NativeLibraryManager.addFusionLibrary("fusion");
             NativeLibraryManager.addDataLibrary("il2cpp");
             NativeLibraryManager.addDataLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);
-
-            File stagedConfig = FusionConfigStore.write(this, config);
-            Log.i(TAG, "Fusion config staged at " + stagedConfig.getAbsolutePath());
         } catch (Throwable t) {
             Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
         }
     }
 
-    private PreparedFusionState prepareFusionState(Context appContext,
-            Context gameContext,
-            String targetPackage,
-            boolean useOriginalLibUnity) {
+    private FusionConfig prepareConfig(Context appContext,
+                                       Context gameContext,
+                                       ComponentName launcherComponent,
+                                       String targetPackage,
+                                       boolean useOriginalLibUnity) {
+
         String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
         String appLibDir = appContext.getApplicationInfo().nativeLibraryDir;
+
         String targetGameAbi = resolveTargetGameAbi(gameLibDir);
         File appDataDir = new File(appContext.getFilesDir(), targetPackage);
+
         File dataOnSdCard = new File(new File(Environment.getExternalStorageDirectory(), "FusionCore"), targetPackage);
 
         setPhaseStatus(getString(R.string.bootstrap_status_copy_assets));
@@ -332,7 +325,7 @@ public class BootstrapActivity extends AppCompatActivity {
 
                 @Override
                 public void onDownloadFinished(boolean success, boolean usedCache) {
-                    // No-op: next phase status is set by prepareFusionState.
+                    // No-op: next phase will handle this.
                 }
             })) {
                 Log.i(TAG, "Successfully downloaded libunity for version " + version + " and ABI " + targetGameAbi);
@@ -343,8 +336,8 @@ public class BootstrapActivity extends AppCompatActivity {
         }
 
         setPhaseStatus(getString(R.string.bootstrap_status_extracting_runtime));
-        File dotnetDir = new File(appDataDir, "dotnet");
 
+        File dotnetDir = new File(appDataDir, "dotnet");
         File bepInExDir = new File(dataOnSdCard, "BepInEx");
 
         Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
@@ -364,7 +357,9 @@ public class BootstrapActivity extends AppCompatActivity {
             Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
         }
 
-        FusionConfig config = new FusionConfig(
+        return new FusionConfig(
+                targetPackage,
+                launcherComponent.flattenToString(),
                 gameLibDir,
                 appLibDir,
                 appDataDir.getAbsolutePath(),
@@ -374,8 +369,6 @@ public class BootstrapActivity extends AppCompatActivity {
                 version,
                 useOriginalLibUnity
         );
-
-        return new PreparedFusionState(targetPackage, config);
     }
 
     private void applyGlobalMetadataOverride(File dataOnSdCard, File copiedData) {
@@ -410,8 +403,6 @@ public class BootstrapActivity extends AppCompatActivity {
             }
         }
     }
-
-    private record PreparedFusionState(String targetPackage, FusionConfig config) {    }
 
     private int resolveTargetOrientation(ComponentName launcher) {
         try {

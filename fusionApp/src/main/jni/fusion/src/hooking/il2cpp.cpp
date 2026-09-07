@@ -14,7 +14,6 @@ static void *p_il2cpp_init;
 
 static il2cpp_method_get_name_t     fun_il2cpp_method_get_name = nullptr;
 static il2cpp_init_t                fun_il2cpp_init = nullptr;
-
 static il2cpp_init_t            init_hook = nullptr;
 
 bool il2cpp_initialize(const char *library_path)

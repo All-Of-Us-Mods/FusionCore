@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("com.google.protobuf")
+    id("kotlin-parcelize")
 }
 
 // we have a custom pine build that fixes 16KB library problem.
