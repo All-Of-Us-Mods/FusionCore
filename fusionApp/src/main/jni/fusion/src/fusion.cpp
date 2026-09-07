@@ -24,7 +24,7 @@ static bool execute_fusion_config(const FusionConfig &config)
     fusion_print_config(config);
 
     fs::path gameLibsPath(config.gameLibraryDirectory);
-    fs::path appDataPath(config.appDataDirectory);
+    fs::path codeCache(config.codeCacheDirectory);
 
     fs::path libIl2Cpp = gameLibsPath / "libil2cpp.so";
     fs::path libUnity;
@@ -35,13 +35,13 @@ static bool execute_fusion_config(const FusionConfig &config)
     }
     else
     {
-        libUnity = appDataPath / "libunity.so";
+        libUnity = codeCache / "libunity.so";
     }
 
     std::string libUnityPath = libUnity.string();
     try_hook_libunity(libUnityPath, (gameLibsPath / "libunity.so").string());
 
-    fs::path patchedLibIl2Cpp = appDataPath / "libil2cpp.so";
+    fs::path patchedLibIl2Cpp = codeCache / "libil2cpp.so";
     allocate_setup_injected(libIl2Cpp.c_str(), patchedLibIl2Cpp.c_str(), 1024 * 1024);
 
     std::string patchedPath = patchedLibIl2Cpp.string();
@@ -91,7 +91,7 @@ int il2cpp_init_hook(char *domain_name)
         dotNetConfig.entryPointMethod = "Start";
 
         // set TMPDIR for MonoMod lib drops
-        setenv("TMPDIR", runtimeConfig.appDataDirectory.c_str(), 1);
+        setenv("TMPDIR", runtimeConfig.codeCacheDirectory.c_str(), 1);
 
         // execute the managed assembly
         dotnet_execute_assembly(dotNetConfig);
@@ -105,7 +105,7 @@ int il2cpp_init_hook(char *domain_name)
     return result;
 }
 
-extern "C" bool fusion_bootstrap_from_libmain(JNIEnv *env)
+extern "C" [[maybe_unused]] bool fusion_bootstrap_from_libmain(JNIEnv *env)
 {
     (void) env;
 

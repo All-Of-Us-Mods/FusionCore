@@ -271,8 +271,8 @@ public class BootstrapActivity extends AppCompatActivity {
         try {
             NativeLibraryManager.addFusionLibrary("main");
             NativeLibraryManager.addFusionLibrary("fusion");
-            NativeLibraryManager.addDataLibrary("il2cpp");
-            NativeLibraryManager.addDataLibrary("unity");
+            NativeLibraryManager.addCacheLibrary("il2cpp");
+            NativeLibraryManager.addCacheLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);
         } catch (Throwable t) {
             Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
@@ -291,7 +291,8 @@ public class BootstrapActivity extends AppCompatActivity {
         String targetGameAbi = resolveTargetGameAbi(gameLibDir);
         File appDataDir = new File(appContext.getFilesDir(), targetPackage);
 
-        File dataOnSdCard = new File(new File(Environment.getExternalStorageDirectory(), "FusionCore"), targetPackage);
+        File dataOnSdCard = Utilities.getExternalFusionCoreDirectory(targetPackage);
+        File codeCacheScoped = new File(appContext.getCodeCacheDir(), targetPackage);
 
         setPhaseStatus(getString(R.string.bootstrap_status_copy_assets));
         File copiedData = new File(appDataDir, "Data_copy");
@@ -312,7 +313,7 @@ public class BootstrapActivity extends AppCompatActivity {
             Log.i(TAG, "Skipping libunity download");
         } else {
             Log.i(TAG, "Determined Unity version: " + version);
-            if (LibUnityDownloader.downloadAndCacheSafely(appDataDir, version, targetGameAbi, new LibUnityDownloader.DownloadProgressListener() {
+            if (LibUnityDownloader.downloadAndCacheSafely(codeCacheScoped, version, targetGameAbi, new LibUnityDownloader.DownloadProgressListener() {
                 @Override
                 public void onDownloadStarted(String url, long totalBytes) {
                     setDownloadStatus(0L, totalBytes);
@@ -337,7 +338,7 @@ public class BootstrapActivity extends AppCompatActivity {
 
         setPhaseStatus(getString(R.string.bootstrap_status_extracting_runtime));
 
-        File dotnetDir = new File(appDataDir, "dotnet");
+        File dotnetDir = new File(appContext.getCodeCacheDir(), "dotnet");
         File bepInExDir = new File(dataOnSdCard, "BepInEx");
 
         Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
@@ -363,6 +364,7 @@ public class BootstrapActivity extends AppCompatActivity {
                 gameLibDir,
                 appLibDir,
                 appDataDir.getAbsolutePath(),
+                codeCacheScoped.getAbsolutePath(),
                 bepInExDir.getAbsolutePath(),
                 dotnetDir.getAbsolutePath(),
                 copiedData.getAbsolutePath(),

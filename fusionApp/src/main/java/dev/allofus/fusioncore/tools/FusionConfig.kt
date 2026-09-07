@@ -15,6 +15,8 @@ class FusionConfig(
     @JvmField var appLibraryDirectory: String,
     /** The directory where Fusion's data files are located. */
     @JvmField var appDataDirectory: String,
+    /** The directory where Fusion's code cache is located. */
+    @JvmField var codeCacheDirectory: String,
     /** The directory where BepInEx should be installed. */
     @JvmField var bepInExDirectory: String,
     /** The directory where the .NET runtime should be installed. */

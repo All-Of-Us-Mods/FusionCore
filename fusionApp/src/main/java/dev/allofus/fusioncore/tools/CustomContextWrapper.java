@@ -14,11 +14,13 @@ import java.io.File;
 
 public class CustomContextWrapper extends ContextWrapper {
     Context fusionContext;
+    Context gameContext;
 
     public CustomContextWrapper(Context gameContext, Context fusionContext) {
         super(gameContext);
+        this.gameContext = gameContext;
         this.fusionContext = fusionContext;
-        this.getApplicationInfo().dataDir = fusionContext.getApplicationInfo().dataDir;
+        this.getApplicationInfo().dataDir = Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName()).getAbsolutePath();
         // this prevents the game from resolving its own libraries
         // that way we can override them properly with our own versions
         this.getApplicationInfo().nativeLibraryDir = "";
@@ -76,7 +78,7 @@ public class CustomContextWrapper extends ContextWrapper {
 
     @Override
     public File getExternalFilesDir(String type) {
-        return this.fusionContext.getExternalFilesDir(type);
+        return Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName());
     }
 
     @Override

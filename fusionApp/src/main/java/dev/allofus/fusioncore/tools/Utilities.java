@@ -3,9 +3,12 @@ package dev.allofus.fusioncore.tools;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Build;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowInsets;
+
+import androidx.annotation.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -18,6 +21,17 @@ import java.util.zip.ZipInputStream;
 
 public class Utilities {
     private static final String TAG = "FusionCore";
+
+    public static File getExternalFusionCoreDirectory(@Nullable String targetPackage) {
+        File fusionStorage = new File(Environment.getExternalStorageDirectory(), "FusionCore");
+        if (targetPackage != null) {
+            fusionStorage = new File(fusionStorage, targetPackage);
+        }
+        if (!fusionStorage.exists()) {
+            fusionStorage.mkdirs();
+        }
+        return fusionStorage;
+    }
 
     public static void applyWindowInsets(View root, int basePadding) {
         root.setOnApplyWindowInsetsListener((v, insets) -> {

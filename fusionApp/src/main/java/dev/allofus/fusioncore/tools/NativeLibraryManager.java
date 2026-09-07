@@ -17,7 +17,7 @@ public class NativeLibraryManager {
 
     private static final ArrayList<String> GameLibraries = new ArrayList<>();
 
-    private static final ArrayList<String> DataLibraries = new ArrayList<>();
+    private static final ArrayList<String> CacheLibraries = new ArrayList<>();
 
     public static void addFusionLibrary(String fusionLibName)
     {
@@ -29,9 +29,9 @@ public class NativeLibraryManager {
         GameLibraries.add(gameLibName);
     }
 
-    public static void addDataLibrary(String dataLibName)
+    public static void addCacheLibrary(String dataLibName)
     {
-        DataLibraries.add(dataLibName);
+        CacheLibraries.add(dataLibName);
     }
 
     // this redirects library loading to the libraries we want the game to use
@@ -57,9 +57,9 @@ public class NativeLibraryManager {
                     }
                 }
 
-                for (String dataLib : DataLibraries) {
+                for (String dataLib : CacheLibraries) {
                     if (Objects.equals(libName, dataLib)) {
-                        callFrame.setResult(config.appDataDirectory + "/lib" + libName + ".so");
+                        callFrame.setResult(config.codeCacheDirectory + "/lib" + libName + ".so");
                         return;
                     }
                 }
