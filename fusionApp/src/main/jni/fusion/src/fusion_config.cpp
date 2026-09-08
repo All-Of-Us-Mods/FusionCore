@@ -19,6 +19,29 @@
                                                                         "Z")); \
     config.fieldName = (fieldName##JBoolean == JNI_TRUE)
 
+std::vector<std::string> get_string_array_field(
+        JNIEnv *env,
+        jobject object,
+        const char *fieldName) {
+
+    jclass clazz = env->GetObjectClass(object);
+    jfieldID fieldId = env->GetFieldID(clazz, fieldName, "[Ljava/lang/String;");
+
+    auto jArray = (jobjectArray) env->GetObjectField(object, fieldId);
+    jsize arrayLength = env->GetArrayLength(jArray);
+
+    std::vector<std::string> vector;
+    vector.reserve(arrayLength);
+
+    for (int i = 0; i < arrayLength; i++) {
+        auto jStr = (jstring)env->GetObjectArrayElement(jArray, i);
+        std::string str = env->GetStringUTFChars(jStr, nullptr);
+        vector.push_back(str);
+    }
+
+    return vector;
+}
+
 FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
 {
     FusionConfig config;
@@ -34,7 +57,8 @@ FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
     GET_JSTRING_FIELD(dotnetDirectory);
     GET_JSTRING_FIELD(unityDataDirectory);
     GET_JSTRING_FIELD(unityVersion);
-
+    config.fusionVariables = get_string_array_field(env, jFusionConfig, "fusionVariables");
+    config.auxiliaryPluginFolders = get_string_array_field(env, jFusionConfig, "auxiliaryPluginFolders");
     config.initialized = true;
 
     return config;

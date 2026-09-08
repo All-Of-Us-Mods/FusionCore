@@ -23,6 +23,6 @@ struct DotNetConfig
     std::string entryPointMethod;
 };
 
-int dotnet_execute_assembly(const DotNetConfig& config);
+int dotnet_execute_assembly(const DotNetConfig& config, AuxPluginFolderList *folderList);
 
 #endif //FUSIONCORE_DOTNET_H

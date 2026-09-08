@@ -369,7 +369,9 @@ public class BootstrapActivity extends AppCompatActivity {
                 dotnetDir.getAbsolutePath(),
                 copiedData.getAbsolutePath(),
                 version,
-                useOriginalLibUnity
+                useOriginalLibUnity,
+                new String[]{},
+                new String[]{}
         );
     }
 

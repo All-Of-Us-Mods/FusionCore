@@ -26,5 +26,9 @@ class FusionConfig(
     /** The Unity version of the game. */
     @JvmField var unityVersion: String,
     /** Whether to use the original libunity.so from the game or the one provided by Fusion. */
-    @JvmField var useOriginalLibUnity: Boolean
+    @JvmField var useOriginalLibUnity: Boolean,
+    /** Variables to encode in the FUSION_VARIABLES environment variable. */
+    @JvmField var fusionVariables: Array<String>,
+    /** Auxiliary folders to load BepInEx plugins from. */
+    @JvmField var auxiliaryPluginFolders: Array<String>
 ) : Parcelable
