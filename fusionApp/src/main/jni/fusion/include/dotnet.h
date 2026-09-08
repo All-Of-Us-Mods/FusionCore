@@ -6,7 +6,13 @@
 
 #define HR_INTERNAL_ERROR 0x8007054F
 
-using entrypoint_fn = void(*)();
+struct AuxPluginFolderList
+{
+    int count;
+    const char **folders;
+};
+
+using entrypoint_fn = void(*)(AuxPluginFolderList *folderList);
 
 struct DotNetConfig
 {
