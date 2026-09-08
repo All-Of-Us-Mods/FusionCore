@@ -1,30 +1,30 @@
 package dev.allofus.fusioncore.ui
 
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 import com.highcapable.hikage.core.Hikage
 import dev.allofus.fusioncore.R
 import dev.allofus.fusioncore.data.AppInfo
 
 class AppViewHolder(
-    private val hikage: Hikage
+    hikage: Hikage
 ) : RecyclerView.ViewHolder(hikage.root) {
+    private val card = hikage.get<MaterialCardView>(AppItemLayout.ID_CARD)
     private val icon = hikage.get<ImageView>(AppItemLayout.ID_ICON)
     private val label = hikage.get<TextView>(AppItemLayout.ID_LABEL)
     private val packageName = hikage.get<TextView>(AppItemLayout.ID_PACKAGE)
     private val version = hikage.get<TextView>(AppItemLayout.ID_VERSION)
-    private val folderBtn = hikage.get<ImageButton>(AppItemLayout.ID_FOLDER_BTN)
-    private val settingsBtn = hikage.get<ImageButton>(AppItemLayout.ID_SETTINGS_BTN)
+    private val playBtn = hikage.get<MaterialButton>(AppItemLayout.ID_PLAY_BTN)
 
     fun bind(
         appInfo: AppInfo,
-        onClick: (AppInfo) -> Unit,
-        onFolderClick: (AppInfo) -> Unit,
-        onSettingsClick: (AppInfo) -> Unit
+        launch: (AppInfo) -> Unit,
+        openSettings: (AppInfo) -> Unit
     ) {
-        itemView.setOnClickListener { onClick(appInfo) }
+        card.setOnClickListener { openSettings(appInfo) }
         icon.setImageDrawable(appInfo.icon)
         label.text = appInfo.label
         packageName.text = appInfo.packageName
@@ -33,7 +33,6 @@ class AppViewHolder(
         } else {
             appInfo.versionCode.toString()
         }
-        folderBtn.setOnClickListener { onFolderClick(appInfo) }
-        settingsBtn.setOnClickListener { onSettingsClick(appInfo) }
+        playBtn.setOnClickListener { launch(appInfo) }
     }
 }

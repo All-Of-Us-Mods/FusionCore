@@ -6,9 +6,8 @@ import androidx.recyclerview.widget.RecyclerView
 import dev.allofus.fusioncore.data.AppInfo
 
 class AppAdapter(
-    private val onClick: (AppInfo) -> Unit,
-    private val onFolderClick: (AppInfo) -> Unit,
-    private val onSettingsClick: (AppInfo) -> Unit
+    private val launch: (AppInfo) -> Unit,
+    private val openSettings: (AppInfo) -> Unit
 ) : RecyclerView.Adapter<AppViewHolder>() {
 
     private var items = emptyList<AppInfo>()
@@ -25,7 +24,7 @@ class AppAdapter(
     }
 
     override fun onBindViewHolder(holder: AppViewHolder, position: Int) {
-        holder.bind(items[position], onClick, onFolderClick, onSettingsClick)
+        holder.bind(items[position], launch, openSettings)
     }
 
     override fun getItemCount() = items.size

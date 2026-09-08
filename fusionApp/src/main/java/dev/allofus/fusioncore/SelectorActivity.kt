@@ -9,6 +9,7 @@ import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
 import android.view.View
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,10 +20,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
+import androidx.core.view.setPadding
 import androidx.core.view.updatePadding
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import com.highcapable.betterandroid.ui.extension.component.launch
 import com.highcapable.betterandroid.ui.extension.insets.factory.handleOnWindowInsetsChanged
 import com.highcapable.betterandroid.ui.extension.view.textColor
@@ -30,13 +34,19 @@ import com.highcapable.betterandroid.ui.extension.view.toast
 import com.highcapable.hikage.core.base.Hikagable
 import com.highcapable.hikage.core.layout.LayoutParams
 import com.highcapable.hikage.widget.android.widget.FrameLayout
+import com.highcapable.hikage.widget.android.widget.LinearLayout
 import com.highcapable.hikage.widget.android.widget.TextView
+import com.highcapable.hikage.widget.android.widget.Toolbar
 import com.highcapable.hikage.widget.androidx.recyclerview.widget.RecyclerView
+import com.highcapable.hikage.widget.com.google.android.material.appbar.AppBarLayout
+import com.highcapable.hikage.widget.com.google.android.material.appbar.MaterialToolbar
+import com.highcapable.hikage.widget.com.google.android.material.button.MaterialButton
 import dev.allofus.fusioncore.data.PermissionsManager
 import dev.allofus.fusioncore.presentation.SelectorUiState
 import dev.allofus.fusioncore.presentation.SelectorViewModel
 import dev.allofus.fusioncore.tools.CrashDetector
 import dev.allofus.fusioncore.ui.AppAdapter
+import dev.allofus.fusioncore.ui.AppItemLayout.ID_PLAY_BTN
 
 class SelectorActivity : AppCompatActivity() {
     companion object {
@@ -87,42 +97,61 @@ class SelectorActivity : AppCompatActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         adapter = AppAdapter(
-            onClick = { appInfo ->
+            launch = { appInfo ->
                 checkPermissionsAndLaunch(appInfo.packageName)
             },
-            onFolderClick = { /* open containing folder */ },
-            onSettingsClick = { /* open app settings */ }
+            openSettings = {
+                val intent = Intent(this, GameSettingsActivity::class.java).apply {
+                    putExtra(GameSettingsActivity.EXTRA_PACKAGE_NAME, it.packageName)
+                }
+                startActivity(intent)
+            }
         )
 
         val hikage = Hikagable(this) {
-            FrameLayout(
+            LinearLayout(
                 id = "root",
-                lparams = LayoutParams(matchParent = true)
+                lparams = LayoutParams(matchParent = true),
+                init = { orientation = LinearLayout.VERTICAL }
             ) {
-                RecyclerView(
-                    id = "recycler",
-                    lparams = LayoutParams(matchParent = true)
+                AppBarLayout(
+                    lparams = LayoutParams(widthMatchParent = true)
                 ) {
-                    layoutManager = LinearLayoutManager(context)
-                    adapter = this@SelectorActivity.adapter
-                    clipToPadding = false // let rows scroll behind the padding, not clip against it
+                    MaterialToolbar(
+                        lparams = LayoutParams(widthMatchParent = true)
+                    ) {
+                        title = stringResource(R.string.app_name)
+                    }
                 }
 
-                TextView(
-                    id = "loading",
-                    lparams = LayoutParams(matchParent = true)
+                FrameLayout(
+                    lparams = LayoutParams(widthMatchParent = true, heightMatchParent = true)
                 ) {
-                    text = stringResource(R.string.loading)
-                    gravity = Gravity.CENTER
-                }
+                    RecyclerView(
+                        id = "recycler",
+                        lparams = LayoutParams(matchParent = true)
+                    ) {
+                        layoutManager = LinearLayoutManager(context)
+                        adapter = this@SelectorActivity.adapter
+                        clipToPadding = false
+                    }
 
-                TextView(
-                    id = "error",
-                    lparams = LayoutParams(matchParent = true)
-                ) {
-                    textColor = Color.RED
-                    gravity = Gravity.CENTER
-                    visibility = View.GONE
+                    TextView(
+                        id = "loading",
+                        lparams = LayoutParams(matchParent = true)
+                    ) {
+                        text = stringResource(R.string.loading)
+                        gravity = Gravity.CENTER
+                    }
+
+                    TextView(
+                        id = "error",
+                        lparams = LayoutParams(matchParent = true)
+                    ) {
+                        textColor = Color.RED
+                        gravity = Gravity.CENTER
+                        visibility = View.GONE
+                    }
                 }
             }
         }
