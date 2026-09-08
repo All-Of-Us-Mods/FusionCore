@@ -3,7 +3,8 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
-        maven(url = uri("https://jitpack.io"))
+        maven("https://jitpack.io")
+        maven("https://raw.githubusercontent.com/HighCapable/maven-repository/main/repository/releases")
     }
 }
 
@@ -13,7 +14,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
-        maven(url = uri("https://jitpack.io"))
+        maven("https://jitpack.io")
+        maven("https://raw.githubusercontent.com/HighCapable/maven-repository/main/repository/releases")
     }
 }
 

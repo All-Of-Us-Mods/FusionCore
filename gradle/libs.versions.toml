@@ -1,0 +1,26 @@
+[versions]
+# ...
+annotation = "1.10.0"
+appcompat = "1.8.0"
+core = "1.19.0"
+hikage-plugin = "1.0.1"
+hikage-bom = "1.1.1"
+material = "1.14.0"
+protobuf-javalite = "4.36.1"
+
+[plugins]
+hikage = { id = "com.highcapable.hikage", version.ref = "hikage-plugin" }
+
+[libraries]
+annotation = { module = "androidx.annotation:annotation", version.ref = "annotation" }
+appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+core = { module = "androidx.core:core", version.ref = "core" }
+hikage-bom = { module = "com.highcapable.hikage:hikage-bom", version.ref = "hikage-bom" }
+hikage-core = { module = "com.highcapable.hikage:hikage-core" }
+hikage-runtime = { module = "com.highcapable.hikage:hikage-runtime" }
+hikage-runtime-attribute = { module = "com.highcapable.hikage:hikage-runtime-attribute" }
+hikage-extension = { module = "com.highcapable.hikage:hikage-extension" }
+hikage-widget-androidx = { module = "com.highcapable.hikage:hikage-widget-androidx" }
+hikage-widget-material = { module = "com.highcapable.hikage:hikage-widget-material" }
+material = { module = "com.google.android.material:material", version.ref = "material" }
+protobuf-javalite = { module = "com.google.protobuf:protobuf-javalite", version.ref = "protobuf-javalite" }
