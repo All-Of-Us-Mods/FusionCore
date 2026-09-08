@@ -78,6 +78,10 @@ public class CustomContextWrapper extends ContextWrapper {
 
     @Override
     public File getExternalFilesDir(String type) {
+        if (type == null) {
+            return Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName());
+        }
+
         return new File(Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName()), type);
     }
 
