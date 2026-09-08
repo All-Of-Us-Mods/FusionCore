@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 
@@ -22,7 +23,15 @@ import java.util.List;
 public class CrashDetector {
     public static final String TAG = "CrashDetector";
 
+    private static boolean initialized = false;
+
     public static void init(Context context) {
+        if (initialized) {
+            Toast.makeText(context, "CrashDetector already initialized", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        initialized = true;
+
         setupUncaughtExceptionHandler(context);
 
         ActivityManager activityManager = context.getSystemService(ActivityManager.class);

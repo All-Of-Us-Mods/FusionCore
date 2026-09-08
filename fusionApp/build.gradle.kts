@@ -1,19 +1,34 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
+
 plugins {
     id("com.android.application")
     id("com.google.protobuf")
     id("kotlin-parcelize")
+    alias(libs.plugins.hikage)
 }
 
 // we have a custom pine build that fixes 16KB library problem.
 val pineAar = file("../libs/canyie-pine.aar")
 dependencies {
-    implementation("androidx.core:core:1.19.0")
-    implementation("androidx.annotation:annotation:1.10.0")
-    implementation("androidx.appcompat:appcompat:1.8.0")
-    implementation("androidx.coordinatorlayout:coordinatorlayout:1.3.0")
-    implementation("com.google.android.material:material:1.14.0")
-    implementation("com.google.protobuf:protobuf-javalite:4.36.1")
+    // local files
     implementation(files(pineAar))
+
+    // core libraries
+    implementation(libs.core)
+    implementation(libs.annotation)
+    implementation(libs.appcompat)
+    implementation(libs.protobuf.javalite)
+    implementation(libs.material)
+
+    // hikage
+    implementation(platform(libs.hikage.bom))
+    implementation(libs.hikage.core)
+    implementation(libs.hikage.runtime)
+    implementation(libs.hikage.runtime.attribute)
+    implementation(libs.hikage.extension)
+    implementation(libs.hikage.widget.androidx)
+    implementation(libs.hikage.widget.material)
 }
 
 android {
@@ -61,8 +76,7 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            // we don't need minify tbh
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             // this can mess up ResourceHooks
             //noinspection NotShrinkingResources
             isShrinkResources = false
@@ -82,6 +96,11 @@ android {
     }
 }
 
+tasks.withType<KotlinJvmCompile>().configureEach {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
 
 protobuf {
     protoc {
