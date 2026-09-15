@@ -10,8 +10,9 @@
         (env)->ReleaseStringUTFChars(javaString, chars); \
     } while(0)
 
-
 JNIEnv* getJNIEnv();
+
+jclass find_class_in_app_classloader(JNIEnv *env, const char *className);
 
 jobject get_fusion_config(JNIEnv *env);
 

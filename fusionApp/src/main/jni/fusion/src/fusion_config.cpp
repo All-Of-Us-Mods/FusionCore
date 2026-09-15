@@ -46,7 +46,12 @@ FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
 {
     FusionConfig config;
 
-    jclass configClass = env->GetObjectClass(jFusionConfig);
+    jclass configClass = find_class_in_app_classloader(env,
+                                                       "dev/allofus/fusioncore/tools/FusionConfig");
+    if (!configClass) {
+        log(LogLevel::ERROR, TAG, "Failed to find FusionConfig class!");
+        return config;
+    }
 
     GET_JBOOLEAN_FIELD(useOriginalLibUnity);
     GET_JSTRING_FIELD(gameLibraryDirectory);
