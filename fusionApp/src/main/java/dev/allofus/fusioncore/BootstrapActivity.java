@@ -22,6 +22,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Locale;
 
+import dev.allofus.fusioncore.hooks.ClassHooks;
 import dev.allofus.fusioncore.hooks.ClassLoaderHooks;
 import dev.allofus.fusioncore.hooks.InstrumentationHooks;
 import dev.allofus.fusioncore.hooks.PackageManagerHooks;
@@ -139,6 +140,7 @@ public class BootstrapActivity extends AppCompatActivity {
         setPhaseStatus(getString(R.string.bootstrap_status_installing_hooks));
         try {
             ClassLoaderHooks.installHooks(gameContext.getClassLoader());
+            ClassHooks.installHooks(gameContext.getClassLoader());
             PackageManagerHooks.installHooks(getPackageManager());
             InstrumentationHooks.install(getApplicationContext());
             UnityPlayerHooks.installHooks(gameContext);
