@@ -110,6 +110,9 @@ int il2cpp_init_hook(char *domain_name)
         list.count = size;
         list.folders = pointerArray;
 
+        // change working directory to fusion's scoped data directory
+        chdir(runtimeConfig.appDataDirectory.c_str());
+
         // execute the managed assembly
         dotnet_execute_assembly(dotNetConfig, &list);
     }
