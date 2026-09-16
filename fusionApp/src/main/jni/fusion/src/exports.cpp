@@ -45,3 +45,9 @@ void write_log_level(int level, const char *text)
     LogLevel logLevel = static_cast<LogLevel>(level);
     log(logLevel, "Fusion.NET", text);
 }
+
+int8_t get_low_memory_mode()
+{
+    // TODO: add configuration
+    return 1;
+}

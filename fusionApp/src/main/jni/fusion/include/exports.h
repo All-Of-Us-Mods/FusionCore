@@ -24,6 +24,8 @@ void write_log(const char *text);
 
 void write_log_level(int level, const char *text);
 
+int8_t get_low_memory_mode();
+
 #ifdef __cplusplus
 }
 #endif
