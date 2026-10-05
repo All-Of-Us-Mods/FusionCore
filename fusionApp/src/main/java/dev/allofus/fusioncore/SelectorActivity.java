@@ -300,6 +300,9 @@ public class SelectorActivity extends AppCompatActivity {
         intent.putExtra(BootstrapActivity.EXTRA_TARGET_PACKAGE, packageName);
         intent.putExtra(BootstrapActivity.EXTRA_USE_ORIGINAL_LIBUNITY,
                 !FusionSettings.getUseUnstrippedLibUnityForGame(this, packageName));
+        intent.putExtra(BootstrapActivity.EXTRA_USE_IL2CPP2MONO,
+                FusionSettings.getUseIl2Cpp2Mono(this, packageName));
+
         intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         startActivity(intent);
         //noinspection deprecation

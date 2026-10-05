@@ -52,7 +52,7 @@ FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
         log(LogLevel::ERROR, TAG, "Failed to find FusionConfig class!");
         return config;
     }
-
+    GET_JBOOLEAN_FIELD(isIl2Cpp2Mono);
     GET_JBOOLEAN_FIELD(useOriginalLibUnity);
     GET_JSTRING_FIELD(gameLibraryDirectory);
     GET_JSTRING_FIELD(appLibraryDirectory);

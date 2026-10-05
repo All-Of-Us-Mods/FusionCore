@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 public final class FusionSettings {
     private static final String PREFS_NAME = "fusion_settings";
     private static final String KEY_DOWNLOAD_UNSTRIPPED_LIBUNITY = "download_unstripped_libunity";
+    private static final String KEY_USE_IL2CPP2MONO = "use_il2cpp2mono";
     private static final String KEY_ACTIVITY_OVERRIDE = "activity_override";
 
     private FusionSettings() {
@@ -14,7 +15,13 @@ public final class FusionSettings {
     private static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
+    public static boolean getUseIl2Cpp2Mono(Context context, String targetPackage) {
+        return prefs(context).getBoolean(targetPackage + ":" + KEY_USE_IL2CPP2MONO, false);
+    }
 
+    public static void setUseIl2Cpp2Mono(Context context, String targetPackage, boolean enabled) {
+        prefs(context).edit().putBoolean(targetPackage + ":" + KEY_USE_IL2CPP2MONO, enabled).apply();
+    }
     public static boolean getUseUnstrippedLibUnityForGame(Context context, String targetPackage) {
         return prefs(context).getBoolean(targetPackage + ":" + KEY_DOWNLOAD_UNSTRIPPED_LIBUNITY, true);
     }

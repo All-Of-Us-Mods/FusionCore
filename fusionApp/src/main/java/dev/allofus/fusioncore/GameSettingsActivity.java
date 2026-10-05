@@ -43,7 +43,7 @@ public class GameSettingsActivity extends AppCompatActivity {
 
     private AutoCompleteTextView actvOverrideActivity;
     private SwitchCompat switchLibUnity;
-
+    private SwitchCompat switchIl2Cpp2Mono;
     private String targetPackageName;
 
     @Override
@@ -64,6 +64,7 @@ public class GameSettingsActivity extends AppCompatActivity {
 
         resolveAndDisplayPackageInfo(targetPackageName);
         switchLibUnity.setChecked(FusionSettings.getUseUnstrippedLibUnityForGame(this, targetPackageName));
+        switchIl2Cpp2Mono.setChecked(FusionSettings.getUseIl2Cpp2Mono(this, targetPackageName));
         actvOverrideActivity.setText(FusionSettings.getActivityOverrideForGame(this, targetPackageName), false);
         setupListeners();
     }
@@ -76,6 +77,7 @@ public class GameSettingsActivity extends AppCompatActivity {
 
         actvOverrideActivity = findViewById(R.id.activity_override_actv);
         switchLibUnity = findViewById(R.id.switchLibUnity);
+        switchIl2Cpp2Mono = findViewById(R.id.switchIl2Cpp2Mono);
     }
 
     private void setupToolbar() {
@@ -132,5 +134,7 @@ public class GameSettingsActivity extends AppCompatActivity {
     private void setupListeners() {
         switchLibUnity.setOnCheckedChangeListener((buttonView, isChecked) ->
                 FusionSettings.setUseUnstrippedLibUnityForGame(this, targetPackageName, isChecked));
+        switchIl2Cpp2Mono.setOnCheckedChangeListener((buttonView, isChecked) ->
+                FusionSettings.setUseIl2Cpp2Mono(this, targetPackageName, isChecked));
     }
 }

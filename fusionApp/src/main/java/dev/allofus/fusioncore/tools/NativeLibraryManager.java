@@ -18,7 +18,7 @@ public class NativeLibraryManager {
     private static final ArrayList<String> GameLibraries = new ArrayList<>();
 
     private static final ArrayList<String> CacheLibraries = new ArrayList<>();
-
+    private static final ArrayList<String> DotnetLibraries = new ArrayList<>();
     public static void addFusionLibrary(String fusionLibName)
     {
         FusionLibraries.add(fusionLibName);
@@ -33,7 +33,10 @@ public class NativeLibraryManager {
     {
         CacheLibraries.add(dataLibName);
     }
-
+    public static void AddDotnetLibrary(String dataLibName)
+    {
+        DotnetLibraries.add(dataLibName);
+    }
     // this redirects library loading to the libraries we want the game to use
     public static void setupLibraryHooks(FusionConfig config) {
         Method findLibraryMethod = findLibraryMethodViaReflection();
@@ -53,6 +56,13 @@ public class NativeLibraryManager {
                 for (String fusionLib : FusionLibraries) {
                     if (Objects.equals(libName, fusionLib)) {
                         callFrame.setResult(config.appLibraryDirectory + "/lib" + libName + ".so");
+                        return;
+                    }
+                }
+
+                for (String dataLib : DotnetLibraries) {
+                    if (Objects.equals(libName, dataLib)) {
+                        callFrame.setResult(config.dotnetDirectory + "/lib" + libName + ".so");
                         return;
                     }
                 }

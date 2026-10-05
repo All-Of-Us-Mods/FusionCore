@@ -27,6 +27,8 @@ class FusionConfig(
     @JvmField var unityVersion: String,
     /** Whether to use the original libunity.so from the game or the one provided by Fusion. */
     @JvmField var useOriginalLibUnity: Boolean,
+    /** whether its il2cpp2mono or not*/
+    @JvmField var isIl2Cpp2Mono: Boolean,
     /** Variables to encode in the FUSION_VARIABLES environment variable. */
     @JvmField var fusionVariables: Array<String>,
     /** Auxiliary folders to load BepInEx plugins from. */

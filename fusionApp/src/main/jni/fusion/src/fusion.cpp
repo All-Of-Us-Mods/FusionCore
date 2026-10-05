@@ -12,6 +12,7 @@
 #include <dotnet.h>
 #include <external/dobby.h>
 #include <utilities/java.h>
+#include <dlfcn.h>
 
 #define TAG "FusionCore"
 
@@ -26,9 +27,37 @@ static bool execute_fusion_config(const FusionConfig &config)
     fs::path gameLibsPath(config.gameLibraryDirectory);
     fs::path codeCache(config.codeCacheDirectory);
 
-    fs::path libIl2Cpp = gameLibsPath / "libil2cpp.so";
     fs::path libUnity;
+    fs::path patchedLibIl2Cpp;
+    if(config.isIl2Cpp2Mono){
+        fs::path MonoPath(config.dotnetDirectory);
 
+        fs::path monoLib = MonoPath / "libmonosgen-2.0.so";
+        void* handle = dlopen(monoLib.c_str(), RTLD_GLOBAL | RTLD_NOW);
+        if (!handle) {
+            log_format(LogLevel::ERROR, TAG, "Failed to dlopen libmonosgen-2.0.so: {}", dlerror());
+            return false;
+        }
+        patchedLibIl2Cpp = MonoPath / "libil2cpp.so";
+        handle = dlopen(patchedLibIl2Cpp.c_str(), RTLD_GLOBAL | RTLD_NOW);
+        if (!handle) {
+            log_format(LogLevel::ERROR, TAG, "Failed to dlopen {}: {}", patchedLibIl2Cpp.string(), dlerror());
+            return false;
+        }
+        using SetOverrideDirs = void (*)(const char*, const char*);
+        auto set_override_dirs =
+                reinterpret_cast<SetOverrideDirs>(
+                        dlsym(handle, "il2cpp2mono_set_override_dirs")
+                );
+        fs::path dllpath = fs::path(config.bepInExDirectory).parent_path() / "mono";
+        fs::path monopath = MonoPath / "mono";
+        set_override_dirs(dllpath.c_str(), monopath.c_str());
+    }
+    else{
+        patchedLibIl2Cpp = codeCache / "libil2cpp.so";
+        fs::path libIl2Cpp = gameLibsPath / "libil2cpp.so";
+        allocate_setup_injected(libIl2Cpp.c_str(), patchedLibIl2Cpp.c_str(), 1024 * 1024);
+    }
     if (config.useOriginalLibUnity)
     {
         libUnity = gameLibsPath / "libunity.so";
@@ -40,9 +69,6 @@ static bool execute_fusion_config(const FusionConfig &config)
 
     std::string libUnityPath = libUnity.string();
     try_hook_libunity(libUnityPath, (gameLibsPath / "libunity.so").string());
-
-    fs::path patchedLibIl2Cpp = codeCache / "libil2cpp.so";
-    allocate_setup_injected(libIl2Cpp.c_str(), patchedLibIl2Cpp.c_str(), 1024 * 1024);
 
     std::string patchedPath = patchedLibIl2Cpp.string();
     libmain_set_override_il2cpp_path(patchedPath.c_str());
@@ -112,9 +138,13 @@ int il2cpp_init_hook(char *domain_name)
 
         // change working directory to fusion's scoped data directory
         chdir(runtimeConfig.appDataDirectory.c_str());
-
-        // execute the managed assembly
-        dotnet_execute_assembly(dotNetConfig, &list);
+        if(!runtimeConfig.isIl2Cpp2Mono) {
+            // execute the managed assembly
+            dotnet_execute_assembly(dotNetConfig, &list);
+        }//we wont be using this, for now.
+        else{
+            setLoadingState(false);
+        }
     }
     else
     {

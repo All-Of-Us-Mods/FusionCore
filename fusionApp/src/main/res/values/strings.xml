@@ -8,6 +8,8 @@
     <string name="settings_action_back">Back</string>
     <string name="settings_libunity_title">Download unstripped libunity</string>
     <string name="settings_libunity_desc">You should turn this on if the game you\'re using crashes due to Unity getting mad.</string>
+    <string name="settings_il2cpp2mono_title" translatable="false">Use Il2Cpp2Mono</string>
+    <string name="settings_il2cpp2mono_desc" translatable="false">If you have the managed dlls, you can use this to make the game use mono!</string>
     <string name="selector_empty_not_configured">No supported packages configured..</string>
     <string name="selector_empty_not_installed">No supported packages are currently installed.</string>
     <string name="selector_storage_permission_prompt">Grant "All files access" so Fusion Core can write BepInEx files to Documents.</string>
@@ -38,4 +40,7 @@
     <string name="selector_no_file_manager">No file manager found capable of opening this directory</string>
     <string name="selector_folder_create_failed">Failed to make folder: %1$s</string>
     <string name="settings_automatic">Automatic</string>
+    <string name="bootstrap_status_extracting_mono_dlls">Extracting Mono managed DLLs…</string>
+    <string name="bootstrap_mono_file_picker_error">Failed to open file picker for managed DLLs ZIP.</string>
+    <string name="bootstrap_mono_missing_dlls">Managed DLLs ZIP was not provided for Il2Cpp2Mono.</string>
 </resources>

@@ -5,8 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Looper;
 import android.util.Log;
 import android.view.View;
@@ -14,13 +14,17 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Locale;
+import java.util.concurrent.CountDownLatch;
 
 import dev.allofus.fusioncore.hooks.ClassHooks;
 import dev.allofus.fusioncore.hooks.ClassLoaderHooks;
@@ -40,6 +44,7 @@ public class BootstrapActivity extends AppCompatActivity {
 
     public static final String EXTRA_TARGET_PACKAGE = "target_package";
     public static final String EXTRA_USE_ORIGINAL_LIBUNITY = "og_libunity";
+    public static final String EXTRA_USE_IL2CPP2MONO = "use_il2cpp2mono";
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
     private static final String GLOBAL_METADATA_FILE = "global-metadata.dat";
 
@@ -47,6 +52,43 @@ public class BootstrapActivity extends AppCompatActivity {
     private TextView progressDetailsView;
     private ProgressBar spinnerProgress;
     private ProgressBar downloadProgress;
+
+    private File pendingBepInExDir;
+    private CountDownLatch pendingLatch;
+    private boolean[] pendingResultHolder;
+
+    private final ActivityResultLauncher<Intent> selectZipLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                File targetDir = pendingBepInExDir;
+                CountDownLatch latch = pendingLatch;
+                boolean[] resultHolder = pendingResultHolder;
+
+                pendingBepInExDir = null;
+                pendingLatch = null;
+                pendingResultHolder = null;
+
+                if (result.getResultCode() == RESULT_OK && result.getData() != null && result.getData().getData() != null) {
+                    Uri uri = result.getData().getData();
+                    setPhaseStatus(getString(R.string.bootstrap_status_extracting_mono_dlls));
+
+                    new Thread(() -> {
+                        boolean extracted = extractManagedZipUri(uri, targetDir);
+                        if (resultHolder != null) {
+                            resultHolder[0] = extracted;
+                        }
+                        if (latch != null) {
+                            latch.countDown();
+                        }
+                    }, "extract-managed-zip").start();
+                } else {
+                    if (resultHolder != null) {
+                        resultHolder[0] = false;
+                    }
+                    if (latch != null) {
+                        latch.countDown();
+                    }
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,6 +156,7 @@ public class BootstrapActivity extends AppCompatActivity {
         final int targetOrientation = resolveTargetOrientation(launcherComponent);
 
         boolean useOriginalLibUnity = getIntent().getBooleanExtra(EXTRA_USE_ORIGINAL_LIBUNITY, false);
+        boolean useIl2Cpp2Mono = getIntent().getBooleanExtra(EXTRA_USE_IL2CPP2MONO, false);
         FusionConfig config;
 
         try {
@@ -122,7 +165,8 @@ public class BootstrapActivity extends AppCompatActivity {
                     gameContext,
                     launcherComponent,
                     targetPackage,
-                    useOriginalLibUnity
+                    useOriginalLibUnity,
+                    useIl2Cpp2Mono
             );
         } catch (Throwable t) {
             failAndFinish("Failed while preparing Fusion runtime.", t);
@@ -273,7 +317,13 @@ public class BootstrapActivity extends AppCompatActivity {
         try {
             NativeLibraryManager.addFusionLibrary("main");
             NativeLibraryManager.addFusionLibrary("fusion");
-            NativeLibraryManager.addCacheLibrary("il2cpp");
+            if(!config.isIl2Cpp2Mono) {
+                NativeLibraryManager.addCacheLibrary("il2cpp");
+            }
+            else {
+                NativeLibraryManager.AddDotnetLibrary("il2cpp");
+                NativeLibraryManager.AddDotnetLibrary("monosgen-2.0");
+            }
             NativeLibraryManager.addCacheLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);
         } catch (Throwable t) {
@@ -285,7 +335,8 @@ public class BootstrapActivity extends AppCompatActivity {
                                        Context gameContext,
                                        ComponentName launcherComponent,
                                        String targetPackage,
-                                       boolean useOriginalLibUnity) {
+                                       boolean useOriginalLibUnity,
+                                       boolean useIl2Cpp2Mono) {
 
         String gameLibDir = gameContext.getApplicationInfo().nativeLibraryDir;
         String appLibDir = appContext.getApplicationInfo().nativeLibraryDir;
@@ -339,12 +390,18 @@ public class BootstrapActivity extends AppCompatActivity {
         }
 
         setPhaseStatus(getString(R.string.bootstrap_status_extracting_runtime));
-
-        File dotnetDir = new File(appContext.getCodeCacheDir(), "dotnet");
+        File dotnetDir;
         File bepInExDir = new File(dataOnSdCard, "BepInEx");
-
-        Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
-        Utilities.extractZipFromAssets(appContext, "dotnet-arm64.zip", dotnetDir);
+        if(!useIl2Cpp2Mono) {
+            dotnetDir = new File(appContext.getCodeCacheDir(), "dotnet");
+            Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
+            Utilities.extractZipFromAssets(appContext, "dotnet-arm64.zip", dotnetDir);
+        } //we do something else
+        else{
+            dotnetDir = new File(appContext.getCodeCacheDir(), "mono");
+            Utilities.extractZipFromAssets(appContext, "il2cpp2mono-arm64.zip", dotnetDir);
+            ensureManagedDllsForMono(dataOnSdCard);
+        }
 
         setPhaseStatus(getString(R.string.bootstrap_status_registering_libraries));
         File[] nativeLibs = new File(gameLibDir).listFiles();
@@ -372,6 +429,7 @@ public class BootstrapActivity extends AppCompatActivity {
                 copiedData.getAbsolutePath(),
                 version,
                 useOriginalLibUnity,
+                useIl2Cpp2Mono,
                 new String[]{},
                 new String[]{}
         );
@@ -407,6 +465,76 @@ public class BootstrapActivity extends AppCompatActivity {
             while ((count = in.read(buffer)) != -1) {
                 out.write(buffer, 0, count);
             }
+        }
+    }
+
+    private void ensureManagedDllsForMono(File GameDir) {
+        File managedDir = new File(GameDir, "mono");
+        if (managedDir.exists()) {
+            Log.i(TAG, "Managed DLLs already present in " + managedDir.getAbsolutePath() + ", skipping selection prompt.");
+            return;
+        }
+
+        CountDownLatch latch = new CountDownLatch(1);
+        final boolean[] success = {false};
+
+        runOnMainThread(() -> {
+            if (isFinishing() || isDestroyed()) {
+                latch.countDown();
+                return;
+            }
+
+            promptSelectManagedZip(GameDir, latch, success);
+        });
+
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for Managed DLLs selection", e);
+        }
+
+        if (!success[0]) {
+            throw new IllegalStateException(getString(R.string.bootstrap_mono_missing_dlls));
+        }
+    }
+
+    private void promptSelectManagedZip(File bepInExDir, CountDownLatch latch, boolean[] resultHolder) {
+        pendingBepInExDir = bepInExDir;
+        pendingLatch = latch;
+        pendingResultHolder = resultHolder;
+
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/zip");
+        String[] mimeTypes = {"application/zip", "application/x-zip-compressed", "application/octet-stream", "*/*"};
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+
+        try {
+            selectZipLauncher.launch(intent);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to launch zip picker", e);
+            Toast.makeText(this, R.string.bootstrap_mono_file_picker_error, Toast.LENGTH_LONG).show();
+            pendingBepInExDir = null;
+            pendingLatch = null;
+            pendingResultHolder = null;
+            resultHolder[0] = false;
+            latch.countDown();
+        }
+    }
+
+    private boolean extractManagedZipUri(Uri uri, File bepInExDir) {
+        try (InputStream is = getContentResolver().openInputStream(uri)) {
+            if (is == null) {
+                Log.e(TAG, "Failed to open InputStream from Uri: " + uri);
+                return false;
+            }
+            File managedDir = new File(bepInExDir, "mono");
+            Utilities.extractZipFromInputStream(is, managedDir);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to extract managed zip from Uri: " + uri, e);
+            return false;
         }
     }
 

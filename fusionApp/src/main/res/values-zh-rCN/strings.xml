@@ -38,4 +38,7 @@
     <string name="selector_no_file_manager">未找到可以打开此目录的文件管理器</string>
     <string name="selector_folder_create_failed">创建文件夹失败：%1$s</string>
     <string name="settings_automatic">自动</string>
+    <string name="bootstrap_status_extracting_mono_dlls">正在解压 Mono 托管 DLL…</string>
+    <string name="bootstrap_mono_file_picker_error">无法为托管 DLL ZIP 打开文件选择器。</string>
+    <string name="bootstrap_mono_missing_dlls">未为 Il2Cpp2Mono 提供托管 DLL ZIP 文件。</string>
 </resources>

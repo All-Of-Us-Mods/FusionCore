@@ -3,7 +3,7 @@
 #define FUSIONCORE_IL2CPP_H
 
 #include <cstdint>
-
+static void *handle = nullptr;
 using il2cpp_init_t = int(*)(char *domain_name);
 using il2cpp_method_get_name_t = const char *(*)(void *method);
 

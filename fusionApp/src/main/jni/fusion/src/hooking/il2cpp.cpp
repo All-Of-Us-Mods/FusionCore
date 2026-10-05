@@ -7,7 +7,6 @@
 
 #define TAG "FusionIL2CPP"
 
-static void *handle = nullptr;
 static uintptr_t library_base = 0;
 
 static void *p_il2cpp_init;
