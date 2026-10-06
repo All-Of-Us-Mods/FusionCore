@@ -111,6 +111,7 @@ void il2cpp_install_init_hook(il2cpp_init_t hook)
 
     init_hook = hook;
 
+    dobby_disable_near_branch_trampoline();
     int result = DobbyHook(
             p_il2cpp_init,
             (dobby_dummy_func_t)init_hook,

@@ -27,6 +27,7 @@ void* scripting_method_invoke_hook(void* method, void* obj, void* args, void* ex
 
 void try_hook_libunity(std::string &libUnityPath, const std::string &fallbackLibUnityPath) {
 
+    // should never be closed
     void *handle = dlopen(libUnityPath.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (!handle)
     {

@@ -190,6 +190,15 @@ void *bridge_hook(void *target_function, void *hook_function)
         return nullptr;
     }
 
+    // The bridge function will store X8 into TLS,
+    // then jump to the pointer in X16, which we will set to the hook function pointer.
+    if (!bridge_function)
+    {
+        log(LogLevel::ERROR, TAG,
+            "Bridge function address is null! Cannot install special return buffer hook.");
+        return nullptr;
+    }
+
     void *trampoline = allocator(target_function, reinterpret_cast<void *>(library_base), requiredSize);
 
     if (!trampoline)
@@ -203,15 +212,6 @@ void *bridge_hook(void *target_function, void *hook_function)
     {
         log_format(LogLevel::ERROR, TAG,
                           "Failed to set memory protection for trampoline! Cannot install hook.");
-        return nullptr;
-    }
-
-    // The bridge function will store X8 into TLS,
-    // then jump to the pointer in X16, which we will set to the hook function pointer.
-    if (!bridge_function)
-    {
-        log(LogLevel::ERROR, TAG,
-                   "Bridge function address is null! Cannot install special return buffer hook.");
         return nullptr;
     }
 

@@ -312,7 +312,7 @@ load(JNIEnv *env, jobject activityObject, jstring path)
     const char *il2cppPath = override_il2cpp_path.c_str();
     LOGI("load: unityPath=%s, il2cppPath=%s", unityPath ? unityPath : "(null)", il2cppPath ? il2cppPath : "(null)")
 
-    if (!unityPath || !il2cppPath)
+    if (override_unity_path.empty() || override_il2cpp_path.empty())
     {
         LOGE("load: paths not set")
         return JNI_FALSE; // Paths not set
