@@ -42,7 +42,11 @@ static bool execute_fusion_config(const FusionConfig &config)
     try_hook_libunity(libUnityPath, (gameLibsPath / "libunity.so").string());
 
     fs::path patchedLibIl2Cpp = codeCache / "libil2cpp.so";
-    allocate_setup_injected(libIl2Cpp.c_str(), patchedLibIl2Cpp.c_str(), 1024 * 1024);
+    if (!allocate_setup_injected(libIl2Cpp.c_str(), patchedLibIl2Cpp.c_str(), 1024 * 1024))
+    {
+        log(LogLevel::ERROR, TAG, "Failed to prepare padded libil2cpp.so!");
+        return false;
+    }
 
     std::string patchedPath = patchedLibIl2Cpp.string();
     libmain_set_override_il2cpp_path(patchedPath.c_str());
@@ -152,12 +156,29 @@ extern "C" [[maybe_unused]] bool fusion_bootstrap_from_libmain(JNIEnv *env)
         return false;
     }
 
-    auto library_size = reinterpret_cast<size_t>(
-            get_injected_pool_base() -
-            il2cpp_get_library_base()
-            );
+    // Pool placement and library bounds must be trustworthy before any hooking.
+    const uintptr_t pool_base = get_injected_pool_base();
+    const uintptr_t il2cpp_base = il2cpp_get_library_base();
+    if (pool_base == 0 || il2cpp_base == 0 || pool_base <= il2cpp_base)
+    {
+        log_format(LogLevel::ERROR, TAG,
+                   "Invalid pool/library base relationship! pool=0x{:X}, il2cpp=0x{:X}",
+                   pool_base, il2cpp_base);
+        return false;
+    }
 
-    if (!safehook_initialize(il2cpp_get_handle(), il2cpp_get_library_base(), library_size, allocate_injected))
+    // plain integer subtraction (pool sits directly above the library image)
+    const size_t library_size = pool_base - il2cpp_base;
+    constexpr size_t kMaxPlausibleLibrarySize = 512ull * 1024 * 1024;
+    if (library_size > kMaxPlausibleLibrarySize)
+    {
+        log_format(LogLevel::ERROR, TAG,
+                   "Implausible library size 0x{:X}; refusing to initialize SafeHook",
+                   library_size);
+        return false;
+    }
+
+    if (!safehook_initialize(il2cpp_get_handle(), il2cpp_base, library_size, allocate_injected))
     {
         log(LogLevel::ERROR, TAG, "Failed to initialize SafeHook");
         return false;

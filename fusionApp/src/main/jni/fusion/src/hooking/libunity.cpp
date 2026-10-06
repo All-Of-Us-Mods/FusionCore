@@ -57,7 +57,7 @@ void try_hook_libunity(std::string &libUnityPath, const std::string &fallbackLib
         return;
     }
 
-    uintptr_t base = get_module_base(libUnityPath.c_str(), "JNI_OnLoad");
+    uintptr_t base = get_module_base(libUnityPath.c_str());
     if (base == 0) {
         libUnityPath = fallbackLibUnityPath;
         log(LogLevel::ERROR, TAG, "Failed to find base address of libunity");
