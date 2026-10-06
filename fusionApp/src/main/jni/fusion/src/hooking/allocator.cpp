@@ -10,9 +10,9 @@ static PaddedOpenResult padded_open;
 
 static size_t pool_pointer = 0;
 
-uintptr_t *get_injected_pool_base()
+uintptr_t get_injected_pool_base()
 {
-    return reinterpret_cast<uintptr_t *>(padded_open.pool_base);
+    return reinterpret_cast<uintptr_t>(padded_open.pool_base);
 }
 
 void *allocate_setup_injected(const char *library, const char *output_path, size_t pool_size)

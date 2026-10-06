@@ -9,6 +9,6 @@ void *allocate_setup_injected(const char *library, const char *output_path, size
 
 void *allocate_injected(void *target, void *library_base, size_t size);
 
-uintptr_t *get_injected_pool_base();
+uintptr_t get_injected_pool_base();
 
 #endif //FUSIONCORE_ALLOCATOR_H
