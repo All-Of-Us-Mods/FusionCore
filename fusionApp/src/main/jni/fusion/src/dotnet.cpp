@@ -116,12 +116,7 @@ int dotnet_execute_assembly(const DotNetConfig& config, AuxPluginFolderList *aux
         return hr;
     }
 
-    AuxPluginFolderList list{
-        0,
-        {}
-    };
-
-    managedDelegate(&list);
+    managedDelegate(auxFolders);
 
     log(LogLevel::INFO, TAG, "Executed delegate!");
     return 0;
