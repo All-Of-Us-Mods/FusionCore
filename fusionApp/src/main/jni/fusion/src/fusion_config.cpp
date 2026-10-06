@@ -35,8 +35,13 @@ std::vector<std::string> get_string_array_field(
 
     for (int i = 0; i < arrayLength; i++) {
         auto jStr = (jstring)env->GetObjectArrayElement(jArray, i);
-        std::string str = env->GetStringUTFChars(jStr, nullptr);
+        if (!jStr) {
+            log_format(LogLevel::WARN, TAG, "String array element {} is null", i);
+            continue;
+        }
+        const char *str = env->GetStringUTFChars(jStr, nullptr);
         vector.push_back(str);
+        env->ReleaseStringUTFChars(jStr, str);
     }
 
     return vector;
@@ -44,12 +49,14 @@ std::vector<std::string> get_string_array_field(
 
 FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
 {
-    FusionConfig config;
+    FusionConfig config{};
 
     jclass configClass = find_class_in_app_classloader(env,
                                                        "dev/allofus/fusioncore/tools/FusionConfig");
     if (!configClass) {
         log(LogLevel::ERROR, TAG, "Failed to find FusionConfig class!");
+        config.initialized = false;
+        config.useOriginalLibUnity = true;
         return config;
     }
 
