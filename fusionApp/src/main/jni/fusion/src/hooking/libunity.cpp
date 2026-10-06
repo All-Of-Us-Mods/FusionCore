@@ -52,40 +52,32 @@ void try_hook_libunity(std::string &libUnityPath, const std::string &fallbackLib
                                           "_Z23scripting_method_invoke18ScriptingMethodPtr18ScriptingObjectPtrR18ScriptingArgumentsP21ScriptingExceptionPtrb");
     if (rva == 0)
     {
+        libUnityPath = fallbackLibUnityPath;
         log(LogLevel::ERROR, TAG, "Failed to find scripting_method_invoke in libunity.sym.so");
         return;
     }
 
     uintptr_t base = get_module_base(libUnityPath.c_str(), "JNI_OnLoad");
     if (base == 0) {
+        libUnityPath = fallbackLibUnityPath;
         log(LogLevel::ERROR, TAG, "Failed to find base address of libunity");
         return;
     }
 
     void *target = reinterpret_cast<void *>(base + rva);
-    if (!target)
+    log_format(LogLevel::INFO, TAG, "Found scripting_method_invoke at 0x{:x}", base + rva);
+    if (
+            DobbyHook(target,
+                      reinterpret_cast<dobby_dummy_func_t>(scripting_method_invoke_hook),
+                      reinterpret_cast<dobby_dummy_func_t *>(&original_scripting_method_invoke))
+            == 0)
     {
-        log_format(LogLevel::ERROR, TAG,
-            "Failed to find target function for scripting_method_invoke_hook: ", dlerror());
-
-        // reset libunity path
-        libUnityPath = fallbackLibUnityPath;
+        log(LogLevel::INFO, TAG, "Successfully hooked scripting_method_invoke");
     }
     else
     {
-        if (
-                DobbyHook(target,
-                          reinterpret_cast<dobby_dummy_func_t>(scripting_method_invoke_hook),
-                          reinterpret_cast<dobby_dummy_func_t *>(&original_scripting_method_invoke))
-                == 0)
-        {
-            log(LogLevel::INFO, TAG, "Successfully hooked scripting_method_invoke");
-        }
-        else
-        {
-            log(LogLevel::ERROR, TAG, "Failed to hook scripting_method_invoke");
-            // reset libunity path
-            libUnityPath = fallbackLibUnityPath;
-        }
+        log(LogLevel::ERROR, TAG, "Failed to hook scripting_method_invoke");
+        // reset libunity path
+        libUnityPath = fallbackLibUnityPath;
     }
 }
