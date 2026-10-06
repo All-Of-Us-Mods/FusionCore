@@ -13,18 +13,23 @@ uintptr_t get_module_base(const char* lib_name, const char* known_export_symbol)
     if (!handle) {
         handle = dlopen(lib_name, RTLD_NOW);
     }
+
     if (!handle) return 0;
 
     void* symbol_addr = dlsym(handle, known_export_symbol);
-    dlclose(handle);
 
-    if (!symbol_addr) return 0;
+    if (!symbol_addr) {
+        dlclose(handle);
+        return 0;
+    }
 
     Dl_info info;
     if (dladdr(symbol_addr, &info) && info.dli_fbase) {
+        dlclose(handle);
         return reinterpret_cast<uintptr_t>(info.dli_fbase);
     }
 
+    dlclose(handle);
     return 0;
 }
 
