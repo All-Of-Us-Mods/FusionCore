@@ -5,7 +5,7 @@
 
 #include <dlfcn.h>
 
-const char *safe_dlerror() {
+inline const char *safe_dlerror() {
     char *dlErr = dlerror();
     const char *err = dlErr ? dlErr : "Unknown error";
     return err;
