@@ -43,7 +43,7 @@ int dotnet_execute_assembly(const DotNetConfig& config, AuxPluginFolderList *aux
     // Attempt without W^X first
     setenv("DOTNET_EnableWriteXorExecute", "0", 1);
 
-    int hr = -1;
+    uint32_t hr = -1;
     void *hostHandle = nullptr;
     unsigned int domainId = 0;
 
