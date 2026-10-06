@@ -54,7 +54,8 @@ static bool execute_fusion_config(const FusionConfig &config)
 
 int il2cpp_init_hook(char *domain_name)
 {
-    log_format(LogLevel::INFO, TAG, "il2cpp_init called with domain: {}", domain_name);
+    const char *d_name = domain_name ? domain_name : "Unknown Domain Name";
+    log_format(LogLevel::INFO, TAG, "il2cpp_init called with domain: {}", d_name);
     il2cpp_destroy_init_hook();
 
     // call the original il2cpp_init function
@@ -79,7 +80,9 @@ int il2cpp_init_hook(char *domain_name)
         } else {
             log(LogLevel::WARN, TAG, "No readable SSL cert file found; HTTPS requests may fail.");
         }
-        log_format(LogLevel::INFO, TAG, "Using {} for SSL certificates", getenv("SSL_CERT_DIR"));
+        const char *ssl_path = getenv("SSL_CERT_DIR");
+        const char *safe_ssl_path = ssl_path ? ssl_path : "(null)";
+        log_format(LogLevel::INFO, TAG, "Using {} for SSL certificates", safe_ssl_path);
 
         fs::path bepInExCoreDirectory = fs::path(runtimeConfig.bepInExDirectory) / "core";
 

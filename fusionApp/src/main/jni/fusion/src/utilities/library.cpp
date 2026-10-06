@@ -1,6 +1,7 @@
 // Copyright (c) 2025 XtraCube
 
 #include <utilities/library.h>
+#include <utilities/tools.h>
 #include <bits/sysconf.h>
 #include <dlfcn.h>
 #include <fstream>
@@ -135,7 +136,7 @@ PaddedOpenResult padded_dlopen(const char *library_name,
     void *handle = dlopen(temp_path, RTLD_GLOBAL | RTLD_NOW);
     if (!handle)
     {
-        log_format(LogLevel::ERROR, TAG, "dlopen failed for {}: {}", temp_path, dlerror());
+        log_format(LogLevel::ERROR, TAG, "dlopen failed for {}: {}", temp_path, safe_dlerror());
         return {nullptr, nullptr, 0, 0};
     }
 
@@ -151,14 +152,14 @@ PaddedOpenResult padded_dlopen(const char *library_name,
     }
 
     if (!sym_addr) {
-        log_format(LogLevel::ERROR, TAG, "Failed to find any known symbol in {}: {}", temp_path, dlerror());
+        log_format(LogLevel::ERROR, TAG, "Failed to find any known symbol in {}: {}", temp_path, safe_dlerror());
         dlclose(handle);
         return {nullptr, nullptr, 0, 0};
     }
 
     dladdr(sym_addr, &info);
     if (!info.dli_fbase) {
-        log_format(LogLevel::ERROR, TAG, "dladdr failed for symbol in {}: {}", temp_path, dlerror());
+        log_format(LogLevel::ERROR, TAG, "dladdr failed for symbol in {}: {}", temp_path, safe_dlerror());
         dlclose(handle);
         return {nullptr, nullptr, 0, 0};
     }

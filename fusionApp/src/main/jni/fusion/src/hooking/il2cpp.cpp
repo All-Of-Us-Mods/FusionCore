@@ -2,6 +2,7 @@
 #include <hooking/il2cpp.h>
 #include <external/dobby.h>
 #include <utilities/asm.h>
+#include <utilities/tools.h>
 #include <logger.h>
 #include <dlfcn.h>
 
@@ -20,16 +21,14 @@ bool il2cpp_initialize(const char *library_path)
     handle = dlopen(library_path, RTLD_GLOBAL | RTLD_NOW);
     if (!handle)
     {
-        char *err = dlerror();
-        log_format(LogLevel::FATAL, TAG, "Failed to open libil2cpp.so: {}", err);
+        log_format(LogLevel::FATAL, TAG, "Failed to open libil2cpp.so: {}", safe_dlerror());
         return false;
     }
 
     p_il2cpp_init = dlsym(handle, "il2cpp_init");
     if (!p_il2cpp_init)
     {
-        char *err = dlerror();
-        log_format(LogLevel::FATAL, TAG, "Failed to find il2cpp_init: {}", err);
+        log_format(LogLevel::FATAL, TAG, "Failed to find il2cpp_init: {}", safe_dlerror());
         return false;
     }
     fun_il2cpp_init = reinterpret_cast<il2cpp_init_t>(p_il2cpp_init);

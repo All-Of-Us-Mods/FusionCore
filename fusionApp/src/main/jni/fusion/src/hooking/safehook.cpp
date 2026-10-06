@@ -2,6 +2,7 @@
 #include <hooking/safehook.h>
 #include <external/dobby.h>
 #include <utilities/asm.h>
+#include <utilities/tools.h>
 #include <logger.h>
 #include <dlfcn.h>
 #include <sys/mman.h>
@@ -76,16 +77,14 @@ bool safehook_setup_bridge_helper(const char *bridge_library_path)
     void *bridge_handle = dlopen(bridge_library_path, RTLD_GLOBAL | RTLD_NOW);
     if (!bridge_handle)
     {
-        char *error = dlerror();
-        log_format(LogLevel::ERROR, TAG, "Failed to setup bridge helper, dlopen failed: {}", error);
+        log_format(LogLevel::ERROR, TAG, "Failed to setup bridge helper, dlopen failed: {}", safe_dlerror());
         return false;
     }
 
     bridge_function = dlsym(bridge_handle, "ReturnBufferBridge");
     if (!bridge_function)
     {
-        char *error = dlerror();
-        log_format(LogLevel::ERROR, TAG, "Failed to find bridge function, dlsym failed: {}", error);
+        log_format(LogLevel::ERROR, TAG, "Failed to find bridge function, dlsym failed: {}", safe_dlerror());
         return false;
     }
 

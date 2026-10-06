@@ -5,6 +5,7 @@
 #include <logger.h>
 #include <utilities/elf.h>
 #include <utilities/library.h>
+#include <utilities/tools.h>
 #include <filesystem>
 #include <fstream>
 
@@ -31,7 +32,7 @@ void try_hook_libunity(std::string &libUnityPath, const std::string &fallbackLib
     {
         log_format(LogLevel::ERROR, TAG,
                    "Failed to load libunity for hooking: {}. Error: {}",
-                   libUnityPath.c_str(), dlerror());
+                   libUnityPath.c_str(), safe_dlerror());
         return;
     }
 
