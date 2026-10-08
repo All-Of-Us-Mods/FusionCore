@@ -57,9 +57,9 @@ int dotnet_execute_assembly(const DotNetConfig& config, AuxPluginFolderList *aux
 
         setenv("DOTNET_ReadyToRun", "0", 1);
 
-        log(LogLevel::INFO, TAG, "Attempting CoreCLR initialization with W^X disabled");
-        // Attempt without W^X first
-        setenv("DOTNET_EnableWriteXorExecute", "0", 1);
+    uint32_t hr = -1;
+    void *hostHandle = nullptr;
+    unsigned int domainId = 0;
 
         int hr = -1;
         void *hostHandle = nullptr;
@@ -132,11 +132,8 @@ int dotnet_execute_assembly(const DotNetConfig& config, AuxPluginFolderList *aux
             return hr;
         }
     }
-    AuxPluginFolderList list{
-            0,
-            {}
-    };
-    managedDelegate(&list);
+
+    managedDelegate(auxFolders);
 
     log(LogLevel::INFO, TAG, "Executed delegate!");
     return 0;

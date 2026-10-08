@@ -104,9 +104,10 @@ bool is_branch(uint32_t instr)
 {
     return is_unconditional_branch(instr) || // B
            is_conditional_branch(instr) || // B.cond
-           is_br(instr) || // BR
-           is_compare_branch(instr) || // CBZ/CBNZ
-           is_test_branch(instr);            // TBZ/TBNZ
+           is_br(instr); // BR
+           // if we have issues, re-enable the below
+           //is_compare_branch(instr) || // CBZ/CBNZ
+           //is_test_branch(instr);            // TBZ/TBNZ
 }
 
 bool is_trap_or_exit(uint32_t instr)

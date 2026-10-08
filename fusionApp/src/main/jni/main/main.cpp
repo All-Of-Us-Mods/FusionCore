@@ -5,18 +5,18 @@
 
 #define LOG_TAG "LibMain"
 #define LOGI(fmt, ...) \
-__android_log_print(ANDROID_LOG_INFO, LOG_TAG, fmt, ##__VA_ARGS__); \
+do { __android_log_print(ANDROID_LOG_INFO, LOG_TAG, fmt, ##__VA_ARGS__); \
 if (logFile) { \
     fprintf(logFile, fmt "\n", ##__VA_ARGS__); \
     fflush(logFile); \
-}
+}} while (0);
 
 #define LOGE(fmt, ...) \
-__android_log_print(ANDROID_LOG_ERROR, LOG_TAG, fmt, ##__VA_ARGS__); \
+do { __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, fmt, ##__VA_ARGS__); \
 if (logFile) { \
     fprintf(logFile, fmt "\n", ##__VA_ARGS__); \
     fflush(logFile); \
-}
+}} while (0);
 
 using JNI_OnLoad_t = jint (*)(JavaVM *vm, void *reserved);
 using JNI_Unload_t = void (*)(JavaVM *vm, void *reserved);
@@ -312,7 +312,7 @@ load(JNIEnv *env, jobject activityObject, jstring path)
     const char *il2cppPath = override_il2cpp_path.c_str();
     LOGI("load: unityPath=%s, il2cppPath=%s", unityPath ? unityPath : "(null)", il2cppPath ? il2cppPath : "(null)")
 
-    if (!unityPath || !il2cppPath)
+    if (override_unity_path.empty() || override_il2cpp_path.empty())
     {
         LOGE("load: paths not set")
         return JNI_FALSE; // Paths not set
