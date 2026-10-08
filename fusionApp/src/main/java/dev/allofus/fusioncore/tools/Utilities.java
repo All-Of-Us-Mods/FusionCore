@@ -22,17 +22,19 @@ import java.util.zip.ZipInputStream;
 public class Utilities {
     private static final String TAG = "FusionCore";
 
-    public static File getExternalFusionCoreDirectory(@Nullable String targetPackage) {
+    public static File getExternalFusionCoreDirectory(@Nullable String targetPackage, @Nullable String Folder) {
         File fusionStorage = new File(Environment.getExternalStorageDirectory(), "FusionCore");
         if (targetPackage != null) {
             fusionStorage = new File(fusionStorage, targetPackage);
+        }
+        if(Folder != null){
+            fusionStorage = new File(fusionStorage, Folder);
         }
         if (!fusionStorage.exists()) {
             fusionStorage.mkdirs();
         }
         return fusionStorage;
     }
-
     public static void applyWindowInsets(View root, int basePadding) {
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             int insetTop;
@@ -156,7 +158,7 @@ public class Utilities {
 
             for (String child : children) {
                 File childTarget = new File(outputTarget, child);
-                String childPath = assetPath + "/" + child;
+                String childPath = assetPath.isEmpty() ? child : assetPath + "/" + child;
                 if (!copyAssetEntry(gameAssets, childPath, childTarget)) {
                     return false;
                 }

@@ -9,6 +9,7 @@
 #include <hooking/safehook.h>
 #include <hooking/allocator.h>
 #include <hooking/libunity.h>
+#include <hooking/Assetmanager.h>
 #include <dotnet.h>
 #include <external/dobby.h>
 #include <utilities/java.h>
@@ -26,6 +27,7 @@ static bool execute_fusion_config(const FusionConfig &config)
 
     fs::path gameLibsPath(config.gameLibraryDirectory);
     fs::path codeCache(config.codeCacheDirectory);
+    fs::path gamePath = fs::path(config.bepInExDirectory).parent_path();
 
     fs::path libUnity;
     fs::path patchedLibIl2Cpp;
@@ -49,8 +51,9 @@ static bool execute_fusion_config(const FusionConfig &config)
                 reinterpret_cast<SetOverrideDirs>(
                         dlsym(handle, "il2cpp2mono_set_override_dirs")
                 );
-        fs::path dllpath = fs::path(config.bepInExDirectory).parent_path() / "mono";
+        fs::path dllpath = gamePath / "PersistentData/mono";
         fs::path monopath = MonoPath / "mono";
+        log_format(LogLevel::INFO, TAG, "setting il2cpp2mono paths: {}, {}", dllpath.c_str(), monopath.c_str());
         set_override_dirs(dllpath.c_str(), monopath.c_str());
     }
     else{

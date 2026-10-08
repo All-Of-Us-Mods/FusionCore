@@ -114,7 +114,7 @@ public class SelectorActivity extends AppCompatActivity {
 
                     ImageButton folderButton = convertView.findViewById(R.id.selector_action_folder);
                     folderButton.setOnClickListener(v -> {
-                        File folder = Utilities.getExternalFusionCoreDirectory(entry.packageName);
+                        File folder = Utilities.getExternalFusionCoreDirectory(entry.packageName, null);
 
                         if (!folder.exists() && !folder.mkdirs()) {
                             String message = getString(R.string.selector_folder_create_failed, folder.getAbsolutePath());

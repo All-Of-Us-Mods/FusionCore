@@ -8,8 +8,8 @@
     <string name="settings_action_back">Back</string>
     <string name="settings_libunity_title">Download unstripped libunity</string>
     <string name="settings_libunity_desc">You should turn this on if the game you\'re using crashes due to Unity getting mad.</string>
-    <string name="settings_il2cpp2mono_title" translatable="false">Use Il2Cpp2Mono</string>
-    <string name="settings_il2cpp2mono_desc" translatable="false">If you have the managed dlls, you can use this to make the game use mono!</string>
+    <string name="settings_il2cpp2mono_title" translatable="false">Use Il2Cpp2Mono (EXPERIMENTAL)</string>
+    <string name="settings_il2cpp2mono_desc" translatable="false">If you have the managed dlls, you can use this to make the game use mono! BepinEx is currently DISABLED under this. and it could be unstable</string>
     <string name="selector_empty_not_configured">No supported packages configured..</string>
     <string name="selector_empty_not_installed">No supported packages are currently installed.</string>
     <string name="selector_storage_permission_prompt">Grant "All files access" so Fusion Core can write BepInEx files to Documents.</string>

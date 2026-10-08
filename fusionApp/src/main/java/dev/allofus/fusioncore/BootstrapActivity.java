@@ -46,24 +46,23 @@ public class BootstrapActivity extends AppCompatActivity {
     public static final String EXTRA_USE_ORIGINAL_LIBUNITY = "og_libunity";
     public static final String EXTRA_USE_IL2CPP2MONO = "use_il2cpp2mono";
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
-    private static final String GLOBAL_METADATA_FILE = "global-metadata.dat";
 
     private TextView statusView;
     private TextView progressDetailsView;
     private ProgressBar spinnerProgress;
     private ProgressBar downloadProgress;
 
-    private File pendingBepInExDir;
+    private File pendingGameDir;
     private CountDownLatch pendingLatch;
     private boolean[] pendingResultHolder;
 
     private final ActivityResultLauncher<Intent> selectZipLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                File targetDir = pendingBepInExDir;
+                File targetDir = pendingGameDir;
                 CountDownLatch latch = pendingLatch;
                 boolean[] resultHolder = pendingResultHolder;
 
-                pendingBepInExDir = null;
+                pendingGameDir = null;
                 pendingLatch = null;
                 pendingResultHolder = null;
 
@@ -209,7 +208,6 @@ public class BootstrapActivity extends AppCompatActivity {
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_ORIGINAL_INTENT, intent);
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_FUSION_CONFIG, config);
                     intentWrapped.putExtra(InstrumentationHooks.EXTRA_TARGET_ORIENTATION, targetOrientation);
-
                     startActivity(intentWrapped);
                     finish();
                 } catch (Throwable t) {
@@ -344,17 +342,17 @@ public class BootstrapActivity extends AppCompatActivity {
         String targetGameAbi = resolveTargetGameAbi(gameLibDir);
         File appDataDir = new File(appContext.getFilesDir(), targetPackage);
 
-        File dataOnSdCard = Utilities.getExternalFusionCoreDirectory(targetPackage);
+        File dataOnSdCard = Utilities.getExternalFusionCoreDirectory(targetPackage, null);
         File codeCacheScoped = new File(appContext.getCodeCacheDir(), targetPackage);
 
         setPhaseStatus(getString(R.string.bootstrap_status_copy_assets));
-        File copiedData = new File(appDataDir, "Data_copy");
-        boolean copied = Utilities.copyAssets(gameContext.getAssets(), "bin/Data", copiedData);
+        File Assets = new File(dataOnSdCard, "Assets");
+        File PersistentData = new File(dataOnSdCard, "PersistentData");
+        boolean copied = Utilities.copyAssets(gameContext.getAssets(), "", Assets);
         if (!copied) {
             Log.e(TAG, "Failed to copy Unity Data assets! BepInEx may not work correctly.");
-        } else {
-            applyGlobalMetadataOverride(dataOnSdCard, copiedData);
         }
+        File copiedData = new File(Assets, "bin/Data");
 
         setPhaseStatus(getString(R.string.bootstrap_status_detecting_version));
         String version = VersionLookup.TryLookup(copiedData);
@@ -400,7 +398,7 @@ public class BootstrapActivity extends AppCompatActivity {
         else{
             dotnetDir = new File(appContext.getCodeCacheDir(), "mono");
             Utilities.extractZipFromAssets(appContext, "il2cpp2mono-arm64.zip", dotnetDir);
-            ensureManagedDllsForMono(dataOnSdCard);
+            ensureManagedDllsForMono(PersistentData);
         }
 
         setPhaseStatus(getString(R.string.bootstrap_status_registering_libraries));
@@ -433,23 +431,6 @@ public class BootstrapActivity extends AppCompatActivity {
                 new String[]{},
                 new String[]{}
         );
-    }
-
-    private void applyGlobalMetadataOverride(File dataOnSdCard, File copiedData) {
-        File overrideMetadata = new File(dataOnSdCard, GLOBAL_METADATA_FILE);
-        if (!overrideMetadata.isFile()) {
-            Log.i(TAG, "No global-metadata override found at " + overrideMetadata.getAbsolutePath());
-            return;
-        }
-
-        File targetMetadata = new File(new File(copiedData, "Managed/Metadata"), GLOBAL_METADATA_FILE);
-        try {
-            copyFile(overrideMetadata, targetMetadata);
-            Log.i(TAG, "Applied global-metadata override from " + overrideMetadata.getAbsolutePath());
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to apply global-metadata override from "
-                    + overrideMetadata.getAbsolutePath(), e);
-        }
     }
 
     private static void copyFile(File source, File target) throws IOException {
@@ -499,8 +480,8 @@ public class BootstrapActivity extends AppCompatActivity {
         }
     }
 
-    private void promptSelectManagedZip(File bepInExDir, CountDownLatch latch, boolean[] resultHolder) {
-        pendingBepInExDir = bepInExDir;
+    private void promptSelectManagedZip(File GameDir, CountDownLatch latch, boolean[] resultHolder) {
+        pendingGameDir = GameDir;
         pendingLatch = latch;
         pendingResultHolder = resultHolder;
 
@@ -515,7 +496,7 @@ public class BootstrapActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e(TAG, "Failed to launch zip picker", e);
             Toast.makeText(this, R.string.bootstrap_mono_file_picker_error, Toast.LENGTH_LONG).show();
-            pendingBepInExDir = null;
+            pendingGameDir = null;
             pendingLatch = null;
             pendingResultHolder = null;
             resultHolder[0] = false;

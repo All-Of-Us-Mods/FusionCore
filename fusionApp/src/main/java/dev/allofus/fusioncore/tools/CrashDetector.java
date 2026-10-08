@@ -31,7 +31,7 @@ public class CrashDetector {
             return;
         }
 
-        var fusionFolder = Utilities.getExternalFusionCoreDirectory(null);
+        var fusionFolder = Utilities.getExternalFusionCoreDirectory(null, null);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             List<ApplicationExitInfo> exitInfos = activityManager.getHistoricalProcessExitReasons(context.getPackageName(), 0, 1);
@@ -57,7 +57,7 @@ public class CrashDetector {
 
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
             try {
-                File fusionFolder = Utilities.getExternalFusionCoreDirectory(null);
+                File fusionFolder = Utilities.getExternalFusionCoreDirectory(null, null);
                 File outputFile = new File(fusionFolder, "java_crash_" + System.currentTimeMillis() + ".txt");
 
                 try (FileWriter writer = new FileWriter(outputFile, false)) {
