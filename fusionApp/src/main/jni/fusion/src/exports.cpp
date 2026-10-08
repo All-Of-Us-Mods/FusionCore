@@ -8,12 +8,12 @@
 
 const char *get_il2cpp_api(const char *name)
 {
-    if (!runtime_config.initialized) return name;
+    if (!runtime_config.initialized) return nullptr;
 
     auto it = runtime_config.il2cppApiMap.find(name);
 
     if (it == runtime_config.il2cppApiMap.end() || it->second.empty()) {
-        return name;
+        return nullptr;
     }
 
     return it->second.c_str();

@@ -25,7 +25,12 @@ bool il2cpp_initialize(const char *library_path)
         return false;
     }
 
-    p_il2cpp_init = dlsym(handle, get_il2cpp_api("il2cpp_init"));
+    const char *init_name = get_il2cpp_api("il2cpp_init");
+    if (!init_name) {
+        init_name = "il2cpp_init";
+    }
+
+    p_il2cpp_init = dlsym(handle, init_name);
     if (!p_il2cpp_init)
     {
         log_format(LogLevel::FATAL, TAG, "Failed to find il2cpp_init: {}", safe_dlerror());
