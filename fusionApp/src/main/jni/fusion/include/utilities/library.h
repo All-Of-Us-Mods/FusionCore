@@ -4,13 +4,15 @@
 
 #include <elf.h>
 #include <unistd.h>
+#include <cstdint>
 
+// Result of padded_dlopen. On failure every field is null/zero.
 struct PaddedOpenResult
 {
-    void *handle;
-    void *base;
-    size_t pool_base;
-    size_t pool_size;
+    void *handle;        // dlopen handle of the padded library
+    void *load_bias;     // loader bias (dlpi_addr) of the loaded object
+    uintptr_t pool_base; // absolute address of the trampoline pool
+    size_t pool_size;    // usable size of the trampoline pool (bytes)
 };
 
 #if defined(__aarch64__)
@@ -29,6 +31,6 @@ PaddedOpenResult padded_dlopen(const char *library_name,
                                const char *temp_path,
                                size_t pool_size);
 
-uintptr_t get_module_base(const char* lib_name, const char* known_export_symbol);
+uintptr_t get_module_base(const char* lib_name);
 
 #endif //FUSIONCORE_LIBRARY_H

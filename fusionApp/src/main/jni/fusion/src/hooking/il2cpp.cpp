@@ -2,6 +2,7 @@
 #include <hooking/il2cpp.h>
 #include <external/dobby.h>
 #include <utilities/asm.h>
+#include <utilities/tools.h>
 #include <logger.h>
 #include <dlfcn.h>
 
@@ -11,36 +12,25 @@ static uintptr_t library_base = 0;
 
 static void *p_il2cpp_init;
 
-static il2cpp_method_get_name_t     fun_il2cpp_method_get_name = nullptr;
-static il2cpp_init_t                fun_il2cpp_init = nullptr;
-static il2cpp_init_t            init_hook = nullptr;
+static il2cpp_init_t fun_il2cpp_init = nullptr;
+static il2cpp_init_t init_hook = nullptr;
 
 bool il2cpp_initialize(const char *library_path)
 {
     handle = dlopen(library_path, RTLD_GLOBAL | RTLD_NOW);
     if (!handle)
     {
-        char *err = dlerror();
-        log_format(LogLevel::FATAL, TAG, "Failed to open libil2cpp.so: {}", err);
+        log_format(LogLevel::FATAL, TAG, "Failed to open libil2cpp.so: {}", safe_dlerror());
         return false;
     }
 
     p_il2cpp_init = dlsym(handle, "il2cpp_init");
     if (!p_il2cpp_init)
     {
-        char *err = dlerror();
-        log_format(LogLevel::FATAL, TAG, "Failed to find il2cpp_init: {}", err);
+        log_format(LogLevel::FATAL, TAG, "Failed to find il2cpp_init: {}", safe_dlerror());
         return false;
     }
     fun_il2cpp_init = reinterpret_cast<il2cpp_init_t>(p_il2cpp_init);
-
-    fun_il2cpp_method_get_name = reinterpret_cast<il2cpp_method_get_name_t>(dlsym(handle, "il2cpp_method_get_name"));
-    if (!fun_il2cpp_method_get_name)
-    {
-        char *err = dlerror();
-        log_format(LogLevel::FATAL, TAG, "Failed to find il2cpp_method_get_name: {}", err);
-        return false;
-    }
 
     log(LogLevel::INFO, TAG, "Successfully loaded libil2cpp.so");
     return true;
@@ -81,27 +71,25 @@ uintptr_t il2cpp_get_library_base()
     return library_base;
 }
 
-const char *il2cpp_method_get_name(void *method)
-{
-    if (!fun_il2cpp_method_get_name)
-    {
-        log(LogLevel::ERROR, TAG, "func_il2cpp_method_get_name is null!");
-        return "";
-    }
-
-    return fun_il2cpp_method_get_name(method);
-}
-
 // wrapper for il2cpp_init. if hooked, this will
 // call the original function
 int il2cpp_init(char *domain_name)
 {
+    static bool called = false;
+
     if (!fun_il2cpp_init)
     {
         log(LogLevel::ERROR, TAG, "fun_il2cpp_init is null!");
         return -1;
     }
 
+    if (called)
+    {
+        log(LogLevel::ERROR, TAG, "il2cpp_init has already been called!");
+        return -1;
+    }
+
+    called = true;
     return fun_il2cpp_init(domain_name);
 }
 
@@ -122,6 +110,7 @@ void il2cpp_install_init_hook(il2cpp_init_t hook)
 
     init_hook = hook;
 
+    dobby_disable_near_branch_trampoline();
     int result = DobbyHook(
             p_il2cpp_init,
             (dobby_dummy_func_t)init_hook,
@@ -145,8 +134,10 @@ void il2cpp_destroy_init_hook()
         return;
     }
 
+    // restore the original function
     DobbyDestroy(p_il2cpp_init);
     init_hook = nullptr;
+    fun_il2cpp_init = reinterpret_cast<il2cpp_init_t>(p_il2cpp_init);
 
     log(LogLevel::DEBUG, TAG, "Successfully destroyed il2cpp_init hook");
 }

@@ -83,7 +83,8 @@ static bool execute_fusion_config(const FusionConfig &config)
 
 int il2cpp_init_hook(char *domain_name)
 {
-    log_format(LogLevel::INFO, TAG, "il2cpp_init called with domain: {}", domain_name);
+    const char *d_name = domain_name ? domain_name : "Unknown Domain Name";
+    log_format(LogLevel::INFO, TAG, "il2cpp_init called with domain: {}", d_name);
     il2cpp_destroy_init_hook();
 
     // call the original il2cpp_init function
@@ -108,7 +109,9 @@ int il2cpp_init_hook(char *domain_name)
         } else {
             log(LogLevel::WARN, TAG, "No readable SSL cert file found; HTTPS requests may fail.");
         }
-        log_format(LogLevel::INFO, TAG, "Using {} for SSL certificates", getenv("SSL_CERT_DIR"));
+        const char *ssl_path = getenv("SSL_CERT_DIR");
+        const char *safe_ssl_path = ssl_path ? ssl_path : "(null)";
+        log_format(LogLevel::INFO, TAG, "Using {} for SSL certificates", safe_ssl_path);
 
         fs::path bepInExCoreDirectory = fs::path(runtimeConfig.bepInExDirectory) / "core";
 
@@ -182,8 +185,29 @@ extern "C" [[maybe_unused]] bool fusion_bootstrap_from_libmain(JNIEnv *env)
         return false;
     }
 
-    auto library_size = reinterpret_cast<size_t>(get_injected_pool_base() - il2cpp_get_library_base());
-    if (!safehook_initialize(il2cpp_get_handle(), il2cpp_get_library_base(), library_size, allocate_injected))
+    // Pool placement and library bounds must be trustworthy before any hooking.
+    const uintptr_t pool_base = get_injected_pool_base();
+    const uintptr_t il2cpp_base = il2cpp_get_library_base();
+    if (pool_base == 0 || il2cpp_base == 0 || pool_base <= il2cpp_base)
+    {
+        log_format(LogLevel::ERROR, TAG,
+                   "Invalid pool/library base relationship! pool=0x{:X}, il2cpp=0x{:X}",
+                   pool_base, il2cpp_base);
+        return false;
+    }
+
+    // plain integer subtraction (pool sits directly above the library image)
+    const size_t library_size = pool_base - il2cpp_base;
+    constexpr size_t kMaxPlausibleLibrarySize = 512ull * 1024 * 1024;
+    if (library_size > kMaxPlausibleLibrarySize)
+    {
+        log_format(LogLevel::ERROR, TAG,
+                   "Implausible library size 0x{:X}; refusing to initialize SafeHook",
+                   library_size);
+        return false;
+    }
+
+    if (!safehook_initialize(il2cpp_get_handle(), il2cpp_base, library_size, allocate_injected))
     {
         log(LogLevel::ERROR, TAG, "Failed to initialize SafeHook");
         return false;

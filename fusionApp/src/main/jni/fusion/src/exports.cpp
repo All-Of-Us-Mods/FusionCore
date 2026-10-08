@@ -7,6 +7,9 @@
 
 void init_bridge_helper(const char *libraryPath)
 {
+    if (!libraryPath) {
+        log(LogLevel::ERROR, "BridgeHelper", "Cannot init bridge helper, null lib path!");
+    }
     safehook_setup_bridge_helper(libraryPath);
 }
 
@@ -32,16 +35,25 @@ void set_loader_stage(uint8_t stage)
 
 void set_loader_message(const char *text)
 {
+    if (!text) {
+        return;
+    }
     setLoadingText(text);
 }
 
 void write_log(const char *text)
 {
+    if (!text) {
+        return;
+    }
     log(LogLevel::INFO, "Fusion.NET", text);
 }
 
 void write_log_level(int level, const char *text)
 {
+    if (!text) {
+        return;
+    }
     LogLevel logLevel = static_cast<LogLevel>(level);
     log(logLevel, "Fusion.NET", text);
 }
