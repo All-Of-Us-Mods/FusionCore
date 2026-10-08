@@ -285,9 +285,8 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
                          reinterpret_cast<int64_t>(target_function);
 
     // check if hook is close enough for a near branch.
-    uint64_t limit = 0x7FFFFFFF;
-    bool withinLimits = (distance > 0 && distance < limit) ||
-                        (distance < 0 && distance > -limit);
+    int64_t limit = 0x7FFFFFFF;
+    bool near = std::abs(distance) < limit;
 
     // TODO: add game patcher here
 
