@@ -120,7 +120,7 @@ int il2cpp_init_hook(char *domain_name)
         dotNetConfig.entryPointAssembly = "BepInEx.Unity.IL2CPP";
         dotNetConfig.entryPointType = "BepInEx.Unity.IL2CPP.FusionCoreEntrypoint";
         dotNetConfig.entryPointMethod = "Start";
-
+        dotNetConfig.IsMono = runtimeConfig.isIl2Cpp2Mono;
         // set TMPDIR for MonoMod lib drops
         setenv("TMPDIR", runtimeConfig.codeCacheDirectory.c_str(), 1);
 
