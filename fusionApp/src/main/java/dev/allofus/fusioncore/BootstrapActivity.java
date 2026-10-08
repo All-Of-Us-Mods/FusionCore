@@ -5,27 +5,35 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Looper;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.View;
+import android.webkit.MimeTypeMap;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 import dev.allofus.fusioncore.hooks.ClassHooks;
 import dev.allofus.fusioncore.hooks.ClassLoaderHooks;
@@ -37,7 +45,7 @@ import dev.allofus.fusioncore.tools.FusionConfig;
 import dev.allofus.fusioncore.tools.LibUnityDownloader;
 import dev.allofus.fusioncore.tools.NativeLibraryManager;
 import dev.allofus.fusioncore.tools.Utilities;
-import dev.allofus.fusioncore.tools.VersionLookup;
+import dev.allofus.fusioncore.tools.UnityUtils;
 
 public class BootstrapActivity extends AppCompatActivity {
 
@@ -47,45 +55,25 @@ public class BootstrapActivity extends AppCompatActivity {
     public static final String EXTRA_USE_ORIGINAL_LIBUNITY = "og_libunity";
     public static final String EXTRA_USE_IL2CPP2MONO = "use_il2cpp2mono";
     public static final String BACKUP_UNITY_VERSION = "2017.0.0";
-
+    public static final String IL2CPP_API_MAP = "il2cpp-api.map";
     private TextView statusView;
     private TextView progressDetailsView;
     private ProgressBar spinnerProgress;
     private ProgressBar downloadProgress;
-
-    private File pendingGameDir;
-    private CountDownLatch pendingLatch;
-    private boolean[] pendingResultHolder;
-
-    private final ActivityResultLauncher<Intent> selectZipLauncher =
+    private final AtomicReference<Uri> selectedFileUri = new AtomicReference<>(null);
+    private volatile CountDownLatch filePickerLatch;
+    private final ActivityResultLauncher<Intent> selectFileLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-                File targetDir = pendingGameDir;
-                CountDownLatch latch = pendingLatch;
-                boolean[] resultHolder = pendingResultHolder;
-
-                pendingGameDir = null;
-                pendingLatch = null;
-                pendingResultHolder = null;
-
-                if (result.getResultCode() == RESULT_OK && result.getData() != null && result.getData().getData() != null) {
-                    Uri uri = result.getData().getData();
-                    setPhaseStatus(getString(R.string.bootstrap_status_extracting_mono_dlls));
-
-                    new Thread(() -> {
-                        boolean extracted = extractManagedZipUri(uri, targetDir);
-                        if (resultHolder != null) {
-                            resultHolder[0] = extracted;
-                        }
-                        if (latch != null) {
-                            latch.countDown();
-                        }
-                    }, "extract-managed-zip").start();
-                } else {
-                    if (resultHolder != null) {
-                        resultHolder[0] = false;
+                try {
+                    if (result.getResultCode() == RESULT_OK && result.getData() != null && result.getData().getData() != null) {
+                        Uri uri = result.getData().getData();
+                        selectedFileUri.set(uri);
+                    } else {
+                        selectedFileUri.set(null);
                     }
-                    if (latch != null) {
-                        latch.countDown();
+                } finally {
+                    if (filePickerLatch != null) {
+                        filePickerLatch.countDown();
                     }
                 }
             });
@@ -329,7 +317,60 @@ public class BootstrapActivity extends AppCompatActivity {
             Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
         }
     }
+    boolean CheckForObfuscation(File MetadataFile, File DeobfuscationDir){
+        if(UnityUtils.IsMetadataObfuscated(MetadataFile)){ //technically this will work for now
+            Uri metadata = promptForFile(R.string.bootstrap_file_request_metadata, "dat");
+            if(metadata == null){
+                runOnMainThread(() -> Toast.makeText(this, "WARNING: no global metadata selected. are you sure you know what you are doing?", Toast.LENGTH_LONG).show());
+            }
+            else{
+                try{copyUriToFile(metadata, MetadataFile);} //once unity uses the Assets directory, we mustn't copy it there
+                catch (IOException e){
+                    Log.e(TAG, "Couldn't copy the deobfuscated metadata!", e);
+                }
+                Uri IL2CPPMAP = promptForFile(R.string.boostrap_file_request_il2cpp_map, "map");
+                if(IL2CPPMAP == null){
+                    runOnMainThread(() -> Toast.makeText(this, "WARNING: no il2cpp api deobfuscation map selected. are you sure you know what you are doing?", Toast.LENGTH_LONG).show());
+                }
+                else{
+                    try{copyUriToFile(IL2CPPMAP, new File(DeobfuscationDir, IL2CPP_API_MAP));}
+                    catch (IOException e){
+                        Log.e(TAG, "Couldn't copy the deobfuscated il2cpp api map!", e);
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
+    }
 
+    HashMap<String, String> GetIL2CPPMap(File DeobfuscationDir){
+        File MapFile = new File(DeobfuscationDir, IL2CPP_API_MAP);
+        HashMap<String, String> map = new HashMap<>();
+        if (!MapFile.exists() || !MapFile.isFile()) {
+            return map;
+        }
+        try (BufferedReader reader = new BufferedReader(new FileReader(MapFile))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("#") || line.startsWith("//")) {
+                    continue;
+                }
+                int colonIndex = line.indexOf(':');
+                if (colonIndex > 0) {
+                    String normal = line.substring(0, colonIndex).trim();
+                    String deobfuscated = line.substring(colonIndex + 1).trim();
+                    if (!normal.isEmpty() && !deobfuscated.isEmpty()) {
+                        map.put(normal, deobfuscated);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to parse IL2CPP API map file: " + MapFile.getAbsolutePath(), e);
+        }
+        return map;
+    }
     private FusionConfig prepareConfig(Context appContext,
                                        Context gameContext,
                                        ComponentName launcherComponent,
@@ -344,6 +385,7 @@ public class BootstrapActivity extends AppCompatActivity {
         File appDataDir = new File(appContext.getFilesDir(), targetPackage);
 
         File dataOnSdCard = Utilities.getExternalFusionCoreDirectory(targetPackage, null);
+        File bepInExDir = new File(dataOnSdCard, "BepInEx");
         File codeCacheScoped = new File(appContext.getCodeCacheDir(), targetPackage);
 
         setPhaseStatus(getString(R.string.bootstrap_status_copy_assets));
@@ -354,9 +396,9 @@ public class BootstrapActivity extends AppCompatActivity {
             Log.e(TAG, "Failed to copy Unity Data assets! BepInEx may not work correctly.");
         }
         File copiedData = new File(Assets, "bin/Data");
-
+        File DeobfuscationDir = new File(bepInExDir, "Deobfuscation");
         setPhaseStatus(getString(R.string.bootstrap_status_detecting_version));
-        String version = VersionLookup.TryLookup(copiedData);
+        String version = UnityUtils.TryGetVersion(copiedData);
         if (version == null) {
             Log.e(TAG, "Failed to determine Unity version! BepInEx may not work correctly.");
             version = BACKUP_UNITY_VERSION;
@@ -390,11 +432,11 @@ public class BootstrapActivity extends AppCompatActivity {
 
         setPhaseStatus(getString(R.string.bootstrap_status_extracting_runtime));
         File dotnetDir;
-        File bepInExDir = new File(dataOnSdCard, "BepInEx");
         if(!useIl2Cpp2Mono) {
             dotnetDir = new File(appContext.getCodeCacheDir(), "dotnet");
             Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
             Utilities.extractZipFromAssets(appContext, "dotnet-arm64.zip", dotnetDir);
+            CheckForObfuscation(new File(copiedData, "Managed/Metadata/global-metadata.dat"), DeobfuscationDir);
         } //we do something else
         else{
             dotnetDir = new File(appContext.getCodeCacheDir(), "mono");
@@ -416,6 +458,8 @@ public class BootstrapActivity extends AppCompatActivity {
             Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
         }
 
+        HashMap<String, String> il2cppMap = GetIL2CPPMap(DeobfuscationDir);
+
         return new FusionConfig(
                 targetPackage,
                 launcherComponent.flattenToString(),
@@ -431,8 +475,27 @@ public class BootstrapActivity extends AppCompatActivity {
                 useIl2Cpp2Mono,
                 new String[]{},
                 new String[]{},
-                new HashMap<>()
+                il2cppMap
         );
+    }
+
+    private void copyUriToFile(Uri sourceUri, File target) throws IOException {
+        File parent = target.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IOException("Failed to create parent directory: " + parent.getAbsolutePath());
+        }
+
+        try (InputStream in = getContentResolver().openInputStream(sourceUri);
+             FileOutputStream out = new FileOutputStream(target, false)) {
+            if (in == null) {
+                throw new IOException("Unable to open input stream for URI: " + sourceUri);
+            }
+            byte[] buffer = new byte[8192];
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                out.write(buffer, 0, count);
+            }
+        }
     }
 
     private static void copyFile(File source, File target) throws IOException {
@@ -453,70 +516,115 @@ public class BootstrapActivity extends AppCompatActivity {
 
     private void ensureManagedDllsForMono(File GameDir) {
         File managedDir = new File(GameDir, "mono");
-        if (managedDir.exists()) {
+        File[] existingFiles = managedDir.listFiles();
+        if (managedDir.exists() && existingFiles != null && existingFiles.length > 0) {
             Log.i(TAG, "Managed DLLs already present in " + managedDir.getAbsolutePath() + ", skipping selection prompt.");
             return;
         }
 
-        CountDownLatch latch = new CountDownLatch(1);
-        final boolean[] success = {false};
+        Uri zipUri = promptForFile(R.string.bootstrap_request_dlls, "zip");
+        if (zipUri == null) {
+            throw new IllegalStateException("No Managed Zip file selected!");
+        }
+
+        setPhaseStatus(getString(R.string.bootstrap_status_extracting_mono_dlls));
+        if (!extractZipFile(zipUri, managedDir)) {
+            throw new IllegalStateException("Invalid or corrupted Managed Zip file provided!");
+        }
+    }
+
+    public Uri promptForFile(int messageResId, @Nullable String extension) {
+        filePickerLatch = new CountDownLatch(1);
+        selectedFileUri.set(null);
+
+        final String cleanExt = extension != null ? extension.trim().toLowerCase(Locale.ROOT).replace(".", "") : "";
 
         runOnMainThread(() -> {
             if (isFinishing() || isDestroyed()) {
-                latch.countDown();
+                if (filePickerLatch != null) {
+                    filePickerLatch.countDown();
+                }
                 return;
             }
+            Toast.makeText(this, messageResId, Toast.LENGTH_LONG).show();
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
 
-            promptSelectManagedZip(GameDir, latch, success);
+            if (!cleanExt.isEmpty()) {
+                String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(cleanExt);
+                intent.setType(Objects.requireNonNullElse(mimeType, "*/*"));
+            } else {
+                intent.setType("*/*");
+            }
+            try {
+                selectFileLauncher.launch(intent);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to launch file picker for extension: " + extension, e);
+                if (filePickerLatch != null) {
+                    filePickerLatch.countDown();
+                }
+            }
         });
 
         try {
-            latch.await();
+            filePickerLatch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while waiting for Managed DLLs selection", e);
+            Log.e(TAG, "Interrupted while waiting for file picker result", e);
+            return null;
         }
 
-        if (!success[0]) {
-            throw new IllegalStateException(getString(R.string.bootstrap_mono_missing_dlls));
+        Uri resultUri = selectedFileUri.get();
+        if (resultUri != null && !cleanExt.isEmpty()) {
+            String fileName = getFileNameFromUri(resultUri);
+            if (fileName != null && !fileName.toLowerCase(Locale.ROOT).endsWith("." + cleanExt)) {
+                Log.w(TAG, "Selected file '" + fileName + "' does not match required extension: ." + cleanExt);
+                runOnMainThread(() -> Toast.makeText(this, "Selected file must be a ." + cleanExt + " file", Toast.LENGTH_LONG).show());
+                return null;
+            }
         }
+
+        return resultUri;
     }
 
-    private void promptSelectManagedZip(File GameDir, CountDownLatch latch, boolean[] resultHolder) {
-        pendingGameDir = GameDir;
-        pendingLatch = latch;
-        pendingResultHolder = resultHolder;
-
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("application/zip");
-        String[] mimeTypes = {"application/zip", "application/x-zip-compressed", "application/octet-stream", "*/*"};
-        intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-
-        try {
-            selectZipLauncher.launch(intent);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to launch zip picker", e);
-            Toast.makeText(this, R.string.bootstrap_mono_file_picker_error, Toast.LENGTH_LONG).show();
-            pendingGameDir = null;
-            pendingLatch = null;
-            pendingResultHolder = null;
-            resultHolder[0] = false;
-            latch.countDown();
+    private String getFileNameFromUri(Uri uri) {
+        if (uri == null) return null;
+        if ("content".equals(uri.getScheme())) {
+            try (Cursor cursor = getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (index != -1) {
+                        String name = cursor.getString(index);
+                        if (name != null && !name.isEmpty()) {
+                            return name;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to query display name for URI: " + uri, e);
+            }
         }
+        String path = uri.getPath();
+        if (path != null) {
+            int cut = path.lastIndexOf('/');
+            if (cut != -1) {
+                return path.substring(cut + 1);
+            }
+            return path;
+        }
+        return null;
     }
 
-    private boolean extractManagedZipUri(Uri uri, File bepInExDir) {
+    private boolean extractZipFile(Uri uri, File Target) {
         try (InputStream is = getContentResolver().openInputStream(uri)) {
             if (is == null) {
-                Log.e(TAG, "Failed to open InputStream from Uri: " + uri);
+                Log.e(TAG, "openInputStream returned null for URI: " + uri);
                 return false;
             }
-            File managedDir = new File(bepInExDir, "mono");
-            Utilities.extractZipFromInputStream(is, managedDir);
+            Utilities.extractZipFromInputStream(is, Target);
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to extract managed zip from Uri: " + uri, e);
+            Log.e(TAG, "Failed to extract zip from URI: " + uri, e);
             return false;
         }
     }

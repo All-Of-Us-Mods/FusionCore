@@ -41,6 +41,7 @@
     <string name="selector_folder_create_failed">Failed to make folder: %1$s</string>
     <string name="settings_automatic">Automatic</string>
     <string name="bootstrap_status_extracting_mono_dlls">Extracting Mono managed DLLs…</string>
-    <string name="bootstrap_mono_file_picker_error">Failed to open file picker for managed DLLs ZIP.</string>
-    <string name="bootstrap_mono_missing_dlls">Managed DLLs ZIP was not provided for Il2Cpp2Mono.</string>
+    <string name="bootstrap_request_dlls">Please provide the mono dlls</string>
+    <string name="bootstrap_file_request_metadata">Please Provide the de-obfuscated global-metadata.dat file</string>
+    <string name="boostrap_file_request_il2cpp_map">Please Provide the deobfuscation map for the il2cpp API</string>
 </resources>

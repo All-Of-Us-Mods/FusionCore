@@ -143,13 +143,7 @@ int il2cpp_init_hook(char *domain_name)
 
         // change working directory to fusion's scoped data directory
         chdir(runtime_config.appDataDirectory.c_str());
-        if(!runtime_config.isIl2Cpp2Mono) {
-            // execute the managed assembly
-            dotnet_execute_assembly(dotNetConfig, &list);
-        }//we wont be using this, for now.
-        else{
-            setLoadingState(false);
-        }
+        dotnet_execute_assembly(dotNetConfig, &list);
     }
     else
     {
@@ -183,6 +177,7 @@ extern "C" [[maybe_unused]] bool fusion_bootstrap_from_libmain(JNIEnv *env)
         return false;
     }
     if(runtime_config.isIl2Cpp2Mono){
+        setLoadingState(false);
         log(LogLevel::WARN, TAG, "BepInEx is currently disabled in il2cpp2mono.");
         return true;
     }

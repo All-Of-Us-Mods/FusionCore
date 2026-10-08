@@ -39,6 +39,5 @@
     <string name="selector_folder_create_failed">建立資料夾失敗：%1$s</string>
     <string name="settings_automatic">自動</string>
     <string name="bootstrap_status_extracting_mono_dlls">正在解壓縮 Mono 託管 DLL…</string>
-    <string name="bootstrap_mono_file_picker_error">無法為託管 DLL ZIP 開啟檔案選擇器。</string>
     <string name="bootstrap_mono_missing_dlls">未為 Il2Cpp2Mono 提供託管 DLL ZIP 檔案。</string>
 </resources>
