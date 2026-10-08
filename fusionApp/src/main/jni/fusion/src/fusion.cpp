@@ -17,7 +17,7 @@
 
 namespace fs = std::filesystem;
 
-static FusionConfig runtimeConfig;
+FusionConfig runtime_config;
 
 static bool execute_fusion_config(const FusionConfig &config)
 {
@@ -65,15 +65,15 @@ int il2cpp_init_hook(char *domain_name)
     // call the original il2cpp_init function
     int result = il2cpp_init(domain_name);
 
-    if (runtimeConfig.initialized)
+    if (runtime_config.initialized)
     {
         // setup environment variables
         setenv("BEPINEX_GAME_ASSEMBLY_PATH", libmain_get_override_il2cpp_path(), 1);
-        setenv("FUSION_BEPINEX_PATH", runtimeConfig.bepInExDirectory.c_str(), 1);
+        setenv("FUSION_BEPINEX_PATH", runtime_config.bepInExDirectory.c_str(), 1);
         setenv("FUSION_GAME_BINARY", libmain_get_override_il2cpp_path(), 1);
-        setenv("FUSION_GAME_DATA_DIR", runtimeConfig.unityDataDirectory.c_str(), 1);
-        setenv("FUSION_APP_DATA_DIR", runtimeConfig.appDataDirectory.c_str(), 1);
-        setenv("FUSION_UNITY_VERSION", runtimeConfig.unityVersion.c_str(), 1);
+        setenv("FUSION_GAME_DATA_DIR", runtime_config.unityDataDirectory.c_str(), 1);
+        setenv("FUSION_APP_DATA_DIR", runtime_config.appDataDirectory.c_str(), 1);
+        setenv("FUSION_UNITY_VERSION", runtime_config.unityVersion.c_str(), 1);
 
         const char *ssl_cert_path = "/apex/com.android.conscrypt/cacerts";
         const char *backup_cert_path = "/system/etc/security/cacerts";
@@ -88,20 +88,20 @@ int il2cpp_init_hook(char *domain_name)
         const char *safe_ssl_path = ssl_path ? ssl_path : "(null)";
         log_format(LogLevel::INFO, TAG, "Using {} for SSL certificates", safe_ssl_path);
 
-        fs::path bepInExCoreDirectory = fs::path(runtimeConfig.bepInExDirectory) / "core";
+        fs::path bepInExCoreDirectory = fs::path(runtime_config.bepInExDirectory) / "core";
 
         DotNetConfig dotNetConfig;
-        dotNetConfig.runtimeDir = runtimeConfig.dotnetDirectory;
+        dotNetConfig.runtimeDir = runtime_config.dotnetDirectory;
         dotNetConfig.managedLibsDir = bepInExCoreDirectory.string();
         dotNetConfig.entryPointAssembly = "BepInEx.Unity.IL2CPP";
         dotNetConfig.entryPointType = "BepInEx.Unity.IL2CPP.FusionCoreEntrypoint";
         dotNetConfig.entryPointMethod = "Start";
 
         // set TMPDIR for MonoMod lib drops
-        setenv("TMPDIR", runtimeConfig.codeCacheDirectory.c_str(), 1);
+        setenv("TMPDIR", runtime_config.codeCacheDirectory.c_str(), 1);
 
         // create AuxFolderPluginList
-        auto aux = runtimeConfig.auxiliaryPluginFolders;
+        auto aux = runtime_config.auxiliaryPluginFolders;
         int size = static_cast<int>(aux.size());
         const char** pointerArray = new const char*[size];
 
@@ -118,7 +118,7 @@ int il2cpp_init_hook(char *domain_name)
         list.folders = pointerArray;
 
         // change working directory to fusion's scoped data directory
-        chdir(runtimeConfig.appDataDirectory.c_str());
+        chdir(runtime_config.appDataDirectory.c_str());
 
         // execute the managed assembly
         dotnet_execute_assembly(dotNetConfig, &list);
@@ -147,7 +147,7 @@ extern "C" [[maybe_unused]] bool fusion_bootstrap_from_libmain(JNIEnv *env)
         return false;
     }
 
-    runtimeConfig = config;
+    runtime_config = config;
 
     auto il2cpp_path = libmain_get_override_il2cpp_path();
     if (!il2cpp_initialize(il2cpp_path))

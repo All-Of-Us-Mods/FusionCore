@@ -4,6 +4,20 @@
 #include <hooking/safehook.h>
 #include <logger.h>
 #include <utilities/java.h>
+#include <fusion_config.h>
+
+const char *get_il2cpp_api(const char *name)
+{
+    if (!runtime_config.initialized) return name;
+
+    auto it = runtime_config.il2cppApiMap.find(name);
+
+    if (it == runtime_config.il2cppApiMap.end() || it->second.empty()) {
+        return name;
+    }
+
+    return it->second.c_str();
+}
 
 void init_bridge_helper(const char *libraryPath)
 {

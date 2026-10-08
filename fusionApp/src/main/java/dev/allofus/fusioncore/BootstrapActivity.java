@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Locale;
 
 import dev.allofus.fusioncore.hooks.ClassHooks;
@@ -373,7 +374,8 @@ public class BootstrapActivity extends AppCompatActivity {
                 version,
                 useOriginalLibUnity,
                 new String[]{},
-                new String[]{}
+                new String[]{},
+                new HashMap<>()
         );
     }
 
