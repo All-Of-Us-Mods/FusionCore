@@ -176,14 +176,16 @@ extern "C" [[maybe_unused]] bool fusion_bootstrap_from_libmain(JNIEnv *env)
     }
 
     runtimeConfig = config;
-
     auto il2cpp_path = libmain_get_override_il2cpp_path();
     if (!il2cpp_initialize(il2cpp_path))
     {
         log_format(LogLevel::ERROR, TAG, "Failed to initialize il2cpp with path: {}", il2cpp_path);
         return false;
     }
-
+    if(runtimeConfig.isIl2Cpp2Mono){
+        log(LogLevel::WARN, TAG, "BepInEx is currently disabled in il2cpp2mono.");
+        return true;
+    }
     // Pool placement and library bounds must be trustworthy before any hooking.
     const uintptr_t pool_base = get_injected_pool_base();
     const uintptr_t il2cpp_base = il2cpp_get_library_base();
