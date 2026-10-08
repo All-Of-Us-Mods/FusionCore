@@ -9,7 +9,6 @@
 #include <hooking/safehook.h>
 #include <hooking/allocator.h>
 #include <hooking/libunity.h>
-#include <hooking/Assetmanager.h>
 #include <dotnet.h>
 #include <external/dobby.h>
 #include <utilities/java.h>
