@@ -8,6 +8,8 @@ extern "C"
 {
 #endif
 
+const char *get_il2cpp_api(const char *name);
+
 void init_bridge_helper(const char *libraryPath);
 
 dobby_dummy_func_t hook(void *address, dobby_dummy_func_t replace_delegate, bool specialReturnBuffer);
