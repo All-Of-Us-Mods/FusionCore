@@ -6,7 +6,9 @@
 #include <logger.h>
 #include <dlfcn.h>
 #include <sys/mman.h>
-#include <bits/sysconf.h>
+#include <unistd.h>
+#include <cstring>
+#include <cerrno>
 #include <mutex>
 
 #define TAG "SafeHook"
@@ -128,40 +130,6 @@ void *dobby_hook(void *target, void *hook, bool use_near_branch = false)
     return original;
 }
 
-
-bool protect_trampoline(void *trampoline, size_t size, int protection)
-{
-    if (!trampoline)
-    {
-        log(LogLevel::ERROR, TAG, "Cannot set memory protection for a null trampoline!");
-        return false;
-    }
-
-    auto start = reinterpret_cast<uint64_t>(trampoline);
-    auto start_page = align_down(start, page_size);
-    auto end = start + size - 1;
-    auto last_page = align_down(end, page_size);
-
-    if (mprotect(reinterpret_cast<void *>(start_page), page_size, protection) != 0)
-    {
-        log_format(LogLevel::ERROR, TAG, "Failed to set memory protection for writing: {}",
-                                      strerror(errno));
-        return false;
-    }
-
-    if (start_page != last_page)
-    {
-        log(LogLevel::DEBUG, TAG, "Trampoline spans multiple pages, adjusting memory protection for second page.");
-        if (mprotect(reinterpret_cast<void *>(last_page), page_size, protection) != 0)
-        {
-            log_format(LogLevel::ERROR, TAG, "Failed to set memory protection for writing: {}", strerror(errno));
-            return false;
-        }
-    }
-
-    return true;
-}
-
 // This should never be true in arm32 because the return buffer is passed through a pointer
 // in the arguments, but on arm64 it's passed through X8. We can safely assume we are
 // in arm64 if this flag is set.
@@ -208,13 +176,6 @@ void *bridge_hook(void *target_function, void *hook_function)
         return nullptr;
     }
 
-    if (!protect_trampoline(trampoline, requiredSize, PROT_READ | PROT_WRITE))
-    {
-        log_format(LogLevel::ERROR, TAG,
-                          "Failed to set memory protection for trampoline! Cannot install hook.");
-        return nullptr;
-    }
-
     log_format(LogLevel::DEBUG, TAG,
                       "Emitting jump from trampoline at 0x{:X} to bridge at 0x{:X} with hook "
                       "pointer in X16",
@@ -248,13 +209,6 @@ void *bridge_hook(void *target_function, void *hook_function)
     auto start = reinterpret_cast<uint64_t>(trampoline);
     __builtin___clear_cache(reinterpret_cast<char *>(start),
                             reinterpret_cast<char *>(start + requiredSize));
-
-    if (!protect_trampoline(trampoline, requiredSize, PROT_READ | PROT_EXEC))
-    {
-        log_format(LogLevel::ERROR, TAG,
-                          "Failed to set memory protection for trampoline! Cannot install hook.");
-        return nullptr;
-    }
 
     log_format(LogLevel::DEBUG, TAG,
                       "Special return buffer trampoline set up at 0x{:X}, hooking to trampoline instead of original hook.",
@@ -311,7 +265,7 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
         return dobby_hook(target_function, actual_hook);
     }
 
-    if (withinLimits)
+    if (near)
     {
             log_format(LogLevel::DEBUG, TAG,
                             "Target at offset 0x{:X} is within near branch limits, using Dobby with near branch.",
@@ -344,12 +298,6 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
             return dobby_hook(target_function, actual_hook, true);
         }
 
-        if (!protect_trampoline(trampoline, trampoline_size, PROT_READ | PROT_WRITE))
-        {
-            log(LogLevel::ERROR, TAG, "Failed to set memory protection for trampoline! Using Dobby as a fallback.");
-            return dobby_hook(target_function, actual_hook, true);
-        }
-
         log_format(LogLevel::DEBUG, TAG,
                           "Emitting absolute jump from trampoline at 0x{:X} to hook at 0x{:X}",
                           reinterpret_cast<uint64_t>(trampoline), reinterpret_cast<uint64_t>(actual_hook));
@@ -369,12 +317,6 @@ void *safehook_create_hook(void *target_function, void *hook_function, bool use_
         auto start = reinterpret_cast<uint64_t>(trampoline);
         __builtin___clear_cache(reinterpret_cast<char *>(start),
                                 reinterpret_cast<char *>(start + trampoline_size));
-
-        if (!protect_trampoline(trampoline, trampoline_size, PROT_READ | PROT_EXEC))
-        {
-            log(LogLevel::ERROR, TAG, "Failed to set memory protection for trampoline! Using Dobby as a fallback.");
-            return dobby_hook(target_function, actual_hook, true);
-        }
 
         // Hook the target
         auto result = dobby_hook(target_function, trampoline, true);
