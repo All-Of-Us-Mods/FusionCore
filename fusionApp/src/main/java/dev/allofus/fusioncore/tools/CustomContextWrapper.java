@@ -99,6 +99,21 @@ public class CustomContextWrapper extends ContextWrapper {
     }
 
     @Override
+    public File getNoBackupFilesDir() {
+        return this.fusionContext.getNoBackupFilesDir();
+    }
+
+    @Override
+    public File getDir(String name, int mode) {
+        return this.fusionContext.getDir(name, mode);
+    }
+
+    @Override
+    public File getCodeCacheDir() {
+        return this.fusionContext.getCodeCacheDir();
+    }
+
+    @Override
     public File getCacheDir() {
         return this.fusionContext.getCacheDir();
     }
