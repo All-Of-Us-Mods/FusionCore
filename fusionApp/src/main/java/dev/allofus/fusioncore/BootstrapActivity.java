@@ -311,8 +311,8 @@ public class BootstrapActivity extends AppCompatActivity {
                 NativeLibraryManager.addCacheLibrary("il2cpp");
             }
             else {
-                NativeLibraryManager.AddDotnetLibrary("il2cpp");
-                NativeLibraryManager.AddDotnetLibrary("monosgen-2.0");
+                NativeLibraryManager.addDotnetLibrary("il2cpp");
+                NativeLibraryManager.addDotnetLibrary("monosgen-2.0");
             }
             NativeLibraryManager.addCacheLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);
@@ -445,20 +445,6 @@ public class BootstrapActivity extends AppCompatActivity {
             dotnetDir = new File(appContext.getCodeCacheDir(), "mono");
             Utilities.extractZipFromAssets(appContext, "il2cpp2mono-arm64.zip", dotnetDir);
             ensureManagedDllsForMono(PersistentData);
-        }
-
-        setPhaseStatus(getString(R.string.bootstrap_status_registering_libraries));
-        File[] nativeLibs = new File(gameLibDir).listFiles();
-        if (nativeLibs != null) {
-            for (File file : nativeLibs) {
-                String name = file.getName();
-                if (name.startsWith("lib") && name.endsWith(".so") && name.length() > 6) {
-                    String extractedName = name.substring(3, name.length() - 3);
-                    NativeLibraryManager.addGameLibrary(extractedName);
-                }
-            }
-        } else {
-            Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
         }
 
         HashMap<String, String> il2cppMap = GetIL2CPPMap(DeobfuscationDir);

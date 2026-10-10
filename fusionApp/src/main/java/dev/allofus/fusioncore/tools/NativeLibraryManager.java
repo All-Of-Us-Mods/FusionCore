@@ -32,7 +32,7 @@ public class NativeLibraryManager {
         CacheLibraries.add(dataLibName);
     }
 
-    public static void AddDotnetLibrary(String dataLibName)
+    public static void addDotnetLibrary(String dataLibName)
     {
         DotnetLibraries.add(dataLibName);
     }
