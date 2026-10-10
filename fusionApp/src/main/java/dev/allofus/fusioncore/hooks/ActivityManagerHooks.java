@@ -37,6 +37,13 @@ public final class ActivityManagerHooks {
                         Log.d("ActivityManagerHooks", "PendingIntent owner: " + gamePackage
                                 + " -> " + hostPackage);
                     }
+                    if (name.equals("getHistoricalProcessExitReasons")
+                            && args != null && args.length > 0 && gamePackage.equals(args[0])) {
+                        args = args.clone();
+                        args[0] = hostPackage;
+                        Log.d("ActivityManagerHooks", "Process exit history owner: "
+                                + gamePackage + " -> " + hostPackage);
+                    }
                     try {
                         return method.invoke(original, args);
                     } catch (InvocationTargetException error) {
