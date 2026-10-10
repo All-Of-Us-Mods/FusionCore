@@ -26,10 +26,12 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -39,6 +41,7 @@ import java.util.Set;
 import java.util.zip.ZipFile;
 
 import dev.allofus.fusioncore.tools.CrashDetector;
+import dev.allofus.fusioncore.tools.GlobalMetadata;
 import dev.allofus.fusioncore.tools.Utilities;
 
 public class SelectorActivity extends AppCompatActivity {
@@ -47,6 +50,7 @@ public class SelectorActivity extends AppCompatActivity {
     private static final String[] UNITY_ABIS = {"arm64-v8a", "armeabi-v7a", "x86_64", "x86"};
 
     private String pendingLaunchPackage;
+    private String pendingMetadataPackage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,7 +107,8 @@ public class SelectorActivity extends AppCompatActivity {
                     holder.icon.setImageDrawable(entry.icon != null ? entry.icon : defaultIcon);
                     holder.name.setText(entry.label);
                     holder.packageName.setText(entry.packageName);
-                    holder.version.setText(Utilities.formatVersionText(entry.versionName, entry.versionCode));
+                    String version = Utilities.formatVersionText(entry.versionName, entry.versionCode);
+                    holder.version.setText(version);
 
                     ImageButton settingsButton = convertView.findViewById(R.id.selector_action_settings);
                     settingsButton.setOnClickListener(v -> {
@@ -241,7 +246,8 @@ public class SelectorActivity extends AppCompatActivity {
             }
 
             Log.i(TAG, "Found installed target: " + packageName + " (" + label + ")");
-            result.add(new AppEntry(packageName, label, icon, versionName, versionCode));
+            result.add(new AppEntry(packageName, label, icon, versionName, versionCode,
+                    GlobalMetadata.isEncrypted(info)));
         }
 
         return result;
@@ -296,6 +302,10 @@ public class SelectorActivity extends AppCompatActivity {
     }
 
     private void launchBootstrap(String packageName) {
+        if (requestMetadataIfNeeded(packageName)) {
+            return;
+        }
+
         Intent intent = new Intent(this, BootstrapActivity.class);
         intent.putExtra(BootstrapActivity.EXTRA_TARGET_PACKAGE, packageName);
         intent.putExtra(BootstrapActivity.EXTRA_USE_ORIGINAL_LIBUNITY,
@@ -323,9 +333,11 @@ public class SelectorActivity extends AppCompatActivity {
                     } else {
                         Log.e(TAG, "Permission denied: " +permission);
                     }
+                }
 
-                    String packageName = pendingLaunchPackage;
-                    pendingLaunchPackage = null;
+                String packageName = pendingLaunchPackage;
+                pendingLaunchPackage = null;
+                if (packageName != null) {
                     launchBootstrap(packageName);
                 }
             });
@@ -334,6 +346,10 @@ public class SelectorActivity extends AppCompatActivity {
         if (!hasExternalStorageManagerAccess()) {
             pendingLaunchPackage = packageName;
             requestExternalStorageManagerAccess();
+            return;
+        }
+
+        if (requestMetadataIfNeeded(packageName)) {
             return;
         }
 
@@ -359,6 +375,58 @@ public class SelectorActivity extends AppCompatActivity {
         }
 
         launchBootstrap(packageName);
+    }
+
+    private final ActivityResultLauncher<String[]> pickMetadataLauncher =
+            registerForActivityResult(new ActivityResultContracts.OpenDocument(), uri -> {
+                String packageName = pendingMetadataPackage;
+                pendingMetadataPackage = null;
+                if (uri == null || packageName == null) {
+                    return;
+                }
+
+                new Thread(() -> {
+                    boolean installed;
+                    try (InputStream in = getContentResolver().openInputStream(uri)) {
+                        installed = in != null && GlobalMetadata.installOverride(in, packageName);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Failed to install metadata override for " + packageName, e);
+                        installed = false;
+                    }
+
+                    boolean success = installed;
+                    runOnUiThread(() -> {
+                        if (success) {
+                            maybeLaunchBootstrap(packageName);
+                        } else {
+                            Toast.makeText(this, getString(R.string.selector_metadata_invalid), Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }).start();
+            });
+
+    private boolean requestMetadataIfNeeded(String packageName) {
+        if (GlobalMetadata.hasValidOverride(packageName)) {
+            return false;
+        }
+        try {
+            if (!GlobalMetadata.isEncrypted(getPackageManager().getApplicationInfo(packageName, 0))) {
+                return false;
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.selector_metadata_title)
+                .setMessage(getString(R.string.selector_metadata_message))
+                .setPositiveButton(R.string.selector_metadata_select, (dialog, which) -> {
+                    pendingMetadataPackage = packageName;
+                    pickMetadataLauncher.launch(new String[]{"*/*"});
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+        return true;
     }
 
     private boolean hasExternalStorageManagerAccess() {
@@ -391,7 +459,7 @@ public class SelectorActivity extends AppCompatActivity {
     }
 
     private record AppEntry(String packageName, String label, Drawable icon, String versionName,
-                            long versionCode) {
+                            long versionCode, boolean encryptedMetadata) {
 
         @NonNull
         @Override

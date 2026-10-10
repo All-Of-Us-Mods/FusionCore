@@ -16,6 +16,58 @@ static void *p_il2cpp_init;
 static il2cpp_init_t fun_il2cpp_init = nullptr;
 static il2cpp_init_t init_hook = nullptr;
 
+#if defined(__aarch64__)
+static void disable_export_caller_check(void *export_function)
+{
+    auto *code = static_cast<const uint32_t *>(export_function);
+    uintptr_t regs[32] = {};
+    uintptr_t state = 0;
+    bool loads_ranges = false;
+    bool compares_lr = false;
+
+    for (int i = 0; i < 48 && !is_ret(code[i]); i++)
+    {
+        uint32_t ins = code[i];
+        auto pc = reinterpret_cast<uintptr_t>(&code[i]);
+
+        if ((ins & 0x9F000000) == 0x90000000) // adrp
+        {
+            int64_t imm = ((ins >> 29) & 0x3) | ((static_cast<int64_t>(ins >> 5) & 0x7FFFF) << 2);
+            imm = (imm << 43) >> 43;
+            regs[ins & 0x1F] = (pc & ~static_cast<uintptr_t>(0xFFF)) + (imm << 12);
+        }
+        else if ((ins & 0xFFC00000) == 0x91000000) // add xd, xn, #imm
+        {
+            uintptr_t value = regs[(ins >> 5) & 0x1F] + ((ins >> 10) & 0xFFF);
+            regs[ins & 0x1F] = value;
+            if (state && value == state + 0x8) loads_ranges = true;
+        }
+        else if ((ins & 0xFFFFFC00) == 0xC8DFFC00) // ldar xt, [xn]
+        {
+            if (!state) state = regs[(ins >> 5) & 0x1F];
+        }
+        else if ((ins & 0xFFFFFC1F) == 0xEB1E001F) // cmp xn, x30
+        {
+            compares_lr = true;
+        }
+    }
+
+    if (!state || !loads_ranges || !compares_lr)
+    {
+        log(LogLevel::DEBUG, TAG, "No export caller check found");
+        return;
+    }
+
+    auto *values = reinterpret_cast<uintptr_t *>(state);
+    values[1] = 0;
+    values[2] = UINTPTR_MAX;
+    values[3] = 0;
+    values[4] = UINTPTR_MAX;
+    __atomic_store_n(&values[0], ~static_cast<uintptr_t>(0), __ATOMIC_RELEASE);
+    log_format(LogLevel::INFO, TAG, "Disabled export caller check at 0x{:X}", state);
+}
+#endif
+
 bool il2cpp_initialize(const char *library_path)
 {
     handle = dlopen(library_path, RTLD_GLOBAL | RTLD_NOW);
@@ -25,10 +77,8 @@ bool il2cpp_initialize(const char *library_path)
         return false;
     }
 
-    const char *init_name = get_il2cpp_api("il2cpp_init");
-    if (!init_name) {
-        init_name = "il2cpp_init";
-    }
+    const char *mapped_init_name = get_il2cpp_api("il2cpp_init");
+    const char *init_name = mapped_init_name ? mapped_init_name : "il2cpp_init";
 
     p_il2cpp_init = dlsym(handle, init_name);
     if (!p_il2cpp_init)
@@ -37,6 +87,13 @@ bool il2cpp_initialize(const char *library_path)
         return false;
     }
     fun_il2cpp_init = reinterpret_cast<il2cpp_init_t>(p_il2cpp_init);
+
+#if defined(__aarch64__)
+    if (mapped_init_name)
+    {
+        disable_export_caller_check(p_il2cpp_init);
+    }
+#endif
 
     log(LogLevel::INFO, TAG, "Successfully loaded libil2cpp.so");
     return true;

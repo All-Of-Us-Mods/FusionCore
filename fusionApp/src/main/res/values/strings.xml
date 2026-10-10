@@ -42,6 +42,9 @@
     <string name="settings_automatic">Automatic</string>
     <string name="bootstrap_status_extracting_mono_dlls">Extracting Mono managed DLLs…</string>
     <string name="bootstrap_request_dlls">Please provide the mono dlls</string>
-    <string name="bootstrap_file_request_metadata">Please Provide the de-obfuscated global-metadata.dat file</string>
     <string name="boostrap_file_request_il2cpp_map">Please Provide the deobfuscation map for the il2cpp API</string>
+    <string name="selector_metadata_title">Decrypted metadata required</string>
+    <string name="selector_metadata_message">This game\'s global-metadata.dat is encrypted and it can\'t be decrypted automatically.\n\nSelect a decrypted global-metadata.dat for this game version.</string>
+    <string name="selector_metadata_select">Select file</string>
+    <string name="selector_metadata_invalid">This is not a valid metadata file.</string>
 </resources>

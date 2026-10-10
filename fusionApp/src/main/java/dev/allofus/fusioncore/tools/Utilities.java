@@ -1,7 +1,7 @@
 package dev.allofus.fusioncore.tools;
 
 import android.content.Context;
-import android.content.res.AssetManager;
+import android.content.pm.ApplicationInfo;
 import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
@@ -16,7 +16,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
 public class Utilities {
@@ -125,61 +130,65 @@ public class Utilities {
         }
     }
 
-    public static boolean copyAssets(AssetManager gameAssets, String assetPath, File outputFolder) {
-        if(outputFolder.exists()){
+    public static boolean copyAssets(ApplicationInfo gameInfo, File outputFolder) {
+        File marker = new File(outputFolder, ".fusion_copied");
+        if (marker.isFile()) {
             return true;
+        }
+
+        List<String> apks = new ArrayList<>();
+        if (gameInfo.sourceDir != null) apks.add(gameInfo.sourceDir);
+        if (gameInfo.splitSourceDirs != null) Collections.addAll(apks, gameInfo.splitSourceDirs);
+
+        String outputRoot;
+        try {
+            outputRoot = outputFolder.getCanonicalPath() + File.separator;
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to resolve " + outputFolder, e);
+            return false;
+        }
+
+        int copied = 0;
+        byte[] buffer = new byte[64 * 1024];
+        for (String apk : apks) {
+            try (ZipFile zip = new ZipFile(apk)) {
+                Enumeration<? extends ZipEntry> entries = zip.entries();
+                while (entries.hasMoreElements()) {
+                    ZipEntry entry = entries.nextElement();
+                    String name = entry.getName();
+                    if (entry.isDirectory() || !name.startsWith("assets/")) continue;
+
+                    File target = new File(outputFolder, name.substring("assets/".length()));
+                    if (!target.getCanonicalPath().startsWith(outputRoot)) continue;
+                    if (target.isFile() && target.length() == entry.getSize()) continue;
+
+                    File parent = target.getParentFile();
+                    if (parent != null && !parent.isDirectory() && !parent.mkdirs()) {
+                        throw new IOException("Failed to create " + parent);
+                    }
+                    try (InputStream in = zip.getInputStream(entry);
+                         OutputStream out = new FileOutputStream(target)) {
+                        int count;
+                        while ((count = in.read(buffer)) > 0) {
+                            out.write(buffer, 0, count);
+                        }
+                    }
+                    copied++;
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to copy Unity Data assets from " + apk, e);
+                return false;
+            }
         }
 
         try {
-            if (copyAssetEntry(gameAssets, assetPath, outputFolder)) {
-                Log.i(TAG, "Successfully copied Unity Data assets to: " + outputFolder.getAbsolutePath());
-            } else {
-                Log.e(TAG, "Could not find Unity Data assets!");
-                return false;
+            if (!marker.createNewFile()) {
+                Log.w(TAG, "Failed to create asset copy marker: " + marker.getAbsolutePath());
             }
         } catch (IOException e) {
-            Log.e(TAG, "Failed to copy Unity Data assets!", e);
-            return false;
+            Log.w(TAG, "Failed to create asset copy marker", e);
         }
-
-        return true;
-    }
-
-    public static boolean copyAssetEntry(AssetManager gameAssets, String assetPath, File outputTarget) throws IOException {
-        String[] children = gameAssets.list(assetPath);
-        if (children == null) {
-            return false;
-        }
-
-        if (children.length > 0) {
-            if (!outputTarget.exists() && !outputTarget.mkdirs()) {
-                return false;
-            }
-
-            for (String child : children) {
-                File childTarget = new File(outputTarget, child);
-                String childPath = assetPath.isEmpty() ? child : assetPath + "/" + child;
-                if (!copyAssetEntry(gameAssets, childPath, childTarget)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        File parent = outputTarget.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            return false;
-        }
-
-        byte[] buffer = new byte[8192];
-        try (InputStream is = gameAssets.open(assetPath);
-             OutputStream os = new FileOutputStream(outputTarget)) {
-            int length;
-            while ((length = is.read(buffer)) > 0) {
-                os.write(buffer, 0, length);
-            }
-        }
-
+        Log.i(TAG, "Successfully copied " + copied + " Unity Data assets to: " + outputFolder.getAbsolutePath());
         return true;
     }
 

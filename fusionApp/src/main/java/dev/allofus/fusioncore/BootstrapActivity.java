@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -40,6 +41,8 @@ import dev.allofus.fusioncore.hooks.ActivityManagerHooks;
 import dev.allofus.fusioncore.hooks.PackageManagerHooks;
 import dev.allofus.fusioncore.hooks.GameRuntime;
 import dev.allofus.fusioncore.tools.FusionConfig;
+import dev.allofus.fusioncore.tools.GlobalMetadata;
+import dev.allofus.fusioncore.tools.Il2CppApiMapper;
 import dev.allofus.fusioncore.tools.LibUnityDownloader;
 import dev.allofus.fusioncore.tools.NativeLibraryManager;
 import dev.allofus.fusioncore.tools.Utilities;
@@ -320,31 +323,79 @@ public class BootstrapActivity extends AppCompatActivity {
             throw new IllegalStateException("Failed to initialize Fusion library routing", t);
         }
     }
-    boolean CheckForObfuscation(File MetadataFile, File DeobfuscationDir){
-        if(UnityUtils.IsMetadataObfuscated(MetadataFile)){ //technically this will work for now
-            Uri metadata = promptForFile(R.string.bootstrap_file_request_metadata, "dat");
-            if(metadata == null){
-                runOnMainThread(() -> Toast.makeText(this, "WARNING: no global metadata selected. are you sure you know what you are doing?", Toast.LENGTH_LONG).show());
+
+    private Map<String, String> resolveIl2CppApiMap(File gameLibDir, File codeCacheScoped,
+                                                    boolean useOriginalLibUnity, File DeobfuscationDir) {
+        File gameLibIl2Cpp = new File(gameLibDir, "libil2cpp.so");
+        File cachedLibUnity = new File(codeCacheScoped, "libunity.so");
+
+        if (!useOriginalLibUnity) {
+            try {
+                Map<String, String> map = Il2CppApiMapper.prepare(
+                        new File(gameLibDir, "libunity.so"), gameLibIl2Cpp, cachedLibUnity);
+                if (!map.isEmpty()) {
+                    return map;
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to map obfuscated il2cpp exports automatically", e);
             }
-            else{
-                try{copyUriToFile(metadata, MetadataFile);} //once unity uses the Assets directory, we mustn't copy it there
-                catch (IOException e){
-                    Log.e(TAG, "Couldn't copy the deobfuscated metadata!", e);
-                }
-                Uri IL2CPPMAP = promptForFile(R.string.boostrap_file_request_il2cpp_map, "map");
-                if(IL2CPPMAP == null){
-                    runOnMainThread(() -> Toast.makeText(this, "WARNING: no il2cpp api deobfuscation map selected. are you sure you know what you are doing?", Toast.LENGTH_LONG).show());
-                }
-                else{
-                    try{copyUriToFile(IL2CPPMAP, new File(DeobfuscationDir, IL2CPP_API_MAP));}
-                    catch (IOException e){
-                        Log.e(TAG, "Couldn't copy the deobfuscated il2cpp api map!", e);
-                    }
-                }
-            }
-            return true;
         }
-        return false;
+
+        try {
+            if (!Il2CppApiMapper.hasObfuscatedExports(gameLibIl2Cpp)) {
+                return new HashMap<>();
+            }
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to read il2cpp exports", e);
+            return new HashMap<>();
+        }
+
+        File mapFile = new File(DeobfuscationDir, IL2CPP_API_MAP);
+        if (!mapFile.isFile()) {
+            Uri selected = promptForFile(R.string.boostrap_file_request_il2cpp_map, "map");
+            if (selected == null) {
+                runOnMainThread(() -> Toast.makeText(this, "WARNING: no il2cpp api deobfuscation map selected. are you sure you know what you are doing?", Toast.LENGTH_LONG).show());
+                return new HashMap<>();
+            }
+            try {
+                copyUriToFile(selected, mapFile);
+            } catch (IOException e) {
+                Log.e(TAG, "Couldn't copy the deobfuscated il2cpp api map!", e);
+                return new HashMap<>();
+            }
+        }
+
+        Map<String, String> map = GetIL2CPPMap(DeobfuscationDir);
+        if (!useOriginalLibUnity && !map.isEmpty()) {
+            try {
+                Il2CppApiMapper.patchLibUnity(cachedLibUnity, map);
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to apply il2cpp api map to libunity", e);
+            }
+        }
+        return map;
+    }
+
+    private void applyGlobalMetadataOverride(String targetPackage, File copiedData) {
+        if (!GlobalMetadata.hasValidOverride(targetPackage)) {
+            return;
+        }
+        File target = new File(copiedData, "Managed/Metadata/" + GlobalMetadata.FILE_NAME);
+        try (InputStream in = new FileInputStream(GlobalMetadata.getOverrideFile(targetPackage));
+             FileOutputStream out = new FileOutputStream(target, false)) {
+            byte[] buffer = new byte[64 * 1024];
+            int count;
+            while ((count = in.read(buffer)) != -1) {
+                out.write(buffer, 0, count);
+            }
+            Log.i(TAG, "Applied global-metadata override to " + target.getAbsolutePath());
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to apply global-metadata override", e);
+        }
+    }
+
+    private static File getRuntimeDir(Context context) {
+        return context.getDir("fusion_runtime", Context.MODE_PRIVATE);
     }
 
     HashMap<String, String> GetIL2CPPMap(File DeobfuscationDir){
@@ -389,16 +440,17 @@ public class BootstrapActivity extends AppCompatActivity {
 
         File dataOnSdCard = Utilities.getExternalFusionCoreDirectory(targetPackage, null);
         File bepInExDir = new File(dataOnSdCard, "BepInEx");
-        File codeCacheScoped = new File(appContext.getCodeCacheDir(), targetPackage);
+        File codeCacheScoped = new File(getRuntimeDir(appContext), targetPackage);
 
         setPhaseStatus(getString(R.string.bootstrap_status_copy_assets));
         File Assets = new File(dataOnSdCard, "Assets");
         File PersistentData = new File(dataOnSdCard, "PersistentData");
-        boolean copied = Utilities.copyAssets(gameContext.getAssets(), "", Assets);
+        boolean copied = Utilities.copyAssets(gameContext.getApplicationInfo(), Assets);
         if (!copied) {
             Log.e(TAG, "Failed to copy Unity Data assets! BepInEx may not work correctly.");
         }
         File copiedData = new File(Assets, "bin/Data");
+        applyGlobalMetadataOverride(targetPackage, copiedData);
         File DeobfuscationDir = new File(bepInExDir, "Deobfuscation");
         setPhaseStatus(getString(R.string.bootstrap_status_detecting_version));
         String version = UnityUtils.TryGetVersion(copiedData);
@@ -436,18 +488,19 @@ public class BootstrapActivity extends AppCompatActivity {
         setPhaseStatus(getString(R.string.bootstrap_status_extracting_runtime));
         File dotnetDir;
         if(!useIl2Cpp2Mono) {
-            dotnetDir = new File(appContext.getCodeCacheDir(), "dotnet");
+            dotnetDir = new File(getRuntimeDir(appContext), "dotnet");
             Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
             Utilities.extractZipFromAssets(appContext, "dotnet-arm64.zip", dotnetDir);
-            CheckForObfuscation(new File(copiedData, "Managed/Metadata/global-metadata.dat"), DeobfuscationDir);
         } //we do something else
         else{
-            dotnetDir = new File(appContext.getCodeCacheDir(), "mono");
+            dotnetDir = new File(getRuntimeDir(appContext), "mono");
             Utilities.extractZipFromAssets(appContext, "il2cpp2mono-arm64.zip", dotnetDir);
             ensureManagedDllsForMono(PersistentData);
         }
 
-        HashMap<String, String> il2cppMap = GetIL2CPPMap(DeobfuscationDir);
+        Map<String, String> il2cppMap = useIl2Cpp2Mono
+                ? GetIL2CPPMap(DeobfuscationDir)
+                : resolveIl2CppApiMap(new File(gameLibDir), codeCacheScoped, useOriginalLibUnity, DeobfuscationDir);
 
         return new FusionConfig(
                 targetPackage,
