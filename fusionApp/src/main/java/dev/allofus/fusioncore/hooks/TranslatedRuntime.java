@@ -24,7 +24,8 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-import dalvik.system.BaseDexClassLoader;
+import dalvik.system.PathClassLoader;
+import dev.allofus.fusioncore.tools.NativeLibraryManager;
 import dev.allofus.fusioncore.R;
 import dev.allofus.fusioncore.tools.CustomContextWrapper;
 
@@ -33,19 +34,45 @@ public final class TranslatedRuntime {
 
     public static Context prepareGameContext(Context gameContext, ClassLoader fusionLoader)
             throws ReflectiveOperationException {
-        Field pathList = BaseDexClassLoader.class.getDeclaredField("pathList");
-        pathList.setAccessible(true);
-        Object fusionPaths = pathList.get(fusionLoader);
         android.content.pm.ApplicationInfo info = gameContext.getApplicationInfo();
         ArrayList<String> apks = new ArrayList<>();
         apks.add(info.sourceDir);
         if (info.splitSourceDirs != null) Collections.addAll(apks, info.splitSourceDirs);
-        Method addDexPath = fusionPaths.getClass().getDeclaredMethod("addDexPath", String.class, File.class);
-        addDexPath.setAccessible(true);
-        addDexPath.invoke(fusionPaths, String.join(File.pathSeparator, apks), null);
+        ClassLoader gameLoader = new GameClassLoader(String.join(File.pathSeparator, apks),
+                info.nativeLibraryDir, fusionLoader);
         return new ContextWrapper(gameContext) {
-            @Override public ClassLoader getClassLoader() { return fusionLoader; }
+            @Override public ClassLoader getClassLoader() { return gameLoader; }
         };
+    }
+
+    private static final class GameClassLoader extends PathClassLoader {
+        GameClassLoader(String dexPath, String libraryPath, ClassLoader parent) {
+            super(dexPath, libraryPath, parent);
+        }
+
+        @Override protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            synchronized (this) {
+                Class<?> loaded = findLoadedClass(name);
+                if (loaded == null) {
+                    boolean platform = name.startsWith("java.") || name.startsWith("javax.") ||
+                            name.startsWith("android.") || name.startsWith("dalvik.") ||
+                            name.startsWith("sun.") || name.startsWith("org.w3c.") ||
+                            name.startsWith("org.xml.") || name.startsWith("dev.allofus.fusioncore.");
+                    if (!platform) {
+                        try { loaded = findClass(name); }
+                        catch (ClassNotFoundException ignored) { }
+                    }
+                    if (loaded == null) loaded = super.loadClass(name, false);
+                }
+                if (resolve) resolveClass(loaded);
+                return loaded;
+            }
+        }
+
+        @Override public String findLibrary(String name) {
+            String override = NativeLibraryManager.findTranslatedLibrary(name);
+            return override != null ? override : super.findLibrary(name);
+        }
     }
 
     public static void install(Context gameContext) throws ReflectiveOperationException {

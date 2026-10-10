@@ -1,6 +1,9 @@
 package dev.allofus.fusioncore.tools;
 
+import android.app.Application;
 import android.content.Context;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.DatabaseErrorHandler;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
 import android.os.Build;
@@ -15,11 +18,24 @@ import java.io.File;
 public class CustomContextWrapper extends ContextWrapper {
     Context fusionContext;
     Context gameContext;
+    private final Context applicationContext;
 
     public CustomContextWrapper(Context gameContext, Context fusionContext) {
+        this(gameContext, fusionContext, null);
+    }
+
+    private CustomContextWrapper(Context gameContext, Context fusionContext, Application application) {
         super(gameContext);
         this.gameContext = gameContext;
         this.fusionContext = fusionContext;
+        if (application != null) {
+            this.applicationContext = application;
+        } else {
+            Application fusionApplication = (Application) fusionContext.getApplicationContext();
+            GameApplication gameApplication = new GameApplication(fusionApplication);
+            gameApplication.attach(new CustomContextWrapper(gameContext, fusionApplication, gameApplication));
+            this.applicationContext = gameApplication;
+        }
         this.getApplicationInfo().dataDir = Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName()).getAbsolutePath();
         // this prevents the game from resolving its own libraries
         // that way we can override them properly with our own versions
@@ -52,6 +68,28 @@ public class CustomContextWrapper extends ContextWrapper {
 
     public boolean moveSharedPreferencesFrom(Context sourceContext, String name) {
         return this.fusionContext.moveSharedPreferencesFrom(sourceContext, name);
+    }
+
+    @Override
+    public File getDatabasePath(String name) {
+        return fusionContext.getDatabasePath(name);
+    }
+
+    @Override
+    public SQLiteDatabase openOrCreateDatabase(String name, int mode, SQLiteDatabase.CursorFactory factory) {
+        return fusionContext.openOrCreateDatabase(name, mode, factory);
+    }
+
+    @Override
+    public SQLiteDatabase openOrCreateDatabase(String name, int mode, SQLiteDatabase.CursorFactory factory,
+                                               DatabaseErrorHandler errorHandler) {
+        return fusionContext.openOrCreateDatabase(name, mode, factory, errorHandler);
+    }
+
+    @Override public boolean deleteDatabase(String name) { return fusionContext.deleteDatabase(name); }
+    @Override public String[] databaseList() { return fusionContext.databaseList(); }
+    @Override public boolean moveDatabaseFrom(Context source, String name) {
+        return fusionContext.moveDatabaseFrom(source, name);
     }
 
     @Override
@@ -105,7 +143,7 @@ public class CustomContextWrapper extends ContextWrapper {
 
     @Override
     public Context getApplicationContext() {
-        return fusionContext.getApplicationContext();
+        return applicationContext;
     }
 
     @Override
@@ -118,5 +156,25 @@ public class CustomContextWrapper extends ContextWrapper {
     @Override
     public File[] getObbDirs() {
         return this.fusionContext.getObbDirs();
+    }
+
+    private static final class GameApplication extends Application {
+        private final Application fusionApplication;
+
+        GameApplication(Application fusionApplication) { this.fusionApplication = fusionApplication; }
+        void attach(Context context) { attachBaseContext(context); }
+
+        @Override public void registerActivityLifecycleCallbacks(ActivityLifecycleCallbacks callback) {
+            fusionApplication.registerActivityLifecycleCallbacks(callback);
+        }
+        @Override public void unregisterActivityLifecycleCallbacks(ActivityLifecycleCallbacks callback) {
+            fusionApplication.unregisterActivityLifecycleCallbacks(callback);
+        }
+        @Override public void registerComponentCallbacks(android.content.ComponentCallbacks callback) {
+            fusionApplication.registerComponentCallbacks(callback);
+        }
+        @Override public void unregisterComponentCallbacks(android.content.ComponentCallbacks callback) {
+            fusionApplication.unregisterComponentCallbacks(callback);
+        }
     }
 }

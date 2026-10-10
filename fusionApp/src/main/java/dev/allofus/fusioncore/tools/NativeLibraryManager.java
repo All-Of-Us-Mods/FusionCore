@@ -19,6 +19,7 @@ import top.canyie.pine.callback.MethodHook;
 
 public class NativeLibraryManager {
     private static final String TAG = "NativeLibraryManager";
+    private static volatile FusionConfig translatedConfig;
 
     private static final ArrayList<String> FusionLibraries = new ArrayList<>();
 
@@ -44,6 +45,7 @@ public class NativeLibraryManager {
     // this redirects library loading to the libraries we want the game to use
     public static void setupLibraryHooks(FusionConfig config) {
         if (NativePlatform.isArmTranslation()) {
+            translatedConfig = config;
             setupTranslatedLibraries(config);
             return;
         }
@@ -90,6 +92,17 @@ public class NativeLibraryManager {
                 }
             }
         });
+    }
+
+    public static String findTranslatedLibrary(String name) {
+        FusionConfig config = translatedConfig;
+        if (config == null) return null;
+        String directory;
+        if (FusionLibraries.contains(name)) directory = config.appLibraryDirectory;
+        else if (CacheLibraries.contains(name)) directory = config.codeCacheDirectory;
+        else directory = config.gameLibraryDirectory;
+        File library = new File(directory, "lib" + name + ".so");
+        return library.isFile() ? library.getAbsolutePath() : null;
     }
 
     private static void setupTranslatedLibraries(FusionConfig config) {
