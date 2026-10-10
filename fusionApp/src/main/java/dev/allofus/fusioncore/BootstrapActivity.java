@@ -35,12 +35,10 @@ import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
-import dev.allofus.fusioncore.hooks.ClassHooks;
-import dev.allofus.fusioncore.hooks.ClassLoaderHooks;
 import dev.allofus.fusioncore.hooks.InstrumentationHooks;
+import dev.allofus.fusioncore.hooks.ActivityManagerHooks;
 import dev.allofus.fusioncore.hooks.PackageManagerHooks;
-import dev.allofus.fusioncore.hooks.ResourceHooks;
-import dev.allofus.fusioncore.hooks.UnityPlayerHooks;
+import dev.allofus.fusioncore.hooks.GameRuntime;
 import dev.allofus.fusioncore.tools.FusionConfig;
 import dev.allofus.fusioncore.tools.LibUnityDownloader;
 import dev.allofus.fusioncore.tools.NativeLibraryManager;
@@ -104,6 +102,13 @@ public class BootstrapActivity extends AppCompatActivity {
             gameContext = createPackageContext(targetPackage, CONTEXT_IGNORE_SECURITY | CONTEXT_INCLUDE_CODE);
         } catch (Exception e) {
             failAndFinish("Failed to create package context for target package: " + targetPackage, e);
+            return;
+        }
+
+        try {
+            gameContext = GameRuntime.prepareGameContext(gameContext, getClassLoader());
+        } catch (Exception e) {
+            failAndFinish("Failed to configure classes.", e);
             return;
         }
 
@@ -171,14 +176,12 @@ public class BootstrapActivity extends AppCompatActivity {
 
         setPhaseStatus(getString(R.string.bootstrap_status_installing_hooks));
         try {
-            ClassLoaderHooks.installHooks(gameContext.getClassLoader());
-            ClassHooks.installHooks(gameContext.getClassLoader());
-            PackageManagerHooks.installHooks(getPackageManager());
-            InstrumentationHooks.install(getApplicationContext());
-            UnityPlayerHooks.installHooks(gameContext);
-            ResourceHooks.installHooks(gameContext.getResources(), getApplicationContext().getResources());
+            PackageManagerHooks.install(getApplicationContext(), gameContext);
+            ActivityManagerHooks.install(getApplicationContext(), gameContext);
+            GameRuntime.install(gameContext);
         } catch (Exception e) {
-            Log.e(TAG, "Failed to install base hooks", e);
+            failAndFinish("Failed to install base hooks", e);
+            return;
         }
 
         var className = launcherComponent.getClassName();
@@ -308,13 +311,13 @@ public class BootstrapActivity extends AppCompatActivity {
                 NativeLibraryManager.addCacheLibrary("il2cpp");
             }
             else {
-                NativeLibraryManager.AddDotnetLibrary("il2cpp");
-                NativeLibraryManager.AddDotnetLibrary("monosgen-2.0");
+                NativeLibraryManager.addDotnetLibrary("il2cpp");
+                NativeLibraryManager.addDotnetLibrary("monosgen-2.0");
             }
             NativeLibraryManager.addCacheLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);
         } catch (Throwable t) {
-            Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
+            throw new IllegalStateException("Failed to initialize Fusion library routing", t);
         }
     }
     boolean CheckForObfuscation(File MetadataFile, File DeobfuscationDir){
@@ -442,20 +445,6 @@ public class BootstrapActivity extends AppCompatActivity {
             dotnetDir = new File(appContext.getCodeCacheDir(), "mono");
             Utilities.extractZipFromAssets(appContext, "il2cpp2mono-arm64.zip", dotnetDir);
             ensureManagedDllsForMono(PersistentData);
-        }
-
-        setPhaseStatus(getString(R.string.bootstrap_status_registering_libraries));
-        File[] nativeLibs = new File(gameLibDir).listFiles();
-        if (nativeLibs != null) {
-            for (File file : nativeLibs) {
-                String name = file.getName();
-                if (name.startsWith("lib") && name.endsWith(".so") && name.length() > 6) {
-                    String extractedName = name.substring(3, name.length() - 3);
-                    NativeLibraryManager.addGameLibrary(extractedName);
-                }
-            }
-        } else {
-            Log.e(TAG, "Failed to list game native libraries! BepInEx may not work correctly.");
         }
 
         HashMap<String, String> il2cppMap = GetIL2CPPMap(DeobfuscationDir);
