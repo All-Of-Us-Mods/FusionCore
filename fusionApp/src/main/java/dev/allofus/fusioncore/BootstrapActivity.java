@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Locale;
 
 import dev.allofus.fusioncore.hooks.InstrumentationHooks;
+import dev.allofus.fusioncore.hooks.ActivityManagerHooks;
 import dev.allofus.fusioncore.hooks.PackageManagerHooks;
 import dev.allofus.fusioncore.hooks.GameRuntime;
 import dev.allofus.fusioncore.tools.FusionConfig;
@@ -145,6 +146,7 @@ public class BootstrapActivity extends AppCompatActivity {
         setPhaseStatus(getString(R.string.bootstrap_status_installing_hooks));
         try {
             PackageManagerHooks.install(getApplicationContext(), gameContext);
+            ActivityManagerHooks.install(getApplicationContext(), gameContext);
             GameRuntime.install(gameContext);
         } catch (Exception e) {
             failAndFinish("Failed to install base hooks", e);
