@@ -156,16 +156,16 @@ FusionConfig fusion_parse_config(JNIEnv *env, jobject jFusionConfig)
         config.useOriginalLibUnity = true;
         return config;
     }
-
-    GET_JBOOLEAN_FIELD(useOriginalLibUnity)
-    GET_JSTRING_FIELD(gameLibraryDirectory)
-    GET_JSTRING_FIELD(appLibraryDirectory)
-    GET_JSTRING_FIELD(appDataDirectory)
-    GET_JSTRING_FIELD(codeCacheDirectory)
-    GET_JSTRING_FIELD(bepInExDirectory)
-    GET_JSTRING_FIELD(dotnetDirectory)
-    GET_JSTRING_FIELD(unityDataDirectory)
-    GET_JSTRING_FIELD(unityVersion)
+    GET_JBOOLEAN_FIELD(isIl2Cpp2Mono);
+    GET_JBOOLEAN_FIELD(useOriginalLibUnity);
+    GET_JSTRING_FIELD(gameLibraryDirectory);
+    GET_JSTRING_FIELD(appLibraryDirectory);
+    GET_JSTRING_FIELD(appDataDirectory);
+    GET_JSTRING_FIELD(codeCacheDirectory);
+    GET_JSTRING_FIELD(bepInExDirectory);
+    GET_JSTRING_FIELD(dotnetDirectory);
+    GET_JSTRING_FIELD(unityDataDirectory);
+    GET_JSTRING_FIELD(unityVersion);
     config.fusionVariables = get_string_array_field(env, jFusionConfig, "fusionVariables");
     config.auxiliaryPluginFolders = get_string_array_field(env, jFusionConfig,
                                                            "auxiliaryPluginFolders");

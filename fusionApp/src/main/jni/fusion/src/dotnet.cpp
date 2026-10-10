@@ -1,119 +1,132 @@
 // Copyright (c) 2026 XtraCube. All rights reserved.
 #include <dotnet.h>
+#include <hooking/il2cpp.h>
 #include <external/coreclrhost.h>
 #include <filesystem>
 #include <logger.h>
 #include <thread>
+#include <dlfcn.h>
 
 #define TAG "Fusion.NET"
 
 namespace fs = std::filesystem;
 
+
 void build_tpa(const char *directory, std::string &tpaList);
 
 int dotnet_execute_assembly(const DotNetConfig& config, AuxPluginFolderList *auxFolders)
 {
-    log(LogLevel::INFO, TAG, "Preparing CLR properties");
+    entrypoint_fn managedDelegate;
+    if(config.IsMono){
+        log(LogLevel::INFO, TAG, "using il2cpp2mono!");
+        auto get_delegate =
+                reinterpret_cast<GetDelegate>(
+                        dlsym(handle, "il2cpp2mono_get_delegate")
+                );
+        std::string FullPath = fs::path(config.managedLibsDir) / (config.entryPointAssembly + ".dll");
+        managedDelegate = reinterpret_cast<entrypoint_fn>(get_delegate(FullPath.c_str(), config.entryPointType.c_str(), config.entryPointMethod.c_str(), 1));
+        if(managedDelegate == nullptr){
+            log_format(LogLevel::ERROR, TAG, "il2cpp2mono failed to get {}::{}.{}", config.entryPointAssembly, config.entryPointType, config.entryPointMethod);
+            return -1;
+        }
+    }
+    else {
+        log(LogLevel::INFO, TAG, "Preparing CLR properties");
 
-#define NUM_KEYS 3
+        #define NUM_KEYS 3
 
-    const char *propertyKeys[NUM_KEYS] = {
-            "TRUSTED_PLATFORM_ASSEMBLIES",
-            "APP_PATHS",
-            "APP_CONTEXT_BASE_DIRECTORY"
-    };
+        const char *propertyKeys[NUM_KEYS] = {
+                "TRUSTED_PLATFORM_ASSEMBLIES",
+                "APP_PATHS",
+                "APP_CONTEXT_BASE_DIRECTORY"
+        };
 
-    std::string appPaths = (config.runtimeDir + ":" + config.managedLibsDir);
+        std::string appPaths = (config.runtimeDir + ":" + config.managedLibsDir);
 
-    std::string tpaPath;
-    build_tpa(config.managedLibsDir.c_str(), tpaPath);
-    build_tpa(config.runtimeDir.c_str(), tpaPath);
+        std::string tpaPath;
+        build_tpa(config.managedLibsDir.c_str(), tpaPath);
+        build_tpa(config.runtimeDir.c_str(), tpaPath);
 
-    log_format(LogLevel::DEBUG, TAG, "TPA Path: {}", tpaPath);
+        log_format(LogLevel::DEBUG, TAG, "TPA Path: {}", tpaPath);
 
-    const char *propertyValues[NUM_KEYS] = {
-            tpaPath.c_str(),
-            appPaths.c_str(),
-            config.managedLibsDir.c_str()
-    };
+        const char *propertyValues[NUM_KEYS] = {
+                tpaPath.c_str(),
+                appPaths.c_str(),
+                config.managedLibsDir.c_str()
+        };
 
-    setenv("DOTNET_ReadyToRun", "0", 1);
+        setenv("DOTNET_ReadyToRun", "0", 1);
 
-    log(LogLevel::INFO, TAG, "Attempting CoreCLR initialization with W^X disabled");
-    // Attempt without W^X first
-    setenv("DOTNET_EnableWriteXorExecute", "0", 1);
+        uint32_t hr = -1;
+        void *hostHandle = nullptr;
+        unsigned int domainId = 0;
 
-    uint32_t hr = -1;
-    void *hostHandle = nullptr;
-    unsigned int domainId = 0;
-
-    for (int attempt = 1; attempt <= 2; ++attempt)
-    {
-        hostHandle = nullptr;
-        domainId = 0;
-        hr = coreclr_initialize(
-                config.runtimeDir.c_str(),            // AppDomain base path
-                "FusionHost",                      // AppDomain friendly name
-                sizeof(propertyKeys) / sizeof(char *),// Property count
-                propertyKeys,                         // Property names
-                propertyValues,                       // Property values
-                &hostHandle,                          // Host handle
-                &domainId);                           // AppDomain ID
-
-        log_format(LogLevel::INFO, TAG,
-                          "coreclr_initialize attempt {} -> hr={} ({:#010x}), hostHandle={}, domainId={}",
-                          attempt,
-                          hr,
-                          static_cast<uint32_t>(hr),
-                          hostHandle,
-                          domainId);
-
-        if (hr >= 0)
+        for (int attempt = 1; attempt <= 2; ++attempt)
         {
+            hostHandle = nullptr;
+            domainId = 0;
+            hr = coreclr_initialize(
+                    config.runtimeDir.c_str(),            // AppDomain base path
+                    "FusionHost",                      // AppDomain friendly name
+                    sizeof(propertyKeys) / sizeof(char *),// Property count
+                    propertyKeys,                         // Property names
+                    propertyValues,                       // Property values
+                    &hostHandle,                          // Host handle
+                    &domainId);                           // AppDomain ID
+
+            log_format(LogLevel::INFO, TAG,
+                       "coreclr_initialize attempt {} -> hr={} ({:#010x}), hostHandle={}, domainId={}",
+                       attempt,
+                       hr,
+                       static_cast<uint32_t>(hr),
+                       hostHandle,
+                       domainId);
+
+            if (hr >= 0)
+            {
+                break;
+            }
+
+            if (attempt == 1 && hr == HR_INTERNAL_ERROR)
+            {
+                // Retry with W^X enabled
+                setenv("DOTNET_EnableWriteXorExecute", "1", 1);
+                log(LogLevel::WARN, TAG, "Retrying CoreCLR init with W^X enabled");
+                std::this_thread::sleep_for(std::chrono::milliseconds(75));
+                continue;
+            }
+
             break;
         }
 
-        if (attempt == 1 && hr == HR_INTERNAL_ERROR)
-        {
-            // Retry with W^X enabled
-            setenv("DOTNET_EnableWriteXorExecute", "1", 1);
-            log(LogLevel::WARN, TAG, "Retrying CoreCLR init with W^X enabled");
-            std::this_thread::sleep_for(std::chrono::milliseconds(75));
-            continue;
+        if (hr >= 0) {
+            log_format(LogLevel::INFO, TAG, "CoreCLR started; AppDomain {} created", domainId);
+        } else {
+            log_format(LogLevel::ERROR, TAG, "coreclr_initialize failed - status: {} ({:#010x})",
+                       hr, static_cast<uint32_t>(hr));
+            return hr;
         }
 
-        break;
-    }
+        log_format(LogLevel::INFO, TAG, "Creating delegate for {}.{} in {}",
+                   config.entryPointType, config.entryPointMethod, config.entryPointAssembly);
 
-    if (hr >= 0) {
-        log_format(LogLevel::INFO, TAG, "CoreCLR started; AppDomain {} created", domainId);
-    } else {
-        log_format(LogLevel::ERROR, TAG, "coreclr_initialize failed - status: {} ({:#010x})",
-                          hr, static_cast<uint32_t>(hr));
-        return hr;
-    }
+        hr = coreclr_create_delegate(
+                hostHandle,
+                domainId,
+                config.entryPointAssembly.c_str(),
+                config.entryPointType.c_str(),
+                config.entryPointMethod.c_str(),
+                (void**)&managedDelegate);
 
-    entrypoint_fn managedDelegate;
-
-    log_format(LogLevel::INFO, TAG, "Creating delegate for {}.{} in {}",
-                      config.entryPointType, config.entryPointMethod, config.entryPointAssembly);
-
-    hr = coreclr_create_delegate(
-            hostHandle,
-            domainId,
-            config.entryPointAssembly.c_str(),
-            config.entryPointType.c_str(),
-            config.entryPointMethod.c_str(),
-            (void**)&managedDelegate);
-
-    if (hr >= 0)
-    {
-        log(LogLevel::INFO, TAG, "Managed delegate created");
-    }
-    else
-    {
-        log_format(LogLevel::ERROR, TAG, "coreclr_create_delegate failed - status: {}", hr);
-        return hr;
+        if (hr >= 0)
+        {
+            log(LogLevel::INFO, TAG, "Managed delegate created");
+        }
+        else
+        {
+            log_format(LogLevel::ERROR, TAG, "coreclr_create_delegate failed - status: {}", hr);
+            return hr;
+        }
     }
 
     managedDelegate(auxFolders);

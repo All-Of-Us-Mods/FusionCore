@@ -3,6 +3,7 @@ package dev.allofus.fusioncore.tools;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
+import android.content.res.AssetManager;
 import android.os.Build;
 import android.util.Log;
 import android.view.Display;
@@ -20,7 +21,7 @@ public class CustomContextWrapper extends ContextWrapper {
         super(gameContext);
         this.gameContext = gameContext;
         this.fusionContext = fusionContext;
-        this.getApplicationInfo().dataDir = Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName()).getAbsolutePath();
+        this.getApplicationInfo().dataDir = Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName(), "PersistentData").getAbsolutePath();
         // this prevents the game from resolving its own libraries
         // that way we can override them properly with our own versions
         this.getApplicationInfo().nativeLibraryDir = "";
@@ -53,7 +54,6 @@ public class CustomContextWrapper extends ContextWrapper {
     public boolean moveSharedPreferencesFrom(Context sourceContext, String name) {
         return this.fusionContext.moveSharedPreferencesFrom(sourceContext, name);
     }
-
     @Override
     public File getFilesDir() {
         return this.fusionContext.getFilesDir();
@@ -79,10 +79,9 @@ public class CustomContextWrapper extends ContextWrapper {
     @Override
     public File getExternalFilesDir(String type) {
         if (type == null) {
-            return Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName());
+            return Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName(), "PersistentData");
         }
-
-        return new File(Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName()), type);
+        return new File(Utilities.getExternalFusionCoreDirectory(gameContext.getPackageName(), "PersistentData"), type);
     }
 
     @Override

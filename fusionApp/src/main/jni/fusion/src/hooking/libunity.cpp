@@ -24,7 +24,6 @@ void* scripting_method_invoke_hook(void* method, void* obj, void* args, void* ex
 
     return original_scripting_method_invoke(method, obj, args, exc, something);
 }
-
 void try_hook_libunity(std::string &libUnityPath, const std::string &fallbackLibUnityPath) {
 
     // should never be closed

@@ -22,17 +22,19 @@ import java.util.zip.ZipInputStream;
 public class Utilities {
     private static final String TAG = "FusionCore";
 
-    public static File getExternalFusionCoreDirectory(@Nullable String targetPackage) {
+    public static File getExternalFusionCoreDirectory(@Nullable String targetPackage, @Nullable String Folder) {
         File fusionStorage = new File(Environment.getExternalStorageDirectory(), "FusionCore");
         if (targetPackage != null) {
             fusionStorage = new File(fusionStorage, targetPackage);
+        }
+        if(Folder != null){
+            fusionStorage = new File(fusionStorage, Folder);
         }
         if (!fusionStorage.exists()) {
             fusionStorage.mkdirs();
         }
         return fusionStorage;
     }
-
     public static void applyWindowInsets(View root, int basePadding) {
         root.setOnApplyWindowInsetsListener((v, insets) -> {
             int insetTop;
@@ -70,53 +72,53 @@ public class Utilities {
         }
         return "v" + versionName;
     }
+    public static void extractZipFromStream(ZipInputStream zis, File outputFolder) throws IOException {
+        if (!outputFolder.exists() && !outputFolder.mkdirs()) {
+            throw new IOException("Failed to create output directory: " + outputFolder.getAbsolutePath());
+        }
+        byte[] buffer = new byte[8192];
+            String outputRoot = outputFolder.getCanonicalPath() + File.separator;
+            ZipEntry ze;
+            while ((ze = zis.getNextEntry()) != null) {
+                String entryName = ze.getName();
+                if (entryName == null || entryName.isEmpty()) {
+                    zis.closeEntry();
+                    continue;
+                }
 
+                File target = new File(outputFolder, entryName);
+                String targetPath = target.getCanonicalPath();
+
+                if (!targetPath.startsWith(outputRoot)) {
+                    throw new IOException("Blocked zip entry outside output folder: " + entryName);
+                }
+
+                if (ze.isDirectory()) {
+                    if (!target.exists() && !target.mkdirs()) {
+                        throw new IOException("Failed to create directory: " + targetPath);
+                    }
+                } else {
+                    File parent = target.getParentFile();
+                    if (parent != null && !parent.exists() && !parent.mkdirs()) {
+                        throw new IOException("Failed to create parent directory: " + parent.getAbsolutePath());
+                    }
+
+                    try (FileOutputStream fos = new FileOutputStream(target)) {
+                        int count;
+                        while ((count = zis.read(buffer)) != -1) {
+                            fos.write(buffer, 0, count);
+                        }
+                    }
+                }
+
+                zis.closeEntry();
+            }
+    }
     public static void extractZipFromAssets(Context context, String assetName, File outputFolder) {
         try {
-            if (!outputFolder.exists() && !outputFolder.mkdirs()) {
-                throw new IOException("Failed to create output directory: " + outputFolder.getAbsolutePath());
-            }
-
-            String outputRoot = outputFolder.getCanonicalPath() + File.separator;
-            byte[] buffer = new byte[8192];
-
             try (InputStream is = context.getAssets().open(assetName);
                  ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
-                ZipEntry ze;
-                while ((ze = zis.getNextEntry()) != null) {
-                    String entryName = ze.getName();
-                    if (entryName == null || entryName.isEmpty()) {
-                        zis.closeEntry();
-                        continue;
-                    }
-
-                    File target = new File(outputFolder, entryName);
-                    String targetPath = target.getCanonicalPath();
-
-                    if (!targetPath.startsWith(outputRoot)) {
-                        throw new IOException("Blocked zip entry outside output folder: " + entryName);
-                    }
-
-                    if (ze.isDirectory()) {
-                        if (!target.exists() && !target.mkdirs()) {
-                            throw new IOException("Failed to create directory: " + targetPath);
-                        }
-                    } else {
-                        File parent = target.getParentFile();
-                        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                            throw new IOException("Failed to create parent directory: " + parent.getAbsolutePath());
-                        }
-
-                        try (FileOutputStream fos = new FileOutputStream(target)) {
-                            int count;
-                            while ((count = zis.read(buffer)) != -1) {
-                                fos.write(buffer, 0, count);
-                            }
-                        }
-                    }
-
-                    zis.closeEntry();
-                }
+                  extractZipFromStream(zis, outputFolder);
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to extract " + assetName + " from assets!", e);
@@ -124,7 +126,9 @@ public class Utilities {
     }
 
     public static boolean copyAssets(AssetManager gameAssets, String assetPath, File outputFolder) {
-        deleteRecursive(outputFolder);
+        if(outputFolder.exists()){
+            return true;
+        }
 
         try {
             if (copyAssetEntry(gameAssets, assetPath, outputFolder)) {
@@ -154,7 +158,7 @@ public class Utilities {
 
             for (String child : children) {
                 File childTarget = new File(outputTarget, child);
-                String childPath = assetPath + "/" + child;
+                String childPath = assetPath.isEmpty() ? child : assetPath + "/" + child;
                 if (!copyAssetEntry(gameAssets, childPath, childTarget)) {
                     return false;
                 }
@@ -196,5 +200,13 @@ public class Utilities {
         }
 
         return file.delete();
+    }
+
+    public static void extractZipFromInputStream(InputStream inputStream, File OutPutFolder) {
+            try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(inputStream))) {
+                extractZipFromStream(zis, OutPutFolder);
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to extract zip from InputStream!", e);
+        }
     }
 }

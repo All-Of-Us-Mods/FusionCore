@@ -13,9 +13,11 @@ struct AuxPluginFolderList
 };
 
 using entrypoint_fn = void(*)(AuxPluginFolderList *folderList);
+using GetDelegate = void* (*)(const char*, const char*, const char*, int);
 
 struct DotNetConfig
 {
+    bool IsMono;
     std::string runtimeDir;
     std::string managedLibsDir;
     std::string entryPointAssembly;
