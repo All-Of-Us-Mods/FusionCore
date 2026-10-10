@@ -29,8 +29,8 @@ import dev.allofus.fusioncore.tools.NativeLibraryManager;
 import dev.allofus.fusioncore.R;
 import dev.allofus.fusioncore.tools.CustomContextWrapper;
 
-public final class TranslatedRuntime {
-    private TranslatedRuntime() {}
+public final class GameRuntime {
+    private GameRuntime() {}
 
     public static Context prepareGameContext(Context gameContext, ClassLoader fusionLoader)
             throws ReflectiveOperationException {
@@ -70,7 +70,7 @@ public final class TranslatedRuntime {
         }
 
         @Override public String findLibrary(String name) {
-            String override = NativeLibraryManager.findTranslatedLibrary(name);
+            String override = NativeLibraryManager.findLibrary(name);
             return override != null ? override : super.findLibrary(name);
         }
     }
@@ -86,7 +86,7 @@ public final class TranslatedRuntime {
         if (!(original instanceof GameInstrumentation)) {
             instrumentation.set(thread, new GameInstrumentation(original, gameContext));
         }
-        Log.i("TranslatedRuntime", "Installed activity loading");
+        Log.i("GameRuntime", "Installed activity loading");
     }
 
     private static final class GameInstrumentation extends Instrumentation {

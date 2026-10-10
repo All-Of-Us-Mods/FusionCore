@@ -35,17 +35,12 @@ import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
-import dev.allofus.fusioncore.hooks.ClassHooks;
-import dev.allofus.fusioncore.hooks.ClassLoaderHooks;
 import dev.allofus.fusioncore.hooks.InstrumentationHooks;
 import dev.allofus.fusioncore.hooks.PackageManagerHooks;
-import dev.allofus.fusioncore.hooks.ResourceHooks;
-import dev.allofus.fusioncore.hooks.UnityPlayerHooks;
-import dev.allofus.fusioncore.hooks.TranslatedRuntime;
+import dev.allofus.fusioncore.hooks.GameRuntime;
 import dev.allofus.fusioncore.tools.FusionConfig;
 import dev.allofus.fusioncore.tools.LibUnityDownloader;
 import dev.allofus.fusioncore.tools.NativeLibraryManager;
-import dev.allofus.fusioncore.tools.NativePlatform;
 import dev.allofus.fusioncore.tools.Utilities;
 import dev.allofus.fusioncore.tools.UnityUtils;
 
@@ -109,14 +104,11 @@ public class BootstrapActivity extends AppCompatActivity {
             return;
         }
 
-        if (NativePlatform.isArmTranslation()) {
-            try {
-                gameContext = TranslatedRuntime.prepareGameContext(
-                        gameContext, getClassLoader());
-            } catch (Exception e) {
-                failAndFinish("Failed to configure classes.", e);
-                return;
-            }
+        try {
+            gameContext = GameRuntime.prepareGameContext(gameContext, getClassLoader());
+        } catch (Exception e) {
+            failAndFinish("Failed to configure classes.", e);
+            return;
         }
 
         Intent launchIntent = getPackageManager().getLaunchIntentForPackage(targetPackage);
@@ -183,17 +175,8 @@ public class BootstrapActivity extends AppCompatActivity {
 
         setPhaseStatus(getString(R.string.bootstrap_status_installing_hooks));
         try {
-            if (NativePlatform.isArmTranslation()) {
-                PackageManagerHooks.installTranslated(getApplicationContext(), gameContext);
-                TranslatedRuntime.install(gameContext);
-            } else {
-                ClassLoaderHooks.installHooks(gameContext.getClassLoader());
-                ClassHooks.installHooks(gameContext.getClassLoader());
-                PackageManagerHooks.installHooks(getPackageManager());
-                InstrumentationHooks.install(getApplicationContext());
-                UnityPlayerHooks.installHooks(gameContext);
-                ResourceHooks.installHooks(gameContext.getResources(), getApplicationContext().getResources());
-            }
+            PackageManagerHooks.install(getApplicationContext(), gameContext);
+            GameRuntime.install(gameContext);
         } catch (Exception e) {
             failAndFinish("Failed to install base hooks", e);
             return;
