@@ -15,11 +15,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
+    <dev.allofus.fusioncore.tools.OutlinedTextView
         android:id="@+id/loadingText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Loading..."
+        android:text="@string/loading"
+        android:textColor="@android:color/white"
+        android:padding="2dp"
         android:textSize="24sp"
         android:textAlignment="center"
         app:layout_constraintEnd_toEndOf="parent"
