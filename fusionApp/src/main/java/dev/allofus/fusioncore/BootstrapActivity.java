@@ -41,9 +41,11 @@ import dev.allofus.fusioncore.hooks.InstrumentationHooks;
 import dev.allofus.fusioncore.hooks.PackageManagerHooks;
 import dev.allofus.fusioncore.hooks.ResourceHooks;
 import dev.allofus.fusioncore.hooks.UnityPlayerHooks;
+import dev.allofus.fusioncore.hooks.TranslatedRuntime;
 import dev.allofus.fusioncore.tools.FusionConfig;
 import dev.allofus.fusioncore.tools.LibUnityDownloader;
 import dev.allofus.fusioncore.tools.NativeLibraryManager;
+import dev.allofus.fusioncore.tools.NativePlatform;
 import dev.allofus.fusioncore.tools.Utilities;
 import dev.allofus.fusioncore.tools.UnityUtils;
 
@@ -105,6 +107,16 @@ public class BootstrapActivity extends AppCompatActivity {
         } catch (Exception e) {
             failAndFinish("Failed to create package context for target package: " + targetPackage, e);
             return;
+        }
+
+        if (NativePlatform.isArmTranslation()) {
+            try {
+                gameContext = TranslatedRuntime.prepareGameContext(
+                        gameContext, getClassLoader());
+            } catch (Exception e) {
+                failAndFinish("Failed to configure classes.", e);
+                return;
+            }
         }
 
         Intent launchIntent = getPackageManager().getLaunchIntentForPackage(targetPackage);
@@ -171,14 +183,20 @@ public class BootstrapActivity extends AppCompatActivity {
 
         setPhaseStatus(getString(R.string.bootstrap_status_installing_hooks));
         try {
-            ClassLoaderHooks.installHooks(gameContext.getClassLoader());
-            ClassHooks.installHooks(gameContext.getClassLoader());
-            PackageManagerHooks.installHooks(getPackageManager());
-            InstrumentationHooks.install(getApplicationContext());
-            UnityPlayerHooks.installHooks(gameContext);
-            ResourceHooks.installHooks(gameContext.getResources(), getApplicationContext().getResources());
+            if (NativePlatform.isArmTranslation()) {
+                PackageManagerHooks.installTranslated(getApplicationContext(), gameContext);
+                TranslatedRuntime.install(gameContext);
+            } else {
+                ClassLoaderHooks.installHooks(gameContext.getClassLoader());
+                ClassHooks.installHooks(gameContext.getClassLoader());
+                PackageManagerHooks.installHooks(getPackageManager());
+                InstrumentationHooks.install(getApplicationContext());
+                UnityPlayerHooks.installHooks(gameContext);
+                ResourceHooks.installHooks(gameContext.getResources(), getApplicationContext().getResources());
+            }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to install base hooks", e);
+            failAndFinish("Failed to install base hooks", e);
+            return;
         }
 
         var className = launcherComponent.getClassName();
@@ -314,7 +332,7 @@ public class BootstrapActivity extends AppCompatActivity {
             NativeLibraryManager.addCacheLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);
         } catch (Throwable t) {
-            Log.e(TAG, "Failed to initialize Fusion in launcher beforeCall", t);
+            throw new IllegalStateException("Failed to initialize Fusion library routing", t);
         }
     }
     boolean CheckForObfuscation(File MetadataFile, File DeobfuscationDir){

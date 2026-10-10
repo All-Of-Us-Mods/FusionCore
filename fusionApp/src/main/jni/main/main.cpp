@@ -1,6 +1,7 @@
 #include <jni.h>
 #include <dlfcn.h>
 #include <string>
+#include <cstdlib>
 #include <android/log.h>
 
 #define LOG_TAG "LibMain"
@@ -40,7 +41,9 @@ static std::string build_sibling_library_path(const char *libraryFileName)
         return {};
     }
 
-    std::string selfPath(info.dli_fname);
+    char *canonicalPath = realpath(info.dli_fname, nullptr);
+    std::string selfPath(canonicalPath ? canonicalPath : info.dli_fname);
+    free(canonicalPath);
     size_t lastSlash = selfPath.find_last_of('/');
     if (lastSlash == std::string::npos) {
         return {};

@@ -3,6 +3,13 @@ package dev.allofus.fusioncore.tools;
 import android.util.Log;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Field;
+import java.lang.reflect.Array;
+import java.io.File;
+import java.util.Collection;
+import java.util.List;
+import android.system.Os;
+import dalvik.system.BaseDexClassLoader;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -39,6 +46,10 @@ public class NativeLibraryManager {
     }
     // this redirects library loading to the libraries we want the game to use
     public static void setupLibraryHooks(FusionConfig config) {
+        if (NativePlatform.isArmTranslation()) {
+            setupTranslatedLibraries(config);
+            return;
+        }
         Method findLibraryMethod = findLibraryMethodViaReflection();
 
         if (findLibraryMethod == null) {
@@ -89,6 +100,54 @@ public class NativeLibraryManager {
                 }
             }
         });
+    }
+
+    private static void setupTranslatedLibraries(FusionConfig config) {
+        try {
+            File overrides = new File(config.codeCacheDirectory, "native-overrides");
+            if (!overrides.isDirectory() && !overrides.mkdirs()) {
+                throw new IllegalStateException("Cannot create native library overrides");
+            }
+            for (String name : CacheLibraries) linkLibrary(overrides, name, config.codeCacheDirectory);
+            for (String name : FusionLibraries) linkLibrary(overrides, name, config.appLibraryDirectory);
+
+            Field pathListField = BaseDexClassLoader.class.getDeclaredField("pathList");
+            pathListField.setAccessible(true);
+            Object pathList = pathListField.get(BootstrapActivity.class.getClassLoader());
+            Method addNativePath = pathList.getClass().getDeclaredMethod("addNativePath", Collection.class);
+            addNativePath.setAccessible(true);
+            prependNativePath(pathList, addNativePath, config.gameLibraryDirectory);
+            prependNativePath(pathList, addNativePath, overrides.getAbsolutePath());
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot configure libraries", e);
+        }
+    }
+
+    private static void linkLibrary(File directory, String name, String source) throws Exception {
+        File link = new File(directory, "lib" + name + ".so");
+        if (!link.delete()) {
+            try {
+                Os.lstat(link.getAbsolutePath());
+                throw new IllegalStateException("Cannot replace " + link);
+            } catch (android.system.ErrnoException e) {
+                if (e.errno != android.system.OsConstants.ENOENT) throw e;
+            }
+        }
+        Os.symlink(source + "/lib" + name + ".so", link.getAbsolutePath());
+    }
+
+    private static void prependNativePath(Object pathList, Method addNativePath, String path)
+            throws ReflectiveOperationException {
+        Field elementsField = pathList.getClass().getDeclaredField("nativeLibraryPathElements");
+        elementsField.setAccessible(true);
+        int previousCount = Array.getLength(elementsField.get(pathList));
+        addNativePath.invoke(pathList, List.of(path));
+        Object elements = elementsField.get(pathList);
+        int count = Array.getLength(elements);
+        if (count == previousCount) return;
+        Object added = Array.get(elements, count - 1);
+        for (int i = count - 1; i > 0; i--) Array.set(elements, i, Array.get(elements, i - 1));
+        Array.set(elements, 0, added);
     }
 
     private static Method findLibraryMethodViaReflection() {

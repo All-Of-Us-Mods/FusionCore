@@ -112,7 +112,7 @@ public class InstrumentationHooks {
         Pine.hook(onResume, orientationHook);
     }
 
-    private static void applyTargetOrientation(Activity activity) {
+    static void applyTargetOrientation(Activity activity) {
         try {
             Intent intent = activity.getIntent();
             if (intent == null) {
@@ -230,7 +230,7 @@ public class InstrumentationHooks {
         }
     }
 
-    private static Intent resolveOriginalIntent(Intent currentIntent) {
+    static Intent resolveOriginalIntent(Intent currentIntent) {
         try {
             currentIntent.setExtrasClassLoader(InstrumentationHooks.class.getClassLoader());
 
@@ -246,7 +246,7 @@ public class InstrumentationHooks {
         return null;
     }
 
-    private static Intent getInjectedIntent(Intent intent) {
+    static Intent getInjectedIntent(Intent intent) {
         Intent newIntent = new Intent(intent);
         newIntent.putExtra(EXTRA_IS_DYNAMIC_ACTIVITY, true);
         newIntent.putExtra(EXTRA_ORIGINAL_INTENT, intent);
@@ -254,7 +254,7 @@ public class InstrumentationHooks {
         return newIntent;
     }
 
-    private static boolean isDynamicIntent(Intent intent) {
+    static boolean isDynamicIntent(Intent intent) {
         if (intent == null) return false;
 
         return intent.getBooleanExtra(EXTRA_IS_DYNAMIC_ACTIVITY, false);
