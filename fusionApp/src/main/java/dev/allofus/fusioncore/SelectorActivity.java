@@ -406,6 +406,9 @@ public class SelectorActivity extends AppCompatActivity {
             });
 
     private boolean requestMetadataIfNeeded(String packageName) {
+        if (FusionSettings.getUseIl2Cpp2Mono(this, packageName)) {
+            return false;
+        }
         if (GlobalMetadata.hasValidOverride(packageName)) {
             return false;
         }
