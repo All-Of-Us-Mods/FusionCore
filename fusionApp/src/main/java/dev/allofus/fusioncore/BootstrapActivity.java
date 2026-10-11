@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import dev.allofus.fusioncore.hooks.InstrumentationHooks;
 import dev.allofus.fusioncore.hooks.ActivityManagerHooks;
+import dev.allofus.fusioncore.hooks.NotificationManagerHooks;
 import dev.allofus.fusioncore.hooks.PackageManagerHooks;
 import dev.allofus.fusioncore.hooks.GameRuntime;
 import dev.allofus.fusioncore.tools.FusionConfig;
@@ -182,6 +183,7 @@ public class BootstrapActivity extends AppCompatActivity {
         try {
             PackageManagerHooks.install(getApplicationContext(), gameContext);
             ActivityManagerHooks.install(getApplicationContext(), gameContext);
+            NotificationManagerHooks.install(getApplicationContext(), gameContext);
             GameRuntime.install(gameContext);
         } catch (Exception e) {
             failAndFinish("Failed to install base hooks", e);
@@ -189,12 +191,14 @@ public class BootstrapActivity extends AppCompatActivity {
         }
 
         var className = launcherComponent.getClassName();
+        final Context preparedGameContext = gameContext;
 
         try {
             setPhaseStatus(getString(R.string.bootstrap_status_launching));
             initializeFusion(config);
             runOnMainThread(() -> {
                 try {
+                    GameRuntime.initializeApplication(preparedGameContext, getApplicationContext());
                     var intent = new Intent(this, launcherClass);
 
                     // Using the stub activity intent here avoids one extra layer of hooks running.

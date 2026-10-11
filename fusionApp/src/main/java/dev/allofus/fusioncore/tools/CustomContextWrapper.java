@@ -22,10 +22,10 @@ public class CustomContextWrapper extends ContextWrapper {
     private final Context applicationContext;
 
     public CustomContextWrapper(Context gameContext, Context fusionContext) {
-        this(gameContext, fusionContext, null);
+        this(gameContext, fusionContext, dev.allofus.fusioncore.hooks.GameRuntime.getGameApplication());
     }
 
-    private CustomContextWrapper(Context gameContext, Context fusionContext, Application application) {
+    public CustomContextWrapper(Context gameContext, Context fusionContext, Application application) {
         super(gameContext);
         this.gameContext = gameContext;
         this.fusionContext = fusionContext;

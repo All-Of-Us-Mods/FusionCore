@@ -30,7 +30,24 @@ import dev.allofus.fusioncore.R;
 import dev.allofus.fusioncore.tools.CustomContextWrapper;
 
 public final class GameRuntime {
+    private static android.app.Application gameApplication;
     private GameRuntime() {}
+
+    public static android.app.Application getGameApplication() { return gameApplication; }
+
+    public static void initializeApplication(Context gameContext, Context fusionContext)
+            throws ReflectiveOperationException {
+        String className = gameContext.getApplicationInfo().className;
+        if (gameApplication != null || className == null) return;
+        android.app.Application application = (android.app.Application) gameContext.getClassLoader()
+                .loadClass(className).getDeclaredConstructor().newInstance();
+        Method attach = android.app.Application.class.getDeclaredMethod("attach", Context.class);
+        attach.setAccessible(true);
+        attach.invoke(application, new CustomContextWrapper(gameContext, fusionContext, application));
+        gameApplication = application;
+        application.onCreate();
+        Log.i("GameRuntime", "Initialized application " + className);
+    }
 
     public static Context prepareGameContext(Context gameContext, ClassLoader fusionLoader)
             throws ReflectiveOperationException {
@@ -135,6 +152,11 @@ public final class GameRuntime {
                 Field base = ContextWrapper.class.getDeclaredField("mBase");
                 base.setAccessible(true);
                 base.set(activity, new CustomContextWrapper(gameContext, fusionBase));
+                if (gameApplication != null) {
+                    Field application = Activity.class.getDeclaredField("mApplication");
+                    application.setAccessible(true);
+                    application.set(activity, gameApplication);
+                }
                 Field resources = ContextThemeWrapper.class.getDeclaredField("mResources");
                 resources.setAccessible(true);
                 resources.set(activity, null);
