@@ -43,6 +43,7 @@ import dev.allofus.fusioncore.hooks.GameRuntime;
 import dev.allofus.fusioncore.tools.FusionConfig;
 import dev.allofus.fusioncore.tools.GlobalMetadata;
 import dev.allofus.fusioncore.tools.Il2CppApiMapper;
+import dev.allofus.fusioncore.tools.UnityBaseLibraries;
 import dev.allofus.fusioncore.tools.LibUnityDownloader;
 import dev.allofus.fusioncore.tools.NativeLibraryManager;
 import dev.allofus.fusioncore.tools.Utilities;
@@ -490,6 +491,9 @@ public class BootstrapActivity extends AppCompatActivity {
         if(!useIl2Cpp2Mono) {
             dotnetDir = new File(getRuntimeDir(appContext), "dotnet");
             Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir, "config/");
+            if (!BACKUP_UNITY_VERSION.equals(version)) {
+                UnityBaseLibraries.resolve(bepInExDir, version);
+            }
             Utilities.extractZipFromAssets(appContext, "dotnet-arm64.zip", dotnetDir);
         } //we do something else
         else{
