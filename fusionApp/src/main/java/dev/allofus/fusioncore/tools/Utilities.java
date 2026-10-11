@@ -78,6 +78,10 @@ public class Utilities {
         return "v" + versionName;
     }
     public static void extractZipFromStream(ZipInputStream zis, File outputFolder) throws IOException {
+        extractZipFromStream(zis, outputFolder, null);
+    }
+
+    public static void extractZipFromStream(ZipInputStream zis, File outputFolder, @Nullable String keepExistingPrefix) throws IOException {
         if (!outputFolder.exists() && !outputFolder.mkdirs()) {
             throw new IOException("Failed to create output directory: " + outputFolder.getAbsolutePath());
         }
@@ -102,6 +106,8 @@ public class Utilities {
                     if (!target.exists() && !target.mkdirs()) {
                         throw new IOException("Failed to create directory: " + targetPath);
                     }
+                } else if (keepExistingPrefix != null && entryName.startsWith(keepExistingPrefix) && target.isFile()) {
+                    Log.i(TAG, "Keeping existing " + targetPath);
                 } else {
                     File parent = target.getParentFile();
                     if (parent != null && !parent.exists() && !parent.mkdirs()) {
@@ -120,10 +126,14 @@ public class Utilities {
             }
     }
     public static void extractZipFromAssets(Context context, String assetName, File outputFolder) {
+        extractZipFromAssets(context, assetName, outputFolder, null);
+    }
+
+    public static void extractZipFromAssets(Context context, String assetName, File outputFolder, @Nullable String keepExistingPrefix) {
         try {
             try (InputStream is = context.getAssets().open(assetName);
                  ZipInputStream zis = new ZipInputStream(new BufferedInputStream(is))) {
-                  extractZipFromStream(zis, outputFolder);
+                  extractZipFromStream(zis, outputFolder, keepExistingPrefix);
             }
         } catch (IOException e) {
             Log.e(TAG, "Failed to extract " + assetName + " from assets!", e);

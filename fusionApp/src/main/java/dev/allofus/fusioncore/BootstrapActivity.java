@@ -489,7 +489,7 @@ public class BootstrapActivity extends AppCompatActivity {
         File dotnetDir;
         if(!useIl2Cpp2Mono) {
             dotnetDir = new File(getRuntimeDir(appContext), "dotnet");
-            Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir);
+            Utilities.extractZipFromAssets(appContext, "BepInEx-arm64.zip", bepInExDir, "config/");
             Utilities.extractZipFromAssets(appContext, "dotnet-arm64.zip", dotnetDir);
         } //we do something else
         else{
