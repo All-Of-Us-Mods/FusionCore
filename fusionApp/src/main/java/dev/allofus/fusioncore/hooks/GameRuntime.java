@@ -151,9 +151,11 @@ public final class GameRuntime {
                     oldTheme.set(activity, theme);
                 }
                 InstrumentationHooks.applyTargetOrientation(activity);
-                ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
-                Context loadingTheme = new ContextThemeWrapper(fusionBase, androidx.appcompat.R.style.Theme_AppCompat);
-                decor.addView(LayoutInflater.from(loadingTheme).inflate(R.layout.loading_view, decor, false));
+                if (target.hasExtra(InstrumentationHooks.EXTRA_FUSION_CONFIG)) {
+                    ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
+                    Context loadingTheme = new ContextThemeWrapper(fusionBase, androidx.appcompat.R.style.Theme_AppCompat);
+                    decor.addView(LayoutInflater.from(loadingTheme).inflate(R.layout.loading_view, decor, false));
+                }
             } catch (Exception e) {
                 throw new IllegalStateException("Cannot prepare activity", e);
             }
@@ -191,7 +193,11 @@ public final class GameRuntime {
             if (!packageName.equals(gameContext.getPackageName()) &&
                     !packageName.equals(dev.allofus.fusioncore.BuildConfig.APPLICATION_ID)) return intent;
             if (className.startsWith("dev.allofus.fusioncore.")) return intent;
-            return InstrumentationHooks.getInjectedIntent(intent);
+            Intent wrapped = InstrumentationHooks.getInjectedIntent(intent);
+            wrapped.setComponent(new android.content.ComponentName(
+                    dev.allofus.fusioncore.BuildConfig.APPLICATION_ID,
+                    dev.allofus.fusioncore.SecondaryStubActivity.class.getName()));
+            return wrapped;
         }
 
         private ActivityResult start(Class<?> targetType, Context who, IBinder contextThread,
