@@ -48,6 +48,7 @@ public class NativeLibraryManager {
         if (config == null) return null;
         String directory;
         if (FusionLibraries.contains(name)) directory = config.appLibraryDirectory;
+        else if (DotnetLibraries.contains(name)) directory = config.dotnetDirectory;
         else if (CacheLibraries.contains(name)) directory = config.codeCacheDirectory;
         else directory = config.gameLibraryDirectory;
         File library = new File(directory, "lib" + name + ".so");
