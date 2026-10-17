@@ -8,6 +8,8 @@
     <string name="settings_action_back">返回</string>
     <string name="settings_libunity_title">下载未剥离的 libunity</string>
     <string name="settings_libunity_desc">如果使用的游戏因 Unity 问题而崩溃，请开启此选项。</string>
+    <string name="settings_il2cpp2mono_title">使用 Il2Cpp2Mono（实验性）</string>
+    <string name="settings_il2cpp2mono_desc">如果你有托管 DLL，可以开启此选项让游戏改用 Mono 运行！此模式下 BepInEx 目前会被禁用，且可能不稳定。</string>
     <string name="selector_empty_not_configured">未配置任何支持的游戏包。</string>
     <string name="selector_empty_not_installed">当前未安装任何支持的游戏。</string>
     <string name="selector_storage_permission_prompt">授予"所有文件访问权限"，以便 Fusion Core 将 BepInEx 文件写入 Documents 目录。</string>
@@ -39,6 +41,14 @@
     <string name="selector_folder_create_failed">创建文件夹失败：%1$s</string>
     <string name="settings_automatic">自动</string>
     <string name="bootstrap_status_extracting_mono_dlls">正在解压 Mono 托管 DLL…</string>
-    <string name="bootstrap_mono_file_picker_error">无法为托管 DLL ZIP 打开文件选择器。</string>
-    <string name="bootstrap_mono_missing_dlls">未为 Il2Cpp2Mono 提供托管 DLL ZIP 文件。</string>
+    <string name="bootstrap_request_dlls">请提供 Mono 托管 DLL 压缩包（ZIP）</string>
+    <string name="boostrap_file_request_il2cpp_map">请提供 il2cpp API 的反混淆映射文件</string>
+    <string name="selector_metadata_title">需要已解密的元数据</string>
+    <string name="selector_metadata_message">该游戏的 global-metadata.dat 已加密，无法自动解密。\n\n请为此游戏版本选择一个已解密的 global-metadata.dat。</string>
+    <string name="selector_metadata_select">选择文件</string>
+    <string name="selector_metadata_invalid">这不是有效的元数据文件。</string>
+    <string name="bootstrap_fail_configure_classes">配置游戏类失败。</string>
+    <string name="bootstrap_fail_install_hooks">安装基础钩子失败</string>
+    <string name="bootstrap_warning_no_il2cpp_map">警告：未选择 il2cpp API 反混淆映射文件，你确定知道自己在做什么吗？</string>
+    <string name="bootstrap_selected_file_extension">所选文件必须是 .%1$s 文件</string>
 </resources>
