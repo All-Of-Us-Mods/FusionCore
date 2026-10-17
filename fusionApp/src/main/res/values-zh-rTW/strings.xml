@@ -8,6 +8,8 @@
     <string name="settings_action_back">返回</string>
     <string name="settings_libunity_title">下載未剝離的 libunity</string>
     <string name="settings_libunity_desc">如果使用的遊戲因 Unity 問題而崩潰，請開啟此選項。</string>
+    <string name="settings_il2cpp2mono_title">使用 Il2Cpp2Mono（實驗性）</string>
+    <string name="settings_il2cpp2mono_desc">如果你有託管 DLL，可以開啟此選項讓遊戲改用 Mono 執行！此模式下 BepInEx 目前會被停用，且可能不穩定。</string>
     <string name="selector_empty_not_configured">未設定任何支援的遊戲套件。</string>
     <string name="selector_empty_not_installed">目前未安裝任何支援的遊戲。</string>
     <string name="selector_storage_permission_prompt">授予「所有檔案存取權限」，以便 Fusion Core 將 BepInEx 檔案寫入 Documents 目錄。</string>
@@ -39,5 +41,14 @@
     <string name="selector_folder_create_failed">建立資料夾失敗：%1$s</string>
     <string name="settings_automatic">自動</string>
     <string name="bootstrap_status_extracting_mono_dlls">正在解壓縮 Mono 託管 DLL…</string>
-    <string name="bootstrap_mono_missing_dlls">未為 Il2Cpp2Mono 提供託管 DLL ZIP 檔案。</string>
+    <string name="bootstrap_request_dlls">請提供 Mono 託管 DLL 壓縮檔（ZIP）</string>
+    <string name="boostrap_file_request_il2cpp_map">請提供 il2cpp API 的反混淆映射檔案</string>
+    <string name="selector_metadata_title">需要已解密的元資料</string>
+    <string name="selector_metadata_message">此遊戲的 global-metadata.dat 已加密，無法自動解密。\n\n請為此遊戲版本選擇一個已解密的 global-metadata.dat。</string>
+    <string name="selector_metadata_select">選擇檔案</string>
+    <string name="selector_metadata_invalid">這不是有效的元資料檔案。</string>
+    <string name="bootstrap_fail_configure_classes">設定遊戲類別失敗。</string>
+    <string name="bootstrap_fail_install_hooks">安裝基礎鉤子失敗</string>
+    <string name="bootstrap_warning_no_il2cpp_map">警告：未選擇 il2cpp API 反混淆映射檔案，你確定知道自己在做什麼嗎？</string>
+    <string name="bootstrap_selected_file_extension">所選檔案必須是 .%1$s 檔案</string>
 </resources>

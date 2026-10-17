@@ -8,8 +8,8 @@
     <string name="settings_action_back">Back</string>
     <string name="settings_libunity_title">Download unstripped libunity</string>
     <string name="settings_libunity_desc">You should turn this on if the game you\'re using crashes due to Unity getting mad.</string>
-    <string name="settings_il2cpp2mono_title" translatable="false">Use Il2Cpp2Mono (EXPERIMENTAL)</string>
-    <string name="settings_il2cpp2mono_desc" translatable="false">If you have the managed dlls, you can use this to make the game use mono! BepinEx is currently DISABLED under this. and it could be unstable</string>
+    <string name="settings_il2cpp2mono_title">Use Il2Cpp2Mono (EXPERIMENTAL)</string>
+    <string name="settings_il2cpp2mono_desc">If you have the managed dlls, you can use this to make the game use mono! BepinEx is currently DISABLED under this. and it could be unstable</string>
     <string name="selector_empty_not_configured">No supported packages configured..</string>
     <string name="selector_empty_not_installed">No supported packages are currently installed.</string>
     <string name="selector_storage_permission_prompt">Grant "All files access" so Fusion Core can write BepInEx files to Documents.</string>
@@ -47,4 +47,8 @@
     <string name="selector_metadata_message">This game\'s global-metadata.dat is encrypted and it can\'t be decrypted automatically.\n\nSelect a decrypted global-metadata.dat for this game version.</string>
     <string name="selector_metadata_select">Select file</string>
     <string name="selector_metadata_invalid">This is not a valid metadata file.</string>
+    <string name="bootstrap_fail_configure_classes">Failed to configure classes.</string>
+    <string name="bootstrap_fail_install_hooks">Failed to install base hooks</string>
+    <string name="bootstrap_warning_no_il2cpp_map">WARNING: no il2cpp api deobfuscation map selected. are you sure you know what you are doing?</string>
+    <string name="bootstrap_selected_file_extension">Selected file must be a .%1$s file</string>
 </resources>

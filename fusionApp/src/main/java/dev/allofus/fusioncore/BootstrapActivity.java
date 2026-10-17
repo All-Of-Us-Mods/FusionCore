@@ -113,7 +113,7 @@ public class BootstrapActivity extends AppCompatActivity {
         try {
             gameContext = GameRuntime.prepareGameContext(gameContext, getClassLoader());
         } catch (Exception e) {
-            failAndFinish("Failed to configure classes.", e);
+            failAndFinish(getString(R.string.bootstrap_fail_configure_classes), e);
             return;
         }
 
@@ -186,7 +186,7 @@ public class BootstrapActivity extends AppCompatActivity {
             NotificationManagerHooks.install(getApplicationContext(), gameContext);
             GameRuntime.install(gameContext);
         } catch (Exception e) {
-            failAndFinish("Failed to install base hooks", e);
+            failAndFinish(getString(R.string.bootstrap_fail_install_hooks), e);
             return;
         }
 
@@ -359,7 +359,7 @@ public class BootstrapActivity extends AppCompatActivity {
         if (!mapFile.isFile()) {
             Uri selected = promptForFile(R.string.boostrap_file_request_il2cpp_map, "map");
             if (selected == null) {
-                runOnMainThread(() -> Toast.makeText(this, "WARNING: no il2cpp api deobfuscation map selected. are you sure you know what you are doing?", Toast.LENGTH_LONG).show());
+                runOnMainThread(() -> Toast.makeText(this, R.string.bootstrap_warning_no_il2cpp_map, Toast.LENGTH_LONG).show());
                 return new HashMap<>();
             }
             try {
@@ -629,7 +629,7 @@ public class BootstrapActivity extends AppCompatActivity {
             String fileName = getFileNameFromUri(resultUri);
             if (fileName != null && !fileName.toLowerCase(Locale.ROOT).endsWith("." + cleanExt)) {
                 Log.w(TAG, "Selected file '" + fileName + "' does not match required extension: ." + cleanExt);
-                runOnMainThread(() -> Toast.makeText(this, "Selected file must be a ." + cleanExt + " file", Toast.LENGTH_LONG).show());
+                runOnMainThread(() -> Toast.makeText(this, getString(R.string.bootstrap_selected_file_extension, cleanExt), Toast.LENGTH_LONG).show());
                 return null;
             }
         }
