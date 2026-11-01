@@ -63,7 +63,14 @@
         android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
         android:hardwareAccelerated="true"
         android:launchMode="standard"
-        android:exported="false" />
+        android:exported="true">
+        <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="eos.xyza7891maded0tpnjfoif8omi0dwy0j" />
+        </intent-filter>
+    </activity>
     <activity
         android:name="dev.allofus.fusioncore.StubActivity"
         android:theme="@style/UnityThemeSelector"

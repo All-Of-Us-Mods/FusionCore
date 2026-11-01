@@ -23,6 +23,7 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.lang.ref.WeakReference;
 
 import dalvik.system.PathClassLoader;
 import dev.allofus.fusioncore.tools.NativeLibraryManager;
@@ -31,9 +32,13 @@ import dev.allofus.fusioncore.tools.CustomContextWrapper;
 
 public final class GameRuntime {
     private static android.app.Application gameApplication;
+    private static volatile Context gameContext;
+    private static volatile GameInstrumentation gameInstrumentation;
+
     private GameRuntime() {}
 
     public static android.app.Application getGameApplication() { return gameApplication; }
+    public static Context getGameContext() { return gameContext; }
 
     public static void initializeApplication(Context gameContext, Context fusionContext)
             throws ReflectiveOperationException {
@@ -60,6 +65,12 @@ public final class GameRuntime {
         return new ContextWrapper(gameContext) {
             @Override public ClassLoader getClassLoader() { return gameLoader; }
         };
+    }
+
+    public static void dispatchToGame(Intent intent) {
+        GameInstrumentation instrumentation = gameInstrumentation;
+        if (instrumentation == null) return;
+        instrumentation.dispatchToGame(intent);
     }
 
     private static final class GameClassLoader extends PathClassLoader {
@@ -92,7 +103,8 @@ public final class GameRuntime {
         }
     }
 
-    public static void install(Context gameContext) throws ReflectiveOperationException {
+    public static void install(Context context) throws ReflectiveOperationException {
+        gameContext = context;
         Class<?> threadClass = Class.forName("android.app.ActivityThread");
         Method currentThread = threadClass.getDeclaredMethod("currentActivityThread");
         currentThread.setAccessible(true);
@@ -100,9 +112,14 @@ public final class GameRuntime {
         Field instrumentation = threadClass.getDeclaredField("mInstrumentation");
         instrumentation.setAccessible(true);
         Instrumentation original = (Instrumentation) instrumentation.get(thread);
-        if (!(original instanceof GameInstrumentation)) {
-            instrumentation.set(thread, new GameInstrumentation(original, gameContext));
+        GameInstrumentation wrapper;
+        if (original instanceof GameInstrumentation) {
+            wrapper = (GameInstrumentation)original;
+        } else {
+            wrapper = new GameInstrumentation(original, context);
         }
+        instrumentation.set(thread, wrapper);
+        gameInstrumentation = wrapper;
         Log.i("GameRuntime", "Installed activity loading");
     }
 
@@ -111,10 +128,21 @@ public final class GameRuntime {
         private final Context gameContext;
         private final Map<Activity, Intent> pendingIntents = Collections.synchronizedMap(new WeakHashMap<>());
         private final java.util.Set<Activity> gameActivities = Collections.newSetFromMap(new WeakHashMap<>());
+        private volatile WeakReference<Activity> lastGameActivity = new WeakReference<>(null);
 
         GameInstrumentation(Instrumentation original, Context gameContext) {
             this.original = original;
             this.gameContext = gameContext;
+        }
+
+        public void dispatchToGame(Intent intent) {
+            var activity = lastGameActivity.get();
+            if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
+            try {
+                activity.startActivity(intent);
+            } catch (Exception e) {
+                Log.e("GameInstrumentation", "Failed to dispatchToGame", e);
+            }
         }
 
         @Override public Activity newActivity(ClassLoader loader, String name, Intent intent)
@@ -191,19 +219,29 @@ public final class GameRuntime {
             prepare(activity);
             original.callActivityOnCreate(activity, state, persistentState);
         }
-        @Override public void callActivityOnResume(Activity activity) {
-            if (gameActivities.contains(activity)) InstrumentationHooks.applyTargetOrientation(activity);
+        @Override
+        public void callActivityOnResume(Activity activity) {
+            if (!gameActivities.contains(activity)) return;
+            InstrumentationHooks.applyTargetOrientation(activity);
             original.callActivityOnResume(activity);
+            lastGameActivity = new WeakReference<>(activity);
         }
+        
         @Override public void callActivityOnNewIntent(Activity activity, Intent intent) {
             Intent target = InstrumentationHooks.resolveOriginalIntent(intent);
             original.callActivityOnNewIntent(activity, target != null ? target : intent);
         }
-        @Override public void callActivityOnDestroy(Activity activity) {
+        @Override
+        public void callActivityOnDestroy(Activity activity) {
             pendingIntents.remove(activity);
             gameActivities.remove(activity);
+            Activity last = lastGameActivity.get();
+            if (last == activity) {
+                lastGameActivity = new WeakReference<>(null);
+            }
             original.callActivityOnDestroy(activity);
         }
+        
         @Override public boolean onException(Object object, Throwable error) {
             return original.onException(object, error);
         }
@@ -212,6 +250,12 @@ public final class GameRuntime {
             if (intent == null || intent.getComponent() == null || InstrumentationHooks.isDynamicIntent(intent)) return intent;
             String packageName = intent.getComponent().getPackageName();
             String className = intent.getComponent().getClassName();
+            String gamePackage = gameContext.getPackageName();
+            if (packageName.equals(gamePackage) && className.contains(dev.allofus.fusioncore.BuildConfig.APPLICATION_ID)) {
+                Intent redirected = new Intent(intent);
+                redirected.setComponent(new android.content.ComponentName(dev.allofus.fusioncore.BuildConfig.APPLICATION_ID, className));
+                return redirected;
+            }
             if (!packageName.equals(gameContext.getPackageName()) &&
                     !packageName.equals(dev.allofus.fusioncore.BuildConfig.APPLICATION_ID)) return intent;
             if (className.startsWith("dev.allofus.fusioncore.")) return intent;
@@ -246,15 +290,15 @@ public final class GameRuntime {
         }
 
         public ActivityResult execStartActivity(Context who, IBinder thread, IBinder token,
-                                               Activity target, Intent intent, int code, Bundle options) {
+                                                Activity target, Intent intent, int code, Bundle options) {
             return start(Activity.class, who, thread, token, target, intent, code, options, null);
         }
         public ActivityResult execStartActivity(Context who, IBinder thread, IBinder token,
-                                               String target, Intent intent, int code, Bundle options) {
+                                                String target, Intent intent, int code, Bundle options) {
             return start(String.class, who, thread, token, target, intent, code, options, null);
         }
         public ActivityResult execStartActivity(Context who, IBinder thread, IBinder token,
-                                               Activity target, Intent intent, int code, Bundle options, UserHandle user) {
+                                                Activity target, Intent intent, int code, Bundle options, UserHandle user) {
             return start(Activity.class, who, thread, token, target, intent, code, options, user);
         }
     }
