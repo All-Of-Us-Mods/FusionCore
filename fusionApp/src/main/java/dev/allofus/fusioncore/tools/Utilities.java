@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -70,7 +71,6 @@ public class Utilities {
         });
         root.requestApplyInsets();
     }
-
     public static String formatVersionText(String versionName, long versionCode) {
         if (versionCode > 0L) {
             return "v" + versionName + " (" + versionCode + ")";
@@ -140,7 +140,7 @@ public class Utilities {
         }
     }
 
-    public static boolean copyAssets(ApplicationInfo gameInfo, File outputFolder) {
+    public static boolean copyAssets(ApplicationInfo gameInfo, File outputFolder, @Nullable Predicate<ZipEntry> predicate) {
         File marker = new File(outputFolder, ".fusion_copied");
         if (marker.isFile()) {
             return true;
@@ -167,6 +167,9 @@ public class Utilities {
                     ZipEntry entry = entries.nextElement();
                     String name = entry.getName();
                     if (entry.isDirectory() || !name.startsWith("assets/")) continue;
+                    if(predicate != null && !predicate.test(entry)){
+                        continue;
+                    }
 
                     File target = new File(outputFolder, name.substring("assets/".length()));
                     if (!target.getCanonicalPath().startsWith(outputRoot)) continue;

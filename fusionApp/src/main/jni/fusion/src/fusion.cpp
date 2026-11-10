@@ -32,13 +32,6 @@ static bool execute_fusion_config(const FusionConfig &config)
     fs::path patchedLibIl2Cpp;
     if(config.isIl2Cpp2Mono){
         fs::path MonoPath(config.dotnetDirectory);
-
-        fs::path monoLib = MonoPath / "libmonosgen-2.0.so";
-        void* handle = dlopen(monoLib.c_str(), RTLD_GLOBAL | RTLD_NOW);
-        if (!handle) {
-            log_format(LogLevel::ERROR, TAG, "Failed to dlopen libmonosgen-2.0.so: {}", dlerror());
-            return false;
-        }
         patchedLibIl2Cpp = MonoPath / "libil2cpp.so";
         handle = dlopen(patchedLibIl2Cpp.c_str(), RTLD_GLOBAL | RTLD_NOW);
         if (!handle) {

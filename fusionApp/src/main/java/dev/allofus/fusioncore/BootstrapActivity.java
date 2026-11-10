@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.ZipEntry;
 
 import dev.allofus.fusioncore.hooks.InstrumentationHooks;
 import dev.allofus.fusioncore.hooks.ActivityManagerHooks;
@@ -320,7 +321,6 @@ public class BootstrapActivity extends AppCompatActivity {
             }
             else {
                 NativeLibraryManager.addDotnetLibrary("il2cpp");
-                NativeLibraryManager.addDotnetLibrary("monosgen-2.0");
             }
             NativeLibraryManager.addCacheLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);
@@ -430,6 +430,18 @@ public class BootstrapActivity extends AppCompatActivity {
         }
         return map;
     }
+    //since we arent overriding any of unity's actual assets. there is no point in extracting any of the bin/data files except for the essential ones (for now)
+    static boolean ShouldExtractApkAsset(ZipEntry entry){
+        File file = new File(entry.getName());
+        String parent = file.getParent();
+        if(parent == null){
+            return true;
+        }
+        if(!parent.equals("assets/bin/Data")){
+            return true;
+        }
+        return UnityUtils.lookupMap.containsKey(file.getName());
+    }
     private FusionConfig prepareConfig(Context appContext,
                                        Context gameContext,
                                        ComponentName launcherComponent,
@@ -450,7 +462,7 @@ public class BootstrapActivity extends AppCompatActivity {
         setPhaseStatus(getString(R.string.bootstrap_status_copy_assets));
         File Assets = new File(dataOnSdCard, "Assets");
         File PersistentData = new File(dataOnSdCard, "PersistentData");
-        boolean copied = Utilities.copyAssets(gameContext.getApplicationInfo(), Assets);
+        boolean copied = Utilities.copyAssets(gameContext.getApplicationInfo(), Assets, BootstrapActivity::ShouldExtractApkAsset);
         if (!copied) {
             Log.e(TAG, "Failed to copy Unity Data assets! BepInEx may not work correctly.");
         }
@@ -547,23 +559,6 @@ public class BootstrapActivity extends AppCompatActivity {
             }
         }
     }
-
-    private static void copyFile(File source, File target) throws IOException {
-        File parent = target.getParentFile();
-        if (parent != null && !parent.exists() && !parent.mkdirs()) {
-            throw new IOException("Failed to create parent directory: " + parent.getAbsolutePath());
-        }
-
-        byte[] buffer = new byte[8192];
-        try (FileInputStream in = new FileInputStream(source);
-             FileOutputStream out = new FileOutputStream(target, false)) {
-            int count;
-            while ((count = in.read(buffer)) != -1) {
-                out.write(buffer, 0, count);
-            }
-        }
-    }
-
     private void ensureManagedDllsForMono(File GameDir) {
         File managedDir = new File(GameDir, "mono");
         File[] existingFiles = managedDir.listFiles();
