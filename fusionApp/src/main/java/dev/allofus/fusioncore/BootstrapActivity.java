@@ -321,7 +321,6 @@ public class BootstrapActivity extends AppCompatActivity {
             }
             else {
                 NativeLibraryManager.addDotnetLibrary("il2cpp");
-                NativeLibraryManager.addDotnetLibrary("monosgen-2.0");
             }
             NativeLibraryManager.addCacheLibrary("unity");
             NativeLibraryManager.setupLibraryHooks(config);

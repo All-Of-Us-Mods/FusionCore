@@ -83,7 +83,8 @@ static bool preload_dotnet_runtime_libraries()
             "libSystem.Native.so",
             "libSystem.Globalization.Native.so",
             "libSystem.IO.Compression.Native.so",
-            "libSystem.Security.Cryptography.Native.OpenSsl.so"
+            "libSystem.Security.Cryptography.Native.OpenSsl.so",
+            "libmonosgen-2.0.so"
     };
 
     for (const char *libraryName : required) {
