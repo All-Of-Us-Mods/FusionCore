@@ -51,7 +51,14 @@ static std::string build_sibling_library_path(const char *libraryFileName)
 
     return selfPath.substr(0, lastSlash + 1) + libraryFileName;
 }
-
+extern "C" void* load_library(const char* path){
+    void *handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+    if (!handle) {
+        const char *err = dlerror();
+        LOGE("load_library: dlopen failed for %s : %s", path, err)
+    }
+    return handle;
+}
 static bool preload_sibling_library(const char *libraryFileName)
 {
     const std::string siblingPath = build_sibling_library_path(libraryFileName);
