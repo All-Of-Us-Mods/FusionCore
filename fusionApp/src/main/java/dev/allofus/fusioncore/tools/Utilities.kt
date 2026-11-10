@@ -83,16 +83,16 @@ object Utilities {
     }
 
     @JvmStatic
-    @Throws(IOException)
+    @Throws(IOException::class)
     fun extractZipFromStream(zis: ZipInputStream, outputFolder: File) {
         extractZipFromStream(zis, outputFolder, null)
     }
 
     @JvmStatic
-    @Throws(IOException)
+    @Throws(IOException::class)
     fun extractZipFromStream(zis: ZipInputStream, outputFolder: File, keepExistingPrefix: String?) {
         if (!outputFolder.exists() && !outputFolder.mkdirs()) {
-            throw new IOException("Failed to create output directory: " + outputFolder.absolutePath)
+            throw IOException("Failed to create output directory: ${outputFolder.absolutePath}")
         }
         val buffer = ByteArray(8192)
         val outputRoot = outputFolder.canonicalPath + File.separator
@@ -108,30 +108,26 @@ object Utilities {
             val targetPath = target.canonicalPath
 
             if (!targetPath.startsWith(outputRoot)) {
-                throw new IOException("Blocked zip entry outside output folder: $entryName")
+                throw IOException("Blocked zip entry outside output folder: $entryName")
             }
 
             if (ze!!.isDirectory) {
                 if (!target.exists() && !target.mkdirs()) {
-                    throw new IOException("Failed to create directory: $targetPath")
+                    throw IOException("Failed to create directory: $targetPath")
                 }
             } else if (keepExistingPrefix != null && entryName.startsWith(keepExistingPrefix) && target.isFile) {
                 Log.i(TAG, "Keeping existing $targetPath")
             } else {
                 val parent = target.parentFile
                 if (parent != null && !parent.exists() && !parent.mkdirs()) {
-                    throw new IOException("Failed to create parent directory: " + parent.absolutePath)
+                    throw IOException("Failed to create parent directory: ${parent.absolutePath}")
                 }
 
-                try {
-                    FileOutputStream(target).use { fos ->
-                        var count: Int
-                        while (zis.read(buffer).also { count = it } != -1) {
-                            fos.write(buffer, 0, count)
-                        }
+                FileOutputStream(target).use { fos ->
+                    var count: Int
+                    while (zis.read(buffer).also { count = it } != -1) {
+                        fos.write(buffer, 0, count)
                     }
-                } catch (e: Exception) {
-                    throw e
                 }
             }
             zis.closeEntry()
@@ -194,7 +190,7 @@ object Utilities {
 
                         val parent = target.parentFile
                         if (parent != null && !parent.isDirectory && !parent.mkdirs()) {
-                            throw new IOException("Failed to create $parent")
+                            throw IOException("Failed to create $parent")
                         }
                         zip.getInputStream(entry).use { `in` ->
                             FileOutputStream(target).use { out ->
@@ -215,12 +211,12 @@ object Utilities {
 
         try {
             if (!marker.createNewFile()) {
-                Log.w(TAG, "Failed to create asset copy marker: " + marker.absolutePath)
+                Log.w(TAG, "Failed to create asset copy marker: ${marker.absolutePath}")
             }
         } catch (e: IOException) {
             Log.w(TAG, "Failed to create asset copy marker", e)
         }
-        Log.i(TAG, "Successfully copied $copied Unity Data assets to: " + outputFolder.absolutePath)
+        Log.i(TAG, "Successfully copied $copied Unity Data assets to: ${outputFolder.absolutePath}")
         return true
     }
 
@@ -256,3 +252,4 @@ object Utilities {
         }
     }
 }
+
